@@ -4,17 +4,20 @@ use media_inference_lab::{
     capture::{self, CaptureOptions},
     comparison,
     guards::{GuardConfig, GuardMonitor, Lease},
+    image_comparison::{self, ImageAssessment, Tolerance},
+    png_image::{self, DecodedPng},
     preflight::{self, PreflightOptions},
-    schema::{AdapterResult, Workload},
+    schema::{AdapterResult, Artifact, Workload},
     study::{StudyInput, StudyPlan},
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
-    fs::{File, OpenOptions},
+    fs::{DirBuilder, File, OpenOptions},
     io::{BufWriter, Read, Write},
-    os::unix::fs::OpenOptionsExt,
+    os::unix::fs::{DirBuilderExt, OpenOptionsExt},
     path::{Path, PathBuf},
     process::ExitCode,
     sync::{Arc, atomic::AtomicBool},
@@ -57,6 +60,23 @@ enum Command {
         output: PathBuf,
         #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
         inspection_seconds: u64,
+    },
+    /// Compare full static PNG samples offline; never infer visual quality or execute inference.
+    CompareImages {
+        #[arg(long)]
+        baseline: PathBuf,
+        #[arg(long)]
+        candidate: PathBuf,
+        #[arg(long)]
+        baseline_repeat: Option<PathBuf>,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, requires = "tolerance_rationale")]
+        max_absolute_error: Option<u16>,
+        #[arg(long, requires = "max_absolute_error")]
+        tolerance_rationale: Option<String>,
+        #[arg(long)]
+        assessment: Option<PathBuf>,
     },
     /// Supervise a trusted CPU-only process without platform guards.
     Supervise(ProcessArguments),
@@ -130,23 +150,23 @@ fn load<T: DeserializeOwned>(path: &Path) -> Result<T> {
     serde_json::from_slice(&bytes).with_context(|| format!("reading JSON {}", path.display()))
 }
 
-fn load_study<T: DeserializeOwned>(path: &Path, limit: u64) -> Result<T> {
+fn load_regular_json<T: DeserializeOwned>(path: &Path, limit: u64) -> Result<T> {
     let file = OpenOptions::new()
         .read(true)
         .custom_flags(libc::O_NONBLOCK | libc::O_NOFOLLOW)
         .open(path)
-        .with_context(|| format!("opening study JSON {}", path.display()))?;
+        .with_context(|| format!("opening JSON {}", path.display()))?;
     ensure!(
         file.metadata()?.is_file(),
-        "study JSON must be a regular file"
+        "JSON input must be a regular file"
     );
     let mut bytes = Vec::new();
     file.take(limit + 1).read_to_end(&mut bytes)?;
     ensure!(
         bytes.len() as u64 <= limit,
-        "study JSON exceeds {limit} bytes"
+        "JSON input exceeds {limit} bytes"
     );
-    serde_json::from_slice(&bytes).with_context(|| format!("reading study JSON {}", path.display()))
+    serde_json::from_slice(&bytes).with_context(|| format!("reading JSON {}", path.display()))
 }
 
 struct BoundedReport {
@@ -157,7 +177,7 @@ struct BoundedReport {
 impl Write for BoundedReport {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
         if bytes.len() > self.remaining {
-            return Err(std::io::Error::other("study output exceeds 16 MiB"));
+            return Err(std::io::Error::other("JSON output exceeds 16 MiB"));
         }
         let written = self.file.write(bytes)?;
         self.remaining -= written;
@@ -169,13 +189,13 @@ impl Write for BoundedReport {
     }
 }
 
-fn write_study(output: &Path, value: &impl Serialize) -> Result<()> {
+fn write_json_report(output: &Path, value: &impl Serialize) -> Result<()> {
     let file = OpenOptions::new()
         .write(true)
         .create_new(true)
         .mode(0o600)
         .open(output)
-        .with_context(|| format!("creating non-overwriting study output {}", output.display()))?;
+        .with_context(|| format!("creating non-overwriting JSON output {}", output.display()))?;
     let mut writer = BoundedReport {
         file: BufWriter::new(file),
         remaining: 16 * 1024 * 1024,
@@ -185,6 +205,142 @@ fn write_study(output: &Path, value: &impl Serialize) -> Result<()> {
     writer.flush()?;
     writer.file.get_ref().sync_all()?;
     Ok(())
+}
+
+struct SheetWriter {
+    file: BufWriter<File>,
+    hash: Sha256,
+    bytes: u64,
+}
+
+impl Write for SheetWriter {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        const LIMIT: u64 = 270 * 1024 * 1024;
+        if bytes.len() as u64 > LIMIT - self.bytes {
+            return Err(std::io::Error::other("PNG sheet exceeds 270 MiB"));
+        }
+        let written = self.file.write(bytes)?;
+        self.hash.update(&bytes[..written]);
+        self.bytes += written as u64;
+        Ok(written)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.file.flush()
+    }
+}
+
+fn new_private_file(path: &Path) -> Result<File> {
+    OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)
+        .with_context(|| format!("creating non-overwriting artifact {}", path.display()))
+}
+
+fn copy_png(directory: &Path, name: &str, role: &str, image: &DecodedPng) -> Result<Artifact> {
+    let mut file = new_private_file(&directory.join(name))?;
+    // Copy the exact snapshot hashed and decoded, not a later reread of the source path.
+    file.write_all(image.encoded())?;
+    file.sync_all()?;
+    Ok(Artifact {
+        path: name.into(),
+        sha256: image.identity().sha256.clone(),
+        bytes: image.identity().bytes,
+        role: role.into(),
+    })
+}
+
+fn compare_images(
+    baseline: &Path,
+    candidate: &Path,
+    baseline_repeat: Option<&Path>,
+    output_dir: &Path,
+    tolerance: Option<Tolerance>,
+    assessment: Option<ImageAssessment>,
+) -> Result<bool> {
+    let baseline = png_image::decode(baseline)?;
+    let candidate = png_image::decode(candidate)?;
+    let baseline_repeat = baseline_repeat.map(png_image::decode).transpose()?;
+    let comparison = image_comparison::compare(
+        &baseline,
+        &candidate,
+        baseline_repeat.as_ref(),
+        tolerance,
+        assessment,
+    )?;
+    let within_bound = comparison.is_within_numerical_bound();
+
+    // Validate all inputs before creating a bundle. An I/O failure leaves a partial
+    // private directory, never a complete-looking report or an overwritten artifact.
+    DirBuilder::new()
+        .mode(0o700)
+        .create(output_dir)
+        .with_context(|| format!("creating new PNG bundle {}", output_dir.display()))?;
+    let mut artifacts = vec![
+        copy_png(output_dir, "baseline.png", "baseline_image", &baseline)?,
+        copy_png(output_dir, "candidate.png", "candidate_image", &candidate)?,
+    ];
+    if let Some(repeat) = &baseline_repeat {
+        artifacts.push(copy_png(
+            output_dir,
+            "baseline-repeat.png",
+            "baseline_repeat_image",
+            repeat,
+        )?);
+    }
+    let mut sheet = SheetWriter {
+        file: BufWriter::new(new_private_file(&output_dir.join("sheet.png"))?),
+        hash: Sha256::new(),
+        bytes: 0,
+    };
+    png_image::write_sheet(&baseline, &candidate, &mut sheet)?;
+    sheet.flush()?;
+    sheet.file.get_ref().sync_all()?;
+    artifacts.push(Artifact {
+        path: "sheet.png".into(),
+        sha256: format!("{:x}", sheet.hash.finalize()),
+        bytes: sheet.bytes,
+        role: "raw_sample_ab_sheet".into(),
+    });
+
+    #[derive(Serialize)]
+    struct SheetLayout {
+        path: &'static str,
+        left: &'static str,
+        right: &'static str,
+        panel_width: u32,
+        panel_height: u32,
+        method: &'static str,
+    }
+    #[derive(Serialize)]
+    struct Bundle {
+        schema_version: u32,
+        kind: &'static str,
+        comparison: image_comparison::ImageComparisonReport,
+        artifacts: Vec<Artifact>,
+        sheet: SheetLayout,
+    }
+    let bundle = Bundle {
+        schema_version: 1,
+        kind: "offline_png_comparison_bundle",
+        comparison,
+        artifacts,
+        sheet: SheetLayout {
+            path: "sheet.png",
+            left: "baseline.png",
+            right: "candidate.png",
+            panel_width: baseline.identity().width,
+            panel_height: baseline.identity().height,
+            method: "Unscaled stored-raster samples, baseline left/candidate right; ancillary metadata omitted. No color management, gamma linearization, EXIF orientation or compositing. Inspect original copies for color-managed observations.",
+        },
+    };
+    let report_path = output_dir.join("report.json");
+    write_json_report(&report_path, &bundle)?;
+    File::open(output_dir)?.sync_all()?;
+    println!("{}", report_path.display());
+    Ok(within_bound)
 }
 
 fn run(cli: Cli) -> Result<bool> {
@@ -208,8 +364,8 @@ fn run(cli: Cli) -> Result<bool> {
             Ok(record.is_success())
         }
         Command::StudyPlan { plan, output } => {
-            let plan: StudyPlan = load_study(&plan, 1024 * 1024)?;
-            write_study(&output, &plan.template()?)?;
+            let plan: StudyPlan = load_regular_json(&plan, 1024 * 1024)?;
+            write_json_report(&output, &plan.template()?)?;
             println!("{}", output.display());
             Ok(true)
         }
@@ -218,14 +374,42 @@ fn run(cli: Cli) -> Result<bool> {
             output,
             inspection_seconds,
         } => {
-            let input: StudyInput = load_study(&study, 16 * 1024 * 1024)?;
+            let input: StudyInput = load_regular_json(&study, 16 * 1024 * 1024)?;
             let absolute = std::path::absolute(&study)?;
             let base = absolute.parent().context("study path has no parent")?;
             let report =
                 comparison::compare(&input, base, Duration::from_secs(inspection_seconds))?;
-            write_study(&output, &report)?;
+            write_json_report(&output, &report)?;
             println!("{}", output.display());
             Ok(report.is_complete())
+        }
+        Command::CompareImages {
+            baseline,
+            candidate,
+            baseline_repeat,
+            output_dir,
+            max_absolute_error,
+            tolerance_rationale,
+            assessment,
+        } => {
+            let tolerance = max_absolute_error.zip(tolerance_rationale).map(
+                |(max_absolute_error, rationale)| Tolerance {
+                    max_absolute_error,
+                    rationale,
+                },
+            );
+            let assessment = assessment
+                .as_deref()
+                .map(|path| load_regular_json::<ImageAssessment>(path, 64 * 1024))
+                .transpose()?;
+            compare_images(
+                &baseline,
+                &candidate,
+                baseline_repeat.as_deref(),
+                &output_dir,
+                tolerance,
+                assessment,
+            )
         }
         Command::Supervise(process) => supervise(process, None),
         Command::SuperviseGuarded {
