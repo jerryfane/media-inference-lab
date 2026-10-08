@@ -189,6 +189,97 @@ fn rejects_malformed_recognized_metadata_instead_of_silently_discarding_it() {
 }
 
 #[test]
+fn review_trns_rejects_wrong_lengths_and_alpha_color_types() {
+    for depth in [8, 16] {
+        for (code, channels, valid_length) in [(0, 1, 2), (2, 3, 6), (4, 2, 0), (6, 4, 0)] {
+            let samples = vec![42; channels * usize::from(depth / 8)];
+            for length in 0..=8 {
+                if valid_length != 0 && length == valid_length {
+                    continue;
+                }
+                let mut bytes = image(1, 1, depth, code, &samples);
+                let mut transparency = vec![0; length];
+                if length >= 2 {
+                    transparency[1] = 42;
+                }
+                bytes.splice(33..33, chunk(b"tRNS", &transparency));
+                rejected(&bytes);
+            }
+        }
+    }
+}
+
+#[test]
+fn review_trns_rejects_duplicate_and_misordered_transparency() {
+    for (code, samples, transparency) in [
+        (0, vec![42], vec![0, 42]),
+        (2, vec![42, 43, 44], vec![0, 42, 0, 43, 0, 44]),
+    ] {
+        let mut late = image(1, 1, 8, code, &samples);
+        let end = late.len() - 12;
+        late.splice(end..end, chunk(b"tRNS", &transparency));
+        rejected(&late);
+
+        let mut duplicate = image(1, 1, 8, code, &samples);
+        duplicate.splice(33..33, chunk(b"tRNS", &transparency));
+        duplicate.splice(33..33, chunk(b"tRNS", &transparency));
+        rejected(&duplicate);
+    }
+    let mut reversed_palette = image(1, 1, 8, 2, &[42, 43, 44]);
+    reversed_palette.splice(33..33, chunk(b"PLTE", &[42, 43, 44]));
+    reversed_palette.splice(33..33, chunk(b"tRNS", &[0, 42, 0, 43, 0, 44]));
+    rejected(&reversed_palette);
+}
+
+#[test]
+fn review_trns_preserves_valid_metadata_and_raw_samples_without_expansion() {
+    let directory = tempdir().unwrap();
+    let path = directory.path().join("transparent.png");
+    let sheet_path = directory.path().join("sheet.png");
+    for depth in [8, 16] {
+        for (code, color) in [(0, SampleColor::Gray), (2, SampleColor::Rgb)] {
+            for palette in [false, true] {
+                if palette && code == 0 {
+                    continue;
+                }
+                let samples = if depth == 8 {
+                    vec![42; color.channels()]
+                } else {
+                    [0x12, 0x34].repeat(color.channels())
+                };
+                let transparency = if depth == 8 {
+                    [0, 42].repeat(color.channels())
+                } else {
+                    samples.clone()
+                };
+                let mut bytes = image(1, 1, depth, code, &samples);
+                bytes.splice(33..33, chunk(b"tRNS", &transparency));
+                if palette {
+                    bytes.splice(33..33, chunk(b"PLTE", &[42, 42, 42]));
+                }
+                fs::write(&path, &bytes).unwrap();
+                let decoded = decode(&path).unwrap();
+                assert_eq!(decoded.encoded(), bytes);
+                assert_eq!(
+                    decoded.identity().sha256,
+                    format!("{:x}", Sha256::digest(&bytes))
+                );
+                assert_eq!(decoded.samples(), samples);
+                assert_eq!(decoded.identity().color, color);
+                assert_eq!(decoded.identity().bit_depth, depth);
+                let mut sheet = Vec::new();
+                write_sheet(&decoded, &decoded, &mut sheet).unwrap();
+                fs::write(&sheet_path, &sheet).unwrap();
+                let sheet = decode(&sheet_path).unwrap();
+                assert_eq!(sheet.samples(), samples.repeat(2));
+                assert_eq!(sheet.identity().color, color);
+                assert_eq!(sheet.identity().bit_depth, depth);
+            }
+        }
+    }
+}
+
+#[test]
 fn rejects_early_late_and_malformed_animation_chunks() {
     for kind in [b"acTL", b"fcTL", b"fdAT"] {
         for late in [false, true] {

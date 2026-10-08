@@ -159,6 +159,7 @@ fn validate_envelope(encoded: &[u8]) -> Result<Header> {
     let mut seen_idat = false;
     let mut ended_idat = false;
     let mut seen_palette = false;
+    let mut seen_transparency = false;
     while offset < encoded.len() {
         ensure!(encoded.len() - offset >= 12, "truncated PNG chunk");
         let length = u32_be(&encoded[offset..offset + 4]) as usize;
@@ -228,6 +229,7 @@ fn validate_envelope(encoded: &[u8]) -> Result<Header> {
                 ensure!(
                     !seen_palette
                         && !seen_idat
+                        && !seen_transparency
                         && length > 0
                         && length <= 768
                         && length.is_multiple_of(3),
@@ -241,6 +243,26 @@ fn validate_envelope(encoded: &[u8]) -> Result<Header> {
                     "PLTE is invalid for grayscale PNG"
                 );
                 seen_palette = true;
+            }
+            b"tRNS" => {
+                ensure!(
+                    !seen_transparency && !seen_idat,
+                    "tRNS must occur once, before image data and after any PLTE"
+                );
+                // png 0.18.1 accepts overlong and post-IDAT tRNS without a
+                // BadAncillaryChunk event. Check structure here, not sample values.
+                let expected = match header.as_ref().unwrap().color {
+                    SampleColor::Gray => 2,
+                    SampleColor::Rgb => 6,
+                    SampleColor::GrayAlpha | SampleColor::Rgba => {
+                        bail!("tRNS is forbidden for PNG color types with alpha")
+                    }
+                };
+                ensure!(
+                    length == expected,
+                    "tRNS must contain exactly {expected} bytes"
+                );
+                seen_transparency = true;
             }
             b"IDAT" => {
                 ensure!(!ended_idat, "PNG IDAT chunks must be consecutive");
