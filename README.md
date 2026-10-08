@@ -41,6 +41,21 @@ Memory observations must state their source and scope. Process RSS, tracked tens
 - No new generation UI, duplicate performance website, runtime rewrite, or universal model framework. The existing performance-lab website can consume explicitly approved, sanitized reports later.
 - Do not change live application deployments or workstation infrastructure as a side effect of benchmarking.
 
+## Roadmap
+
+Each epic has three native GitHub sub-issues with implementation steps, dependencies, and observable acceptance criteria.
+
+| Epic | Implementation issues |
+| --- | --- |
+| [Rust capture core, evidence contract, and safe execution](https://github.com/jerryfane/media-inference-lab/issues/3) | [Schemas #9](https://github.com/jerryfane/media-inference-lab/issues/9), [capture lifecycle #10](https://github.com/jerryfane/media-inference-lab/issues/10), [resource guards #11](https://github.com/jerryfane/media-inference-lab/issues/11) |
+| [Real MFLUX image capture and validation](https://github.com/jerryfane/media-inference-lab/issues/1) | [Native adapter #12](https://github.com/jerryfane/media-inference-lab/issues/12), [timing and validation #13](https://github.com/jerryfane/media-inference-lab/issues/13), [workloads #14](https://github.com/jerryfane/media-inference-lab/issues/14) |
+| [Native H3 video capture and validation](https://github.com/jerryfane/media-inference-lab/issues/7) | [Native adapter #15](https://github.com/jerryfane/media-inference-lab/issues/15), [stream validation #16](https://github.com/jerryfane/media-inference-lab/issues/16), [workloads #17](https://github.com/jerryfane/media-inference-lab/issues/17) |
+| [Controlled comparisons and honest reports](https://github.com/jerryfane/media-inference-lab/issues/8) | [Comparison engine #18](https://github.com/jerryfane/media-inference-lab/issues/18), [output evidence #19](https://github.com/jerryfane/media-inference-lab/issues/19), [reports #20](https://github.com/jerryfane/media-inference-lab/issues/20) |
+| [Production-shape Metal optimization studies](https://github.com/jerryfane/media-inference-lab/issues/2) | [Kernel profiling #21](https://github.com/jerryfane/media-inference-lab/issues/21), [attention #22](https://github.com/jerryfane/media-inference-lab/issues/22), [decoder #23](https://github.com/jerryfane/media-inference-lab/issues/23) |
+| [Portable verification, usage, and approved publication](https://github.com/jerryfane/media-inference-lab/issues/6) | [CI #24](https://github.com/jerryfane/media-inference-lab/issues/24), [reproduction #25](https://github.com/jerryfane/media-inference-lab/issues/25), [sanitized export #26](https://github.com/jerryfane/media-inference-lab/issues/26) |
+
+Begin with the evidence schema and capture lifecycle, then resource guards and a real MFLUX image capture. Bring H3 into the same contract, prove offline comparison/reporting, and only then draw optimization conclusions from production-shaped studies. CPU-only verification can progress alongside those integrations; GPU runs require exclusive scheduling and explicit prerequisites.
+
 ## Implementation status
 
 This repository contains the agreed project charter and implementation roadmap. There is no released benchmark CLI yet; executable commands and installation claims will be documented only after they are implemented and exercised. Parent issues and their native GitHub sub-issues define acceptance criteria and implementation order.
