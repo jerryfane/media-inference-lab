@@ -288,7 +288,7 @@ Observed verification: after coherent edits, `cargo test --test png_report` pass
 
 ### Full declared PNG-frame sequence comparisons
 
-`compare-frames` compares **every frame in explicitly declared PNG sequences**, without invoking a codec, model or inference runtime. It is not compressed-video decoding or verification that an original video was completely/correctly exported. Supply a schema-v1 manifest for each role; paths are absolute or relative to that manifest's directory:
+`compare-frames` compares **every frame in explicitly declared PNG sequences**, using the existing Rust PNG decoder without invoking an external video/audio codec process, model or inference runtime. It is not compressed-video decoding or verification that an original video was completely/correctly exported. Supply a schema-v1 manifest for each role; paths are absolute or relative to that manifest's directory:
 
 ```json
 {
