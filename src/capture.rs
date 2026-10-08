@@ -16,6 +16,10 @@ use std::{
 
 const RECORD_VERSION: u32 = 1;
 const JSON_LIMIT: u64 = 16 * 1024 * 1024;
+// Failure text can expand sixfold when JSON-escaped. The remaining reserve
+// covers all fixed-size terminal counters, timestamps, exit and cleanup fields.
+const TERMINAL_HEADROOM: u64 = 64 * 1024;
+const FAILURE_LIMIT: usize = 8 * 1024;
 const POLL: Duration = Duration::from_millis(10);
 const TERM_GRACE: Duration = Duration::from_millis(100);
 const KILL_GRACE: Duration = Duration::from_secs(1);
@@ -376,15 +380,42 @@ fn unique_run(root: &Path) -> Result<PathBuf> {
     bail!("could not allocate a unique run directory")
 }
 
+#[derive(Debug)]
+struct JsonSizeLimit {
+    limit: u64,
+}
+
+impl std::fmt::Display for JsonSizeLimit {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "capture JSON exceeds {} byte limit", self.limit)
+    }
+}
+
+impl std::error::Error for JsonSizeLimit {}
+
+fn bound_failure(reason: &mut String) {
+    const MARKER: &str = " [truncated]";
+    if reason.len() > FAILURE_LIMIT {
+        let mut end = FAILURE_LIMIT - MARKER.len();
+        while !reason.is_char_boundary(end) {
+            end -= 1;
+        }
+        reason.truncate(end);
+        reason.push_str(MARKER);
+    }
+}
+
 struct BoundedWriter<'a> {
     file: &'a mut File,
     remaining: u64,
+    exceeded: bool,
 }
 
 impl Write for BoundedWriter<'_> {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
         if bytes.len() as u64 > self.remaining {
-            return Err(std::io::Error::other("capture JSON exceeds 16 MiB"));
+            self.exceeded = true;
+            return Err(std::io::Error::other("capture JSON size limit"));
         }
         let written = self.file.write(bytes)?;
         self.remaining -= written as u64;
@@ -396,7 +427,7 @@ impl Write for BoundedWriter<'_> {
     }
 }
 
-fn atomic_json<T: Serialize>(directory: &Path, name: &str, value: &T) -> Result<()> {
+fn atomic_json<T: Serialize>(directory: &Path, name: &str, value: &T, limit: u64) -> Result<()> {
     let temporary = directory.join(format!(
         ".mil-{}-{}.tmp",
         std::process::id(),
@@ -409,10 +440,18 @@ fn atomic_json<T: Serialize>(directory: &Path, name: &str, value: &T) -> Result<
             .open(&temporary)?;
         let mut writer = BoundedWriter {
             file: &mut file,
-            remaining: JSON_LIMIT,
+            remaining: limit,
+            exceeded: false,
         };
-        serde_json::to_writer_pretty(&mut writer, value)?;
-        writer.write_all(b"\n")?;
+        let serialization = (|| -> Result<()> {
+            serde_json::to_writer_pretty(&mut writer, value)?;
+            writer.write_all(b"\n")?;
+            Ok(())
+        })();
+        if writer.exceeded {
+            return Err(JsonSizeLimit { limit }.into());
+        }
+        serialization?;
         file.sync_all()?;
         fs::rename(&temporary, directory.join(name))?;
         File::open(directory)?.sync_all()?;
@@ -466,12 +505,20 @@ fn hash_file(
     deadline: Instant,
     cancelled: Option<&AtomicBool>,
 ) -> Result<(String, u64)> {
-    let mut file = regular_file(path)?;
-    ensure!(
-        file.metadata()?.len() <= max_bytes,
-        "file exceeds byte limit: {}",
-        path.display()
-    );
+    let file = regular_file(path)?;
+    let metadata = file.metadata()?;
+    hash_open_file(file, &metadata, max_bytes, deadline, cancelled)
+        .with_context(|| format!("hashing {}", path.display()))
+}
+
+fn hash_open_file(
+    mut file: File,
+    metadata: &fs::Metadata,
+    max_bytes: u64,
+    deadline: Instant,
+    cancelled: Option<&AtomicBool>,
+) -> Result<(String, u64)> {
+    ensure!(metadata.len() <= max_bytes, "file exceeds byte limit");
     let mut hasher = Sha256::new();
     let mut buffer = [0_u8; 64 * 1024];
     let mut bytes = 0_u64;
@@ -555,13 +602,26 @@ fn verify_artifacts(
     cancelled: Option<&AtomicBool>,
 ) -> Result<()> {
     let mut total = 0_u64;
+    #[cfg(unix)]
+    let mut identities = std::collections::HashSet::new();
     for artifact in &result.artifacts {
         let path = directory.join(&artifact.path);
         safe_directory(path.parent().context("artifact has no parent")?)?;
+        let file = regular_file(&path)?;
+        let metadata = file.metadata()?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            ensure!(
+                identities.insert((metadata.dev(), metadata.ino())),
+                "duplicate physical artifact file: {}",
+                artifact.path
+            );
+        }
         let remaining = limit
             .checked_sub(total)
             .context("artifact bytes exceed capture limit")?;
-        let (hash, bytes) = hash_file(&path, remaining, deadline, cancelled)?;
+        let (hash, bytes) = hash_open_file(file, &metadata, remaining, deadline, cancelled)?;
         ensure!(
             bytes == artifact.bytes,
             "artifact byte count mismatch: {}",
@@ -955,8 +1015,13 @@ mod unix {
             started_unix_ms: now_ms()?, ended_unix_ms: None, host_elapsed_ms: None, artifact_inspection_ms: None, cleanup_elapsed_ms: None,
             exit: None, cleanup: None, logs: LogEvidence::default(), failure: None, adapter_result: None,
         };
-        atomic_json(&directory, "requested.json", &record.request)?;
-        atomic_json(&directory, "manifest.json", &record)?;
+        atomic_json(&directory, "requested.json", &record.request, JSON_LIMIT)?;
+        atomic_json(
+            &directory,
+            "manifest.json",
+            &record,
+            JSON_LIMIT - TERMINAL_HEADROOM,
+        )?;
         let mut stdout_log = OpenOptions::new()
             .create_new(true)
             .write(true)
@@ -1202,8 +1267,24 @@ mod unix {
             }
         }
         record.ended_unix_ms = Some(now_ms()?);
+        if let Some(reason) = &mut record.failure {
+            bound_failure(reason);
+        }
         record.validate()?;
-        atomic_json(&directory, "manifest.json", &record)?;
+        if let Err(error) = atomic_json(&directory, "manifest.json", &record, JSON_LIMIT) {
+            if error.downcast_ref::<JsonSizeLimit>().is_none() || record.adapter_result.is_none() {
+                return Err(error);
+            }
+            // Only the embedded copy is omitted. Raw adapter evidence and the
+            // actual exit, cleanup and timing observations remain untouched.
+            record.state = CaptureState::Failed;
+            record.adapter_result = None;
+            record.failure = Some(format!(
+                "terminal manifest exceeds {JSON_LIMIT} byte limit; adapter result omitted from manifest; raw evidence retained in result.json"
+            ));
+            record.validate()?;
+            atomic_json(&directory, "manifest.json", &record, JSON_LIMIT)?;
+        }
         Ok(directory)
     }
 }

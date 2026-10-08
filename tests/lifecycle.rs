@@ -400,7 +400,7 @@ fn inspect_rejects_malformed_record_invariants_without_rewriting() {
         ("/state", json!("running")),
         ("/workload_identity", json!("0".repeat(64))),
         ("/adapter_result", Value::Null),
-        ("/adapter_result/schema_version", json!(2)),
+        ("/adapter_result/schema_version", json!(3)),
         ("/adapter_result/workload_identity", json!("0".repeat(64))),
         ("/exit/code", json!(9)),
         ("/exit/signal", json!(9)),

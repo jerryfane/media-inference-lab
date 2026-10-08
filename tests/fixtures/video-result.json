@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "workload_identity": "249d5b2ec93e017f1cbe92debf8b56abb632b9a3ca4b9c9a5a04cb5e9c9aa31d",
   "resolved": {
     "schema_version": 1,

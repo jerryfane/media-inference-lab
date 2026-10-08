@@ -288,7 +288,7 @@ fn unsupported_versions_and_unknown_contract_fields_are_not_accepted() {
     request.schema_version = 2;
     error_contains(request.validate(), "unsupported workload schema_version");
     let mut result = image_result();
-    result.schema_version = 2;
+    result.schema_version = 3;
     error_contains(
         result.validate(&image()),
         "unsupported adapter result schema_version",
@@ -382,7 +382,7 @@ fn malformed_measurements_and_missing_evidence_cannot_be_success_results() {
 #[test]
 fn observed_model_contradictions_are_not_hidden_as_declared_settings() {
     let mut value = serde_json::to_value(image_result()).unwrap();
-    value["runtime"]["model"] = json!({"status":"available","value":{"name":"different-model","revision":{"status":"unavailable","reason":"not exposed"},"files":[]}});
+    value["runtime"]["model"] = json!({"status":"available","value":{"name":"different-model","revision":{"status":"unavailable","reason":"not exposed"},"fingerprint":{"status":"unavailable","reason":"not measured"},"files":[]}});
     let result: AdapterResult = serde_json::from_value(value).unwrap();
     error_contains(result.validate(&image()), "observed model name differs");
 }

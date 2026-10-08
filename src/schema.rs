@@ -2,8 +2,10 @@ use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
+use unicode_normalization::UnicodeNormalization;
 
 pub const SCHEMA_VERSION: u32 = 1;
+pub const RESULT_SCHEMA_VERSION: u32 = 2;
 
 /// Every declared field participates in identity. v1 accepts no unknown fields.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -107,7 +109,7 @@ pub struct Optimizations {
     pub step_cache_threshold: Option<f64>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReferenceInput {
     pub path: String,
@@ -115,6 +117,23 @@ pub struct ReferenceInput {
     pub bytes: u64,
     pub role: ReferenceRole,
     pub strength: Option<f64>,
+}
+
+impl PartialEq for ReferenceInput {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            path,
+            sha256,
+            bytes,
+            role,
+            strength,
+        } = self;
+        path == &other.path
+            && sha256 == &other.sha256
+            && *bytes == other.bytes
+            && *role == other.role
+            && strength.map(f64::to_bits) == other.strength.map(f64::to_bits)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -127,7 +146,7 @@ pub enum ReferenceRole {
     Audio,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ReusePolicy {
     Disabled,
@@ -141,6 +160,41 @@ pub enum ReusePolicy {
         core_ratio: f64,
         layers: Vec<u32>,
     },
+}
+
+impl PartialEq for ReusePolicy {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Disabled, Self::Disabled) => true,
+            (
+                Self::Interval { every, core_every },
+                Self::Interval {
+                    every: other_every,
+                    core_every: other_core_every,
+                },
+            ) => every == other_every && core_every == other_core_every,
+            (
+                Self::Approximate {
+                    method,
+                    ratio,
+                    core_ratio,
+                    layers,
+                },
+                Self::Approximate {
+                    method: other_method,
+                    ratio: other_ratio,
+                    core_ratio: other_core_ratio,
+                    layers: other_layers,
+                },
+            ) => {
+                method == other_method
+                    && ratio.to_bits() == other_ratio.to_bits()
+                    && core_ratio.to_bits() == other_core_ratio.to_bits()
+                    && layers == other_layers
+            }
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -193,7 +247,17 @@ pub struct FileIdentity {
 pub struct ObservedModel {
     pub name: String,
     pub revision: Observation<String>,
+    /// Model-level identity evidence; partial file hashes do not substitute for this observation.
+    pub fingerprint: Observation<ModelFingerprint>,
     pub files: Vec<FileIdentity>,
+}
+
+/// A model fingerprint comparable to the requested model.sha256, with its derivation method.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModelFingerprint {
+    pub sha256: String,
+    pub method: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -405,6 +469,11 @@ pub fn validate_artifact_path(path: &str) -> Result<()> {
     Ok(())
 }
 
+fn artifact_path_key(path: &str) -> String {
+    // Decompose before and after lowercasing so canonical aliases share one portable key.
+    path.nfd().flat_map(char::to_lowercase).nfd().collect()
+}
+
 impl Resolution {
     fn validate(&self) -> Result<()> {
         ensure!(
@@ -613,6 +682,14 @@ impl RuntimeIdentity {
             observation(&model.revision, "observed model revision", |v| {
                 nonempty(v, "revision")
             })?;
+            observation(
+                &model.fingerprint,
+                "observed model fingerprint",
+                |fingerprint| {
+                    hash(&fingerprint.sha256, "model fingerprint sha256")?;
+                    nonempty(&fingerprint.method, "model fingerprint method")
+                },
+            )?;
             for file in &model.files {
                 file.validate()?;
             }
@@ -629,8 +706,8 @@ impl AdapterResult {
     pub fn validate(&self, requested: &Workload) -> Result<()> {
         requested.validate().context("requested workload")?;
         ensure!(
-            self.schema_version == SCHEMA_VERSION,
-            "unsupported adapter result schema_version {}; expected {SCHEMA_VERSION}",
+            self.schema_version == RESULT_SCHEMA_VERSION,
+            "unsupported adapter result schema_version {}; expected {RESULT_SCHEMA_VERSION}",
             self.schema_version
         );
         self.resolved.validate().context("resolved workload")?;
@@ -657,21 +734,13 @@ impl AdapterResult {
                     "observed model revision differs from declared model revision"
                 );
             }
-            if let Some(expected) = &requested.model.sha256 {
-                let mut available = model
-                    .files
-                    .iter()
-                    .filter_map(|file| match &file.sha256 {
-                        Observation::Available { value } => Some(value),
-                        Observation::Unavailable { .. } => None,
-                    })
-                    .peekable();
-                if available.peek().is_some() {
-                    ensure!(
-                        available.any(|digest| digest.eq_ignore_ascii_case(expected)),
-                        "observed model file hashes do not include declared model sha256"
-                    );
-                }
+            if let (Some(expected), Observation::Available { value: fingerprint }) =
+                (&requested.model.sha256, &model.fingerprint)
+            {
+                ensure!(
+                    fingerprint.sha256.eq_ignore_ascii_case(expected),
+                    "observed model fingerprint differs from declared model sha256"
+                );
             }
         }
         ensure!(
@@ -725,18 +794,17 @@ impl AdapterResult {
             hash(&artifact.sha256, "artifact sha256")?;
             nonempty(&artifact.role, "artifact role")?;
             ensure!(
-                paths.insert(artifact.path.to_lowercase()),
-                "duplicate artifact path (including case-insensitive aliases): {}",
+                paths.insert(artifact_path_key(&artifact.path)),
+                "duplicate artifact path (including case-insensitive and Unicode canonical aliases): {}",
                 artifact.path
             );
         }
-        for artifact in &self.artifacts {
-            let lower = artifact.path.to_lowercase();
-            for (index, _) in lower.match_indices('/') {
+        for path in &paths {
+            for (index, _) in path.match_indices('/') {
                 ensure!(
-                    !paths.contains(&lower[..index]),
+                    !paths.contains(&path[..index]),
                     "artifact path conflicts with another artifact used as its directory: {}",
-                    artifact.path
+                    path
                 );
             }
         }
