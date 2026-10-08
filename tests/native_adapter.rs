@@ -310,3 +310,191 @@ assert not marker.exists() and not list(root.rglob('*.png'))
 "#,
     );
 }
+
+#[test]
+#[cfg(target_os = "macos")]
+fn review_native_ratio_open_interval() {
+    python_case(
+        r#"
+import math
+mil = pathlib.Path(sys.argv[3])
+for index, ratio in enumerate((0.0, -0.0, 1.0, None, math.nextafter(0.0, 1.0), 0.5, math.nextafter(1.0, 0.0))):
+    changed = copy.deepcopy(workload)
+    changed['settings']['generation']['optimizations']['step_cache_ratio'] = ratio
+    valid = ratio is None or 0 < ratio < 1
+    report = invoke(changed, selected_model=model if valid else root / 'absent-model')
+    assert report['ok'] == valid, report
+    if valid:
+        assert report['resolved']['generate_image']['step_cache_ratio'] == ratio
+    else:
+        assert report['model'] is None and any(e['stage'] == 'request' for e in report['errors'])
+    output = root / ('ratio-' + str(index) + '.json')
+    command = [str(mil), 'mflux-run', '--check-only', '--python', str(python),
+        '--source-dir', str(source), '--model-dir', str(model), '--source-sha256', source_hash,
+        '--workload', str(request_path), '--output', str(output), '--root', str(root / 'never-captures'),
+        '--check-timeout-seconds', '10']
+    result = subprocess.run(command, capture_output=True, text=True, timeout=15,
+                            env={'HOME': str(root / 'never-home')})
+    report = json.loads(output.read_text())
+    assert result.returncode == (0 if valid else 1), (result.returncode, result.stderr, report)
+    assert report['native_execution'] is False
+    if valid:
+        assert report['status'] == 'checked_not_executed'
+        assert report['check']['resolved']['generate_image']['step_cache_ratio'] == ratio
+        assert report['prepared_plan']['command']['workload']['settings']['generation']['optimizations']['step_cache_ratio'] == ratio
+    else:
+        assert report['status'] == 'preparation_failed' and report['check'] is None
+        assert report['prepared_plan'] is None
+assert not marker.exists() and not (root / 'never-home').exists() and not (root / 'never-captures').exists()
+"#,
+    );
+}
+
+#[test]
+fn review_watchdog_recounts_publication_races() {
+    python_case(
+        r#"
+import threading, time
+real_walk, real_kill = os.walk, os.kill
+for size, exceeds in ((34, False), (2048, True)):
+    directory = root / ('watch-' + str(size))
+    directory.mkdir()
+    partial, final = directory / 'journal.interrupted.partial', directory / 'journal.json'
+    partial.write_bytes(b'x' * size)
+    watch = object.__new__(api['Session'])
+    watch.root, watch.parent = directory, os.getppid()
+    watch.deadline, watch.limit = time.monotonic() + 10, 1024
+    watch.stop, watch.failure = threading.Event(), None
+    signals, scans = [], []
+    def publish_after_enumeration(*args, **kwargs):
+        rows = list(real_walk(*args, **kwargs))
+        scans.append(rows)
+        if partial.exists():
+            os.replace(partial, final)
+        watch.stop.set()  # Exactly one watchdog iteration, including any rescan.
+        yield from rows
+    def record_signal(pid, number):
+        assert pid == os.getpid()
+        signals.append(int(number))
+    try:
+        os.walk, os.kill = publish_after_enumeration, record_signal
+        watch.watch()
+    finally:
+        os.walk, os.kill = real_walk, real_kill
+    assert final.read_bytes() == b'x' * size and not partial.exists()
+    assert api['output_bytes'](directory, watch.limit) == size
+    if exceeds:
+        assert watch.failure is not None and signals == [15]
+    else:
+        assert watch.failure is None and signals == []
+assert not any(name.split('.')[0] in ('mlx', 'mflux') for name in sys.modules)
+"#,
+    );
+}
+
+#[test]
+fn review_watchdog_fails_closed_when_scan_cannot_complete() {
+    python_case(
+        r#"
+import threading, time
+real_walk, real_kill = os.walk, os.kill
+for missing_root in (False, True):
+    directory = root / ('missing-root' if missing_root else 'unstable-tree')
+    if not missing_root:
+        directory.mkdir()
+    watch = object.__new__(api['Session'])
+    watch.root, watch.parent = directory, os.getppid()
+    watch.deadline, watch.limit = time.monotonic() + 10, 1024 * 1024
+    watch.stop, watch.failure = threading.Event(), None
+    signals, attempts = [], []
+    def unstable_walk(*args, **kwargs):
+        attempts.append(None)
+        assert len(attempts) <= 3, 'observation retry bound exceeded'
+        if not missing_root:
+            vanished = directory / 'vanishing.partial'
+            vanished.write_bytes(b'x')
+        rows = list(real_walk(*args, **kwargs))
+        if not missing_root:
+            vanished.unlink()
+        yield from rows
+    def record_signal(pid, number):
+        assert pid == os.getpid()
+        signals.append(int(number))
+        watch.stop.set()
+    try:
+        os.walk, os.kill = unstable_walk, record_signal
+        watch.watch()
+    finally:
+        os.walk, os.kill = real_walk, real_kill
+    assert watch.failure is not None and signals == [15]
+assert not any(name.split('.')[0] in ('mlx', 'mflux') for name in sys.modules)
+"#,
+    );
+}
+
+#[test]
+fn review_journal_recovers_from_interrupted_publications() {
+    python_case(
+        r#"
+directory = root / 'journals'
+directory.mkdir()
+journal = object.__new__(api['Session'])
+journal.root = directory
+journal.status = {'schema_version': 1, 'state': 'starting', 'stages': []}
+api['install_audit'](directory)  # Exercise the real native write containment policy.
+journal.journal('running')
+real_replace, real_fsync = os.replace, os.fsync
+def interrupt_replace(source, destination):
+    raise api['Cancelled']('interrupted publication')
+try:
+    os.replace = interrupt_replace
+    try:
+        journal.journal('publishing_result')
+    except api['Cancelled']:
+        pass
+    else:
+        raise AssertionError('publication interruption not reached')
+finally:
+    os.replace = real_replace
+leftovers = {path: path.read_bytes() for path in directory.glob('*.partial')}
+assert len(leftovers) == 1
+assert json.loads(next(iter(leftovers.values())))['stages'][-1]['stage'] == 'publishing_result'
+journal.journal('cancelled', state='cancelled', error={'type': 'Cancelled', 'message': 'interrupted publication'})
+saved = json.loads((directory / 'native-status.json').read_text())
+assert saved['state'] == 'cancelled' and saved['error']['type'] == 'Cancelled'
+assert saved['stages'][-1]['stage'] == 'cancelled'
+def fail_fsync(fd):
+    raise OSError('fsync observation failure')
+try:
+    os.fsync = fail_fsync
+    try:
+        journal.journal('next_update')
+    except OSError:
+        pass
+    else:
+        raise AssertionError('fsync failure not reached')
+finally:
+    os.fsync = real_fsync
+journal.journal('failed', state='failed', error={'type': 'OSError', 'message': 'fsync observation failure'})
+saved = json.loads((directory / 'native-status.json').read_text())
+assert saved['state'] == 'failed' and saved['error']['type'] == 'OSError'
+assert saved['stages'][-1]['stage'] == 'failed'
+assert all(path.read_bytes() == data for path, data in leftovers.items())
+assert len(list(directory.glob('*.partial'))) == 2
+exclusive = directory / 'exclusive.json'
+api['atomic_json'](exclusive, {'publication': 1})
+before = exclusive.read_bytes()
+try:
+    api['atomic_json'](exclusive, {'publication': 2})
+except FileExistsError:
+    pass
+else:
+    raise AssertionError('exclusive final publication overwritten')
+assert exclusive.read_bytes() == before
+assert all(path.stat().st_mode & 0o777 == 0o600 for path in directory.iterdir())
+expected_bytes = sum(path.stat().st_size for path in directory.iterdir())
+assert api['output_bytes'](directory, expected_bytes) == expected_bytes
+assert not any(name.split('.')[0] in ('mlx', 'mflux') for name in sys.modules)
+"#,
+    );
+}

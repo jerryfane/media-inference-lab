@@ -79,6 +79,9 @@ def request_settings(workload, model_dir):
     object_fields(generation["quantization"], ("kind",), label="quantization")
     require(generation["quantization"]["kind"] == "none", "only unquantized BF16 weights are supported")
     object_fields(generation["optimizations"], (), ("use_kv_cache", "step_cache_ratio", "step_cache_threshold"), "optimizations")
+    ratio = generation["optimizations"].get("step_cache_ratio")
+    require(ratio is None or (type(ratio) in (int, float) and 0 < ratio < 1),
+            "native step_cache_ratio must be null or strictly between 0 and 1")
     return preflight.request_settings(workload, model_dir)
 
 
@@ -237,9 +240,10 @@ def hash_file(path, maximum=256 * 1024 * 1024):
 
 
 def atomic_json(path, data, replace=False):
-    temporary = path.with_name(path.name + ".partial")
+    # Interrupted publications remain evidence, but never obstruct the next journal.
+    temporary = path.with_name(path.name + "." + os.urandom(16).hex() + ".partial")
     raw = (json.dumps(data, ensure_ascii=False, allow_nan=False, indent=2) + "\n").encode()
-    with open(temporary, "xb") as file:
+    with open(temporary, "xb", opener=lambda name, flags: os.open(name, flags, 0o600)) as file:
         file.write(raw)
         file.flush()
         os.fsync(file.fileno())
@@ -248,6 +252,27 @@ def atomic_json(path, data, replace=False):
     else:
         os.link(temporary, path)  # Exclusive publication; never clobber a prior result.
         temporary.unlink()
+
+
+def output_bytes(root, limit):
+    """Retry a vanished-file scan from scratch, never accept an incomplete count."""
+    def fail(error):
+        raise error
+
+    for attempt in range(3):
+        try:
+            total = 0
+            for directory, dirs, files in os.walk(root, followlinks=False, onerror=fail):
+                for name in files:
+                    total += (Path(directory) / name).lstat().st_size
+                if total > limit:
+                    return total
+            return total
+        except FileNotFoundError:
+            # Atomic rename/unlink can invalidate the enumerated names. Recount
+            # the whole tree, including the newly published final and leftovers.
+            if attempt == 2:
+                raise
 
 
 class Cancelled(BaseException):
@@ -311,13 +336,8 @@ class Session:
                 reason = "native deadline expired"
             else:
                 try:
-                    total = 0
-                    for directory, dirs, files in os.walk(self.root, followlinks=False):
-                        for name in files:
-                            total += (Path(directory) / name).lstat().st_size
-                        if total > self.limit:
-                            reason = "owned run exceeds output byte bound"
-                            break
+                    if output_bytes(self.root, self.limit) > self.limit:
+                        reason = "owned run exceeds output byte bound"
                 except OSError as exc:
                     reason = "output bound observation failed: " + str(exc)
             if reason:

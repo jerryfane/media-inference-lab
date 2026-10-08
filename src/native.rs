@@ -213,6 +213,12 @@ fn validate_request(workload: &Workload, model: &Path) -> Result<()> {
             && generation.optimizations.step_cache_threshold.is_none(),
         "use_kv_cache/step_cache_threshold are not supported native options"
     );
+    if let Some(ratio) = generation.optimizations.step_cache_ratio {
+        ensure!(
+            ratio > 0.0 && ratio < 1.0,
+            "native step_cache_ratio must be null or strictly between 0 and 1"
+        );
+    }
     ensure!(
         generation.seed <= u32::MAX as u64,
         "native seed must fit uint32"
