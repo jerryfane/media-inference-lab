@@ -94,6 +94,7 @@ pub struct Provenance {
     pub adapter_timings: Option<Evidence>,
     pub host_known: bool,
     pub runtime_known: bool,
+    pub launch_configuration_known: bool,
     pub model_known: bool,
     pub device_known: bool,
     pub cache_known: bool,
@@ -132,6 +133,7 @@ pub struct RoleSummary {
     pub excluded_measurements: usize,
     pub values_seconds: Vec<f64>,
     pub median_seconds: Option<f64>,
+    pub median_unavailable_reason: Option<String>,
     pub min_seconds: Option<f64>,
     pub max_seconds: Option<f64>,
 }
@@ -204,6 +206,18 @@ fn provenance(record: &CaptureRecord) -> Result<Provenance> {
         adapter_timings: None,
         host_known: record.host.logical_cpus.is_some(),
         runtime_known: false,
+        // These four values are supervisor-derived protocol locations/identity, not
+        // user-selected launch knobs. All other v2 invocation values are redacted.
+        launch_configuration_known: record.invocation.args.is_empty()
+            && record.invocation.environment.keys().all(|key| {
+                matches!(
+                    key.as_str(),
+                    "MIL_RUN_DIR"
+                        | "MIL_REQUEST_PATH"
+                        | "MIL_RESULT_PATH"
+                        | "MIL_WORKLOAD_IDENTITY"
+                )
+            }),
         model_known: false,
         device_known: false,
         cache_known: false,
@@ -306,6 +320,7 @@ fn summary(role: Role, rows: &[ComparisonRow]) -> RoleSummary {
         excluded_measurements: 0,
         values_seconds: Vec::new(),
         median_seconds: None,
+        median_unavailable_reason: None,
         min_seconds: None,
         max_seconds: None,
     };
@@ -332,17 +347,25 @@ fn summary(role: Role, rows: &[ComparisonRow]) -> RoleSummary {
     summary.max_seconds = sorted.last().copied();
     if !sorted.is_empty() {
         let mid = sorted.len() / 2;
-        summary.median_seconds = Some(if sorted.len() % 2 == 1 {
+        let median = if sorted.len() % 2 == 1 {
             sorted[mid]
         } else {
             sorted[mid - 1] + (sorted[mid] - sorted[mid - 1]) / 2.0
-        });
+        };
+        if median == 0.0 && sorted[mid] > 0.0 {
+            summary.median_unavailable_reason =
+                Some("positive median underflows finite numeric range".into());
+        } else {
+            summary.median_seconds = Some(median);
+        }
+    } else {
+        summary.median_unavailable_reason = Some("no included measurements".into());
     }
     summary
 }
 fn median_comparison(
-    numerator: Option<f64>,
-    denominator: Option<f64>,
+    numerator: &RoleSummary,
+    denominator: &RoleSummary,
     suppression: Option<&str>,
 ) -> MedianComparison {
     let unavailable = |reason: &str| MedianComparison {
@@ -353,9 +376,27 @@ fn median_comparison(
     if let Some(reason) = suppression {
         return unavailable(reason);
     }
-    let (Some(numerator), Some(denominator)) = (numerator, denominator) else {
-        return unavailable("role median unavailable");
+    let Some(denominator_value) = denominator.median_seconds else {
+        return unavailable(&format!(
+            "{:?} median unavailable: {}",
+            denominator.role,
+            denominator
+                .median_unavailable_reason
+                .as_deref()
+                .unwrap_or("not measured")
+        ));
     };
+    let Some(numerator_value) = numerator.median_seconds else {
+        return unavailable(&format!(
+            "{:?} median unavailable: {}",
+            numerator.role,
+            numerator
+                .median_unavailable_reason
+                .as_deref()
+                .unwrap_or("not measured")
+        ));
+    };
+    let (numerator, denominator) = (numerator_value, denominator_value);
     if denominator == 0.0 {
         return unavailable("baseline median is zero; ratio is undefined");
     }
@@ -535,12 +576,17 @@ pub fn compare(
         !row.slot.warmup && row.slot.role == Role::Baseline && row.provenance.is_some()
     });
     let mut role_runtime: BTreeMap<Role, &str> = BTreeMap::new();
+    let mut role_invocation: BTreeMap<Role, &str> = BTreeMap::new();
     for row in &rows {
         let mut compatibility = Vec::new();
         if let Some(provenance) = &row.provenance {
             for (name, known) in [
                 ("host", provenance.host_known),
                 ("clean runtime identity", provenance.runtime_known),
+                (
+                    "launch configuration values",
+                    provenance.launch_configuration_known,
+                ),
                 ("model-level fingerprint and method", provenance.model_known),
                 ("device", provenance.device_known),
                 (
@@ -561,8 +607,28 @@ pub fn compare(
                     role_runtime.insert(row.slot.role, &runtime.sha256);
                 }
             }
+            if let Some(previous) = role_invocation.get(&row.slot.role) {
+                if *previous != provenance.invocation.sha256 {
+                    compatibility.push("observed launch configuration changed within role".into());
+                    differences.push(format!(
+                        "slot {} {:?}: observed launch configuration changed within role",
+                        row.slot.index, row.slot.role
+                    ));
+                }
+            } else {
+                role_invocation.insert(row.slot.role, &provenance.invocation.sha256);
+            }
             if let Some(reference) = reference {
                 let baseline = reference.provenance.as_ref().expect("selected provenance");
+                if provenance.invocation.sha256 != baseline.invocation.sha256 {
+                    differences.push(format!(
+                        "slot {} {:?}: observed launch configuration differs from baseline",
+                        row.slot.index, row.slot.role
+                    ));
+                    if row.slot.role != Role::Candidate {
+                        compatibility.push("baseline/control launch configuration differs; control is not unchanged baseline".into());
+                    }
+                }
                 for (name, current, expected, applicable) in [
                     (
                         "host",
@@ -667,6 +733,11 @@ pub fn compare(
         .into_iter()
         .map(|role| summary(role, &rows))
         .collect();
+    for summary in &summaries {
+        if let Some(reason) = &summary.median_unavailable_reason {
+            issues.push(format!("{:?} median unavailable: {reason}", summary.role));
+        }
+    }
     let sufficient = summaries
         .iter()
         .all(|summary| summary.measured >= input.plan.minimum_samples as usize);
@@ -679,16 +750,8 @@ pub fn compare(
         } else {
             None
         };
-    let candidate_vs_baseline = median_comparison(
-        summaries[1].median_seconds,
-        summaries[0].median_seconds,
-        suppression,
-    );
-    let control_vs_baseline = median_comparison(
-        summaries[2].median_seconds,
-        summaries[0].median_seconds,
-        suppression,
-    );
+    let candidate_vs_baseline = median_comparison(&summaries[1], &summaries[0], suppression);
+    let control_vs_baseline = median_comparison(&summaries[2], &summaries[0], suppression);
     let status = if issues.is_empty() && sufficient {
         ReportStatus::Complete
     } else {
@@ -710,6 +773,7 @@ pub fn compare(
             "Hashes identify full typed serialized evidence, not signed provenance. Copies with altered metadata cannot be proven independent. Matching observed host fields do not prove physical machine identity.".into(),
             "Unavailable metadata never proves equality; matching partial model-file hashes do not establish model identity. Candidate runtime/source differences are declared variants, not controlled causal evidence.".into(),
             "Unchanged runtime identity requires recorded clean source and available executable/module hashes; a dirty revision is not a fingerprint of its working tree.".into(),
+            "Launch configuration is checked within every role and against baseline/control. Equal redacted user arguments/environment do not prove equal values; they leave compatibility unknown. Only the four supervisor-owned MIL protocol variables are exempt, with workload identity checked separately.".into(),
             "Cache compatibility uses measured baseline samples, not warmup cache state. Warmup cache observations remain in rows but do not redefine the measured cache boundary.".into(),
             "Inspection is streaming with existing per-capture read/verification bounds. The total budget is checked between slots; a capture inspection or filesystem stall can exceed it and is not forcibly cancelled.".into(),
             "Persisted wall-clock timestamps are checked without reordering; they are not an independent clock or authenticity guarantee.".into(),

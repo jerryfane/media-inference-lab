@@ -92,8 +92,17 @@ struct Fixture {
 }
 impl Fixture {
     fn new(warmups: u32, values: impl Fn(Role, u32, bool) -> f64) -> Self {
+        Self::with_repetitions(warmups, 3, values)
+    }
+
+    fn with_repetitions(
+        warmups: u32,
+        repetitions: u32,
+        values: impl Fn(Role, u32, bool) -> f64,
+    ) -> Self {
         let root = tempfile::tempdir_in(fs::canonicalize(std::env::temp_dir()).unwrap()).unwrap();
-        let plan = plan(warmups);
+        let mut plan = plan(warmups);
+        plan.repetitions = repetitions;
         let samples = plan
             .slots()
             .unwrap()
@@ -681,4 +690,202 @@ fn integration_positive_ratio_underflow_does_not_become_a_zero_measurement() {
             .is_none()
     );
     assert!(report.candidate_vs_baseline.unavailable_reason.is_some());
+}
+
+#[test]
+fn review_launch_changes_gate_controls_and_within_role_stability() {
+    // Control environment, baseline argument count, and candidate environment changes.
+    for (index, argument) in [(2, false), (3, true), (4, false)] {
+        let fixture = Fixture::new(0, |_, _, _| 1.0);
+        fixture.change(index, |record| {
+            if argument {
+                record["invocation"]["args"] = json!(["[redacted]"]);
+            } else {
+                record["invocation"]["environment"]["OMP_NUM_THREADS"] = json!("[redacted]");
+            }
+        });
+        let report = fixture.report();
+        assert!(!report.is_complete());
+        assert!(!report.same_work_compatible);
+        assert!(report.candidate_vs_baseline.median_ratio.is_none());
+        assert!(report.control_vs_baseline.median_ratio.is_none());
+        let changed = report.rows[index].provenance.as_ref().unwrap();
+        assert!(!changed.launch_configuration_known);
+        assert_ne!(
+            changed.invocation.sha256,
+            report.rows[0]
+                .provenance
+                .as_ref()
+                .unwrap()
+                .invocation
+                .sha256
+        );
+        assert!(
+            report
+                .differences
+                .iter()
+                .any(|difference| difference.contains(&format!("slot {index} "))
+                    && difference.contains("launch configuration"))
+        );
+        assert!(
+            report
+                .issues
+                .iter()
+                .any(|issue| issue.contains("launch configuration"))
+        );
+        assert_eq!(
+            report
+                .summaries
+                .iter()
+                .map(|s| s.measured)
+                .collect::<Vec<_>>(),
+            vec![3, 3, 3]
+        );
+    }
+}
+
+#[test]
+fn review_equal_redactions_do_not_prove_equal_launch_values() {
+    for key in [None, Some("OMP_NUM_THREADS"), Some("MIL_CUSTOM")] {
+        let mut fixture = Fixture::new(0, |_, _, _| 1.0);
+        for index in 0..9 {
+            fixture.change(index, |record| {
+                if let Some(key) = key {
+                    record["invocation"]["environment"][key] = json!("[redacted]");
+                } else {
+                    record["invocation"]["args"] = json!(["[redacted]"]);
+                }
+            });
+        }
+        let report = fixture.report();
+        assert!(!report.is_complete());
+        assert!(!report.same_work_compatible);
+        assert!(report.candidate_vs_baseline.median_ratio.is_none());
+        let first = &report.rows[0]
+            .provenance
+            .as_ref()
+            .unwrap()
+            .invocation
+            .sha256;
+        assert!(report.rows.iter().all(|row| {
+            let provenance = row.provenance.as_ref().unwrap();
+            !provenance.launch_configuration_known && &provenance.invocation.sha256 == first
+        }));
+        fixture.input.plan.mode = ComparisonMode::Descriptive;
+        let descriptive = fixture.report();
+        assert!(!descriptive.is_complete());
+        assert!(!descriptive.same_work_compatible);
+        assert_eq!(descriptive.candidate_vs_baseline.median_ratio, Some(1.0));
+    }
+}
+
+#[test]
+fn review_protocol_fields_and_known_candidate_launch_variant_remain_comparable() {
+    let fixture = Fixture::new(0, |_, _, _| 1.0);
+    for index in [1, 4, 7] {
+        fixture.change(index, |record| {
+            record["invocation"]["executable"] = json!("/synthetic/candidate-launcher");
+            record["invocation"]["executable_sha256"] = json!("c".repeat(64));
+        });
+    }
+    let report = fixture.report();
+    assert!(report.is_complete(), "{:?}", report.issues);
+    assert!(report.same_work_compatible);
+    assert!(
+        report
+            .rows
+            .iter()
+            .all(|row| row.provenance.as_ref().unwrap().launch_configuration_known)
+    );
+    assert_eq!(report.candidate_vs_baseline.median_ratio, Some(1.0));
+    assert_eq!(report.control_vs_baseline.median_ratio, Some(1.0));
+    assert!(
+        report
+            .differences
+            .iter()
+            .any(|difference| difference.contains("slot 1 ")
+                && difference.contains("launch configuration"))
+    );
+}
+
+#[test]
+fn review_positive_median_underflow_preserves_values_and_unavailability() {
+    let smallest = f64::from_bits(1);
+    let fixture = Fixture::with_repetitions(0, 4, |role, repetition, _| {
+        if role == Role::Candidate {
+            [0.0, 0.0, smallest, smallest][repetition as usize]
+        } else {
+            1.0
+        }
+    });
+    let report = fixture.report();
+    assert!(!report.is_complete());
+    assert!(report.same_work_compatible);
+    let candidate = &report.summaries[1];
+    assert_eq!(candidate.values_seconds, vec![0.0, 0.0, smallest, smallest]);
+    assert_eq!(candidate.measured, 4);
+    assert_eq!(candidate.min_seconds, Some(0.0));
+    assert_eq!(candidate.max_seconds, Some(smallest));
+    assert!(candidate.median_seconds.is_none());
+    assert!(candidate.median_unavailable_reason.is_some());
+    assert!(report.candidate_vs_baseline.median_ratio.is_none());
+    assert!(
+        report
+            .candidate_vs_baseline
+            .median_change_fraction
+            .is_none()
+    );
+    assert!(report.candidate_vs_baseline.unavailable_reason.is_some());
+    assert_eq!(report.control_vs_baseline.median_ratio, Some(1.0));
+}
+
+#[test]
+fn review_genuine_zero_and_representable_subnormal_medians_remain_available() {
+    let smallest = f64::from_bits(1);
+    for (values, expected) in [
+        ([0.0; 4], 0.0),
+        ([0.0, 0.0, 0.0, smallest], 0.0),
+        ([0.0, 0.0, smallest * 2.0, smallest * 2.0], smallest),
+        ([smallest; 4], smallest),
+    ] {
+        let fixture = Fixture::with_repetitions(0, 4, |role, repetition, _| {
+            if role == Role::Candidate {
+                values[repetition as usize]
+            } else {
+                1.0
+            }
+        });
+        let report = fixture.report();
+        assert!(report.is_complete(), "{:?}", report.issues);
+        assert_eq!(report.summaries[1].values_seconds, values);
+        assert_eq!(report.summaries[1].median_seconds, Some(expected));
+        assert!(report.summaries[1].median_unavailable_reason.is_none());
+        assert_eq!(report.candidate_vs_baseline.median_ratio, Some(expected));
+        assert_eq!(
+            report.candidate_vs_baseline.median_change_fraction,
+            Some(expected - 1.0)
+        );
+        assert!(report.candidate_vs_baseline.unavailable_reason.is_none());
+    }
+}
+
+#[test]
+fn review_baseline_median_underflow_suppresses_both_comparisons() {
+    let smallest = f64::from_bits(1);
+    let fixture = Fixture::with_repetitions(0, 4, |role, repetition, _| {
+        if role == Role::Baseline {
+            [0.0, 0.0, smallest, smallest][repetition as usize]
+        } else {
+            1.0
+        }
+    });
+    let report = fixture.report();
+    assert!(!report.is_complete());
+    assert!(report.summaries[0].median_seconds.is_none());
+    assert!(report.summaries[0].median_unavailable_reason.is_some());
+    for comparison in [&report.candidate_vs_baseline, &report.control_vs_baseline] {
+        assert!(comparison.median_ratio.is_none());
+        assert!(comparison.median_change_fraction.is_none());
+        assert!(comparison.unavailable_reason.is_some());
+    }
 }
