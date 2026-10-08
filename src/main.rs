@@ -4,12 +4,14 @@ use media_inference_lab::{
     capture::{self, CaptureOptions},
     capture_archive::CaptureArchive,
     comparison,
+    frame_sequence::{self, SequenceAssessment, SequenceInput, SequenceSource},
     guards::{GuardConfig, GuardMonitor, Lease},
     image_comparison::{self, ImageAssessment, Tolerance},
     png_image::{self, DecodedPng},
     png_report,
     preflight::{self, PreflightOptions},
     schema::{AdapterResult, Artifact, Workload},
+    sequence_report,
     study::{StudyInput, StudyPlan},
     study_report,
 };
@@ -74,6 +76,23 @@ enum Command {
     },
     /// Compare full static PNG samples offline; never infer visual quality or execute inference.
     CompareImages {
+        #[arg(long)]
+        baseline: PathBuf,
+        #[arg(long)]
+        candidate: PathBuf,
+        #[arg(long)]
+        baseline_repeat: Option<PathBuf>,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, requires = "tolerance_rationale")]
+        max_absolute_error: Option<u16>,
+        #[arg(long, requires = "max_absolute_error")]
+        tolerance_rationale: Option<String>,
+        #[arg(long)]
+        assessment: Option<PathBuf>,
+    },
+    /// Compare every declared PNG frame offline with exact timeline alignment; no codec or inference.
+    CompareFrames {
         #[arg(long)]
         baseline: PathBuf,
         #[arg(long)]
@@ -441,6 +460,133 @@ fn compare_images(
     Ok(within_bound)
 }
 
+fn load_sequence(path: &Path) -> Result<(SequenceInput, PathBuf)> {
+    let input = load_regular_json(path, 1024 * 1024)?;
+    let absolute = std::path::absolute(path)?;
+    let directory = absolute.parent().context("sequence path has no parent")?;
+    Ok((input, directory.to_path_buf()))
+}
+
+fn compare_frames(
+    baseline: &Path,
+    candidate: &Path,
+    baseline_repeat: Option<&Path>,
+    output_dir: &Path,
+    tolerance: Option<Tolerance>,
+    assessment: Option<SequenceAssessment>,
+) -> Result<bool> {
+    let (baseline, baseline_directory) = load_sequence(baseline)?;
+    let (candidate, candidate_directory) = load_sequence(candidate)?;
+    let repeat = baseline_repeat.map(load_sequence).transpose()?;
+    // Reject even dangling output symlinks; never reuse an existing bundle.
+    match std::fs::symlink_metadata(output_dir) {
+        Ok(_) => anyhow::bail!("sequence output already exists: {}", output_dir.display()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error.into()),
+    }
+    let mut prepared = false;
+    let mut remaining = 1024 * 1024 * 1024_u64;
+    let mut artifacts = Vec::new();
+    let comparison = frame_sequence::compare(
+        SequenceSource {
+            input: &baseline,
+            directory: &baseline_directory,
+        },
+        SequenceSource {
+            input: &candidate,
+            directory: &candidate_directory,
+        },
+        repeat
+            .as_ref()
+            .map(|(input, directory)| SequenceSource { input, directory }),
+        tolerance,
+        assessment,
+        |index, baseline, candidate, repeat| {
+            // Timeline/structure are checked before this callback. A later bad
+            // frame or assessment binding leaves partial evidence, never report.json.
+            if !prepared {
+                DirBuilder::new().mode(0o700).create(output_dir)?;
+                DirBuilder::new()
+                    .mode(0o700)
+                    .create(output_dir.join("frames"))?;
+                prepared = true;
+            }
+            for (label, image) in [
+                ("baseline", Some(baseline)),
+                ("candidate", Some(candidate)),
+                ("repeat", repeat),
+            ] {
+                if let Some(image) = image {
+                    ensure!(
+                        image.identity().bytes <= remaining,
+                        "sequence frame payload exceeds 1 GiB"
+                    );
+                    artifacts.push(copy_png(
+                        output_dir,
+                        &format!("frames/{index:04}-{label}.png"),
+                        &format!("{label}_sequence_frame"),
+                        image,
+                    )?);
+                    remaining -= image.identity().bytes;
+                }
+            }
+            let name = format!("frames/{index:04}-sheet.png");
+            let mut sheet = ArtifactWriter {
+                file: BufWriter::new(new_private_file(&output_dir.join(&name))?),
+                hash: Sha256::new(),
+                bytes: 0,
+                limit: remaining.min(270 * 1024 * 1024),
+            };
+            png_image::write_sheet(baseline, candidate, &mut sheet)?;
+            sheet.flush()?;
+            sheet.file.get_ref().sync_all()?;
+            remaining -= sheet.bytes;
+            artifacts.push(Artifact {
+                path: name,
+                sha256: format!("{:x}", sheet.hash.finalize()),
+                bytes: sheet.bytes,
+                role: "raw_sample_frame_ab_sheet".into(),
+            });
+            Ok(())
+        },
+    )?;
+    let within_bound = comparison.is_within_numerical_bound();
+    let mut markdown = ArtifactWriter {
+        file: BufWriter::new(new_private_file(&output_dir.join("report.md"))?),
+        hash: Sha256::new(),
+        bytes: 0,
+        limit: 8 * 1024 * 1024,
+    };
+    sequence_report::write(&mut markdown, &comparison)?;
+    markdown.flush()?;
+    markdown.file.get_ref().sync_all()?;
+    artifacts.push(Artifact {
+        path: "report.md".into(),
+        sha256: format!("{:x}", markdown.hash.finalize()),
+        bytes: markdown.bytes,
+        role: "readable_sequence_comparison_report".into(),
+    });
+    #[derive(Serialize)]
+    struct Bundle {
+        schema_version: u32,
+        kind: &'static str,
+        comparison: frame_sequence::SequenceReport,
+        artifacts: Vec<Artifact>,
+    }
+    let bundle = Bundle {
+        schema_version: 1,
+        kind: "offline_png_sequence_comparison_bundle",
+        comparison,
+        artifacts,
+    };
+    let report_path = output_dir.join("report.json");
+    write_json_report(&report_path, &bundle)?;
+    File::open(output_dir.join("frames"))?.sync_all()?;
+    File::open(output_dir)?.sync_all()?;
+    println!("{}", report_path.display());
+    Ok(within_bound)
+}
+
 fn run(cli: Cli) -> Result<bool> {
     match cli.command {
         Command::Validate { workload } => {
@@ -516,6 +662,34 @@ fn run(cli: Cli) -> Result<bool> {
                 .map(|path| load_regular_json::<ImageAssessment>(path, 64 * 1024))
                 .transpose()?;
             compare_images(
+                &baseline,
+                &candidate,
+                baseline_repeat.as_deref(),
+                &output_dir,
+                tolerance,
+                assessment,
+            )
+        }
+        Command::CompareFrames {
+            baseline,
+            candidate,
+            baseline_repeat,
+            output_dir,
+            max_absolute_error,
+            tolerance_rationale,
+            assessment,
+        } => {
+            let tolerance = max_absolute_error.zip(tolerance_rationale).map(
+                |(max_absolute_error, rationale)| Tolerance {
+                    max_absolute_error,
+                    rationale,
+                },
+            );
+            let assessment = assessment
+                .as_deref()
+                .map(|path| load_regular_json::<SequenceAssessment>(path, 1024 * 1024))
+                .transpose()?;
+            compare_frames(
                 &baseline,
                 &candidate,
                 baseline_repeat.as_deref(),

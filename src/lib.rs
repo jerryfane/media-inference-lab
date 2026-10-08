@@ -1,6 +1,7 @@
 pub mod capture;
 pub mod capture_archive;
 pub mod comparison;
+pub mod frame_sequence;
 pub mod guards;
 pub mod image_comparison;
 mod markdown;
@@ -8,5 +9,6 @@ pub mod png_image;
 pub mod png_report;
 pub mod preflight;
 pub mod schema;
+pub mod sequence_report;
 pub mod study;
 pub mod study_report;
