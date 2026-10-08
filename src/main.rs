@@ -2,6 +2,7 @@ use anyhow::{Context, Result, ensure};
 use clap::{Parser, Subcommand};
 use media_inference_lab::{
     capture::{self, CaptureOptions},
+    capture_archive::CaptureArchive,
     comparison,
     guards::{GuardConfig, GuardMonitor, Lease},
     image_comparison::{self, ImageAssessment, Tolerance},
@@ -10,6 +11,7 @@ use media_inference_lab::{
     preflight::{self, PreflightOptions},
     schema::{AdapterResult, Artifact, Workload},
     study::{StudyInput, StudyPlan},
+    study_report,
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -59,6 +61,14 @@ enum Command {
         study: PathBuf,
         #[arg(long)]
         output: PathBuf,
+        #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
+        inspection_seconds: u64,
+    },
+    /// Compare saved captures and retain a private readable/JSON metadata bundle; never execute.
+    StudyReport {
+        study: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
         #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
         inspection_seconds: u64,
     },
@@ -178,7 +188,9 @@ struct BoundedReport {
 impl Write for BoundedReport {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
         if bytes.len() > self.remaining {
-            return Err(std::io::Error::other("JSON output exceeds 16 MiB"));
+            return Err(std::io::Error::other(
+                "JSON output exceeds configured byte bound",
+            ));
         }
         let written = self.file.write(bytes)?;
         self.remaining -= written;
@@ -206,6 +218,71 @@ fn write_json_report(output: &Path, value: &impl Serialize) -> Result<()> {
     writer.flush()?;
     writer.file.get_ref().sync_all()?;
     Ok(())
+}
+
+fn write_study_bundle(
+    input: &StudyInput,
+    source_directory: &Path,
+    output_dir: &Path,
+    inspection_budget: Duration,
+) -> Result<bool> {
+    let mut archive = CaptureArchive::new(output_dir.to_path_buf());
+    // Comparison validates input/budget before preparing any output directory.
+    let comparison = comparison::compare(
+        input,
+        source_directory,
+        inspection_budget,
+        Some(&mut archive),
+    )?;
+    let complete = comparison.is_complete();
+    let mut markdown = ArtifactWriter {
+        file: BufWriter::new(new_private_file(&output_dir.join("report.md"))?),
+        hash: Sha256::new(),
+        bytes: 0,
+        limit: 64 * 1024 * 1024,
+    };
+    study_report::write(&mut markdown, input, &comparison, &archive)?;
+    markdown.flush()?;
+    markdown.file.get_ref().sync_all()?;
+    let readable = Artifact {
+        path: "report.md".into(),
+        sha256: format!("{:x}", markdown.hash.finalize()),
+        bytes: markdown.bytes,
+        role: "readable_study_report".into(),
+    };
+    #[derive(Serialize)]
+    struct Bundle<'a> {
+        schema_version: u32,
+        kind: &'static str,
+        input: &'a StudyInput,
+        source_directory: &'a Path,
+        comparison: comparison::ComparisonReport,
+        capture_snapshots: &'a [Option<Artifact>],
+        readable: Artifact,
+        payload_scope: &'static str,
+    }
+    let bundle = Bundle {
+        schema_version: 1,
+        kind: "offline_study_comparison_bundle",
+        input,
+        source_directory,
+        comparison,
+        capture_snapshots: archive.snapshots(),
+        readable,
+        payload_scope: "Full typed capture metadata snapshots only. Original media/log/guard payloads are not copied; their recorded paths, hashes and original capture locations are provenance, not bundled links. This is not a replayable capture tree or execution authorization.",
+    };
+    let report_path = output_dir.join("report.json");
+    let mut json = BoundedReport {
+        file: BufWriter::new(new_private_file(&report_path)?),
+        remaining: 32 * 1024 * 1024,
+    };
+    serde_json::to_writer_pretty(&mut json, &bundle)?;
+    json.write_all(b"\n")?;
+    json.flush()?;
+    json.file.get_ref().sync_all()?;
+    File::open(output_dir)?.sync_all()?;
+    println!("{}", report_path.display());
+    Ok(complete)
 }
 
 struct ArtifactWriter {
@@ -399,10 +476,25 @@ fn run(cli: Cli) -> Result<bool> {
             let absolute = std::path::absolute(&study)?;
             let base = absolute.parent().context("study path has no parent")?;
             let report =
-                comparison::compare(&input, base, Duration::from_secs(inspection_seconds))?;
+                comparison::compare(&input, base, Duration::from_secs(inspection_seconds), None)?;
             write_json_report(&output, &report)?;
             println!("{}", output.display());
             Ok(report.is_complete())
+        }
+        Command::StudyReport {
+            study,
+            output_dir,
+            inspection_seconds,
+        } => {
+            let input: StudyInput = load_regular_json(&study, 16 * 1024 * 1024)?;
+            let absolute = std::path::absolute(&study)?;
+            let base = absolute.parent().context("study path has no parent")?;
+            write_study_bundle(
+                &input,
+                base,
+                &output_dir,
+                Duration::from_secs(inspection_seconds),
+            )
         }
         Command::CompareImages {
             baseline,
