@@ -68,16 +68,16 @@ class Reader:
         fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
         try:
             require(stat.S_ISREG(os.fstat(fd).st_mode), "not a regular file: " + str(path))
-            return os.fdopen(fd, "rb")
+            return os.fdopen(fd, "rb", buffering=0)
         except BaseException:
             os.close(fd)
             raise
 
     def take(self, file, count):
         require(0 <= count <= MAX_METADATA, "metadata/header size exceeds preflight bound")
-        self.total += count
-        require(self.total <= MAX_TOTAL, "total metadata exceeds preflight bound")
+        require(count <= MAX_TOTAL - self.total, "total metadata exceeds preflight bound")
         data = file.read(count)
+        self.total += len(data)
         require(len(data) == count, "truncated metadata/header")
         return data
 
@@ -248,13 +248,13 @@ def request_settings(workload, model_dir):
     settings = workload["settings"]
     require(settings["modality"] == "image", "QwenImage21 preflight supports image requests only")
     generation = settings["generation"]
-    require(generation["batch_size"] == 1 and not generation["references"] and generation["strength"] is None, "only batch_size=1 text-to-image without references/strength is supported")
+    require(generation["batch_size"] == 1 and not generation["references"] and generation.get("strength") is None, "only batch_size=1 text-to-image without references/strength is supported")
     require(generation["scheduler"] == "linear", "only native linear scheduler is supported; external scheduler imports are prohibited")
     require(generation["precision"] in ("auto", "bfloat16"), "native QwenImage21 model precision is bfloat16; no precision override is supported")
-    require(generation["compute_precision"] in (None, "float16"), "native compute_precision must be null or float16")
+    require(generation.get("compute_precision") in (None, "float16"), "native compute_precision must be null or float16")
     optimization = generation["optimizations"]
-    require(optimization["use_kv_cache"] is None and optimization["step_cache_threshold"] is None, "use_kv_cache/step_cache_threshold are not QwenImage21 options")
-    ratio = optimization["step_cache_ratio"]
+    require(optimization.get("use_kv_cache") is None and optimization.get("step_cache_threshold") is None, "use_kv_cache/step_cache_threshold are not QwenImage21 options")
+    ratio = optimization.get("step_cache_ratio")
     require(ratio is None or (type(ratio) in (int, float) and 0 <= ratio <= 1), "step_cache_ratio must be null or between zero and one")
     quantization = generation["quantization"]
     require(quantization == {"kind": "none"} or (quantization.get("kind") == "weights" and quantization.get("method") == "mlx" and quantization.get("bits") in (4, 8)), "quantization must be none or explicit mlx 4/8-bit weights")
@@ -266,8 +266,8 @@ def request_settings(workload, model_dir):
     require(workload["model"].get("sha256") is None, "requested model payload sha256 cannot be verified without reading weights")
     revision = workload["model"].get("revision")
     require(revision is None or revision == model_dir.name, "requested revision does not match selected local snapshot directory")
-    return {"constructor": {"model_path": str(model_dir), "quantize": quantization.get("bits"), "compute_precision": generation["compute_precision"]},
-            "generate_image": {"prompt": generation["prompt"], "negative_prompt": generation["negative_prompt"], "seed": generation["seed"], "width": resolution["width"], "height": resolution["height"], "num_inference_steps": generation["steps"], "guidance": generation["guidance"], "scheduler": generation["scheduler"], "step_cache_ratio": ratio},
+    return {"constructor": {"model_path": str(model_dir), "quantize": quantization.get("bits"), "compute_precision": generation.get("compute_precision")},
+            "generate_image": {"prompt": generation["prompt"], "negative_prompt": generation.get("negative_prompt"), "seed": generation["seed"], "width": resolution["width"], "height": resolution["height"], "num_inference_steps": generation["steps"], "guidance": generation["guidance"], "scheduler": generation["scheduler"], "step_cache_ratio": ratio},
             "model_precision": "bfloat16", "execution": "not_performed", "cache_policy": "local_files_only_no_download"}
 
 

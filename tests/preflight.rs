@@ -243,9 +243,7 @@ with tempfile.TemporaryDirectory() as tmp:
     );
 }
 
-#[test]
-fn launcher_completes_static_fixture_and_preserves_unrelated_process() {
-    let directory = tempdir().unwrap();
+fn setup_static_fixture(directory: &std::path::Path) {
     let script = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("adapters/mflux_preflight.py");
     let setup = format!(
         "{FIXTURE}\n{}",
@@ -281,7 +279,7 @@ workload.update({'id': 'cpu-static-fixture', 'process_policy': 'fresh_process', 
     let setup = Command::new("python3")
         .args(["-I", "-S", "-B", "-c", &setup])
         .arg(script)
-        .arg(directory.path())
+        .arg(directory)
         .output()
         .unwrap();
     assert!(
@@ -289,6 +287,12 @@ workload.update({'id': 'cpu-static-fixture', 'process_policy': 'fresh_process', 
         "{}",
         String::from_utf8_lossy(&setup.stderr)
     );
+}
+
+#[test]
+fn launcher_completes_static_fixture_and_preserves_unrelated_process() {
+    let directory = tempdir().unwrap();
+    setup_static_fixture(directory.path());
     let mut unrelated = TestChild(Command::new("/bin/sleep").arg("30").spawn().unwrap());
     let output = directory.path().join("report.json");
     assert!(
@@ -377,4 +381,133 @@ fn launcher_timeout_reaps_owned_process_without_touching_unrelated_process() {
         Some(libc::ECHILD)
     );
     assert!(unrelated.0.try_wait().unwrap().is_none());
+}
+
+#[test]
+fn review_header_reads_stop_before_payload_and_account_actual_bytes() {
+    python_case(
+        r#"
+import os
+with tempfile.TemporaryDirectory() as tmp:
+    path = pathlib.Path(tmp) / 'toy.safetensors'
+    header = json.dumps({'w': {'dtype': 'F32', 'shape': [1], 'data_offsets': [0, 4]}}, separators=(',', ':')).encode().ljust(64, b' ')
+    assert len(header) == 64
+    path.write_bytes(struct.pack('<Q', 64) + header + b'TOY!')
+    reader = Reader()
+    with reader.open(path) as file:
+        assert reader.take(file, 8) == struct.pack('<Q', 64)
+        assert os.lseek(file.fileno(), 0, os.SEEK_CUR) == reader.total == 8
+        assert reader.take(file, 64) == header
+        assert os.lseek(file.fileno(), 0, os.SEEK_CUR) == reader.total == 72
+    class BoundaryReader(Reader):
+        def take(self, file, count):
+            data = super().take(file, count)
+            assert os.lseek(file.fileno(), 0, os.SEEK_CUR) == self.total <= 72
+            return data
+    checked = BoundaryReader()
+    record, names = api['safetensors'](checked, path)
+    assert checked.total == 72 and names == {'w'} and record['bytes'] == 76
+    short = pathlib.Path(tmp) / 'short'
+    short.write_bytes(b'abc')
+    reader = Reader()
+    with reader.open(short) as file:
+        rejects(lambda: reader.take(file, 8), 'truncated')
+        assert reader.total == os.lseek(file.fileno(), 0, os.SEEK_CUR) == 3
+    reader.total = api['MAX_TOTAL'] - 2
+    with reader.open(short) as file:
+        rejects(lambda: reader.take(file, 3), 'total metadata')
+        assert os.lseek(file.fileno(), 0, os.SEEK_CUR) == 0
+        assert reader.total == api['MAX_TOTAL'] - 2
+        assert reader.take(file, 2) == b'ab'
+        assert reader.total == api['MAX_TOTAL']
+        rejects(lambda: reader.take(file, 1), 'total metadata')
+        assert os.lseek(file.fileno(), 0, os.SEEK_CUR) == 2
+"#,
+    );
+}
+
+#[test]
+fn review_optional_fields_preserve_identity_and_native_resolution() {
+    use media_inference_lab::schema::Workload;
+    let directory = tempdir().unwrap();
+    setup_static_fixture(directory.path());
+    let workload = directory.path().join("workload.json");
+    let base: Value = serde_json::from_slice(&fs::read(&workload).unwrap()).unwrap();
+    let identity = serde_json::from_value::<Workload>(base.clone())
+        .unwrap()
+        .identity()
+        .unwrap();
+    let optional = [
+        ("/model", "revision"),
+        ("/model", "sha256"),
+        ("/settings/generation", "strength"),
+        ("/settings/generation", "compute_precision"),
+        ("/settings/generation", "negative_prompt"),
+        ("/settings/generation/optimizations", "use_kv_cache"),
+        ("/settings/generation/optimizations", "step_cache_ratio"),
+        ("/settings/generation/optimizations", "step_cache_threshold"),
+    ];
+    let mut cases = vec![base.clone()];
+    for (parent, key) in optional {
+        let mut value = base.clone();
+        value
+            .pointer_mut(parent)
+            .unwrap()
+            .as_object_mut()
+            .unwrap()
+            .remove(key);
+        cases.push(value);
+    }
+    let mut empty = base.clone();
+    empty["settings"]["generation"]["optimizations"] = serde_json::json!({});
+    cases.push(empty);
+    let mut omitted = base.clone();
+    for (parent, key) in optional {
+        omitted
+            .pointer_mut(parent)
+            .unwrap()
+            .as_object_mut()
+            .unwrap()
+            .remove(key);
+    }
+    cases.push(omitted);
+    let options = |output| PreflightOptions {
+        python: directory.path().join("venv/bin/python"),
+        model_dir: directory.path().join("model"),
+        workload: workload.clone(),
+        output,
+        timeout: Duration::from_secs(10),
+    };
+    let mut resolved = None;
+    for (index, value) in cases.into_iter().enumerate() {
+        let parsed: Workload = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(parsed.identity().unwrap(), identity);
+        fs::write(&workload, serde_json::to_vec(&value).unwrap()).unwrap();
+        let output = directory.path().join(format!("optional-{index}.json"));
+        assert!(
+            run(options(output.clone())).unwrap(),
+            "optional case {index}"
+        );
+        let report: Value = serde_json::from_slice(&fs::read(output).unwrap()).unwrap();
+        if let Some(expected) = &resolved {
+            assert_eq!(&report["resolved"], expected);
+        } else {
+            resolved = Some(report["resolved"].clone());
+        }
+    }
+    // Required fields stay required at the shared Rust contract boundary.
+    for key in ["steps", "optimizations", "references"] {
+        let mut value = base.clone();
+        value["settings"]["generation"]
+            .as_object_mut()
+            .unwrap()
+            .remove(key);
+        assert!(serde_json::from_value::<Workload>(value.clone()).is_err());
+        fs::write(&workload, serde_json::to_vec(&value).unwrap()).unwrap();
+        let output = directory.path().join(format!("missing-{key}.json"));
+        assert!(!run(options(output.clone())).unwrap());
+        let report: Value = serde_json::from_slice(&fs::read(output).unwrap()).unwrap();
+        assert_eq!(report["errors"][0]["stage"], "launcher");
+        assert!(report["resolved"].is_null());
+    }
 }
