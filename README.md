@@ -58,7 +58,7 @@ Begin with the evidence schema and capture lifecycle, then resource guards and a
 
 ## Implementation status
 
-The Rust CLI implements versioned image/video evidence contracts, CPU-only subprocess supervision, offline inspection, macOS resource observations and a cooperating-process lease, plus read-only MFLUX metadata preflight. **There is no authorized model-capture command yet.** `supervise-guarded` still requires `--cpu-only`; passing guards or static preflight never grants GPU access. Native inference adapters (#12/#15) and actual media decoding (#13/#16) remain prerequisites. No image/video generation or performance claim is established by these CPU examples.
+The Rust CLI implements versioned image/video evidence contracts, CPU-only subprocess supervision, offline inspection and repeated-study comparison, macOS resource observations and a cooperating-process lease, plus read-only MFLUX metadata preflight. **There is no authorized model-capture command yet.** `supervise-guarded` still requires `--cpu-only`; passing guards, static preflight or comparison never grants GPU access. Native inference adapters (#12/#15) and actual media decoding (#13/#16) remain prerequisites. No image/video generation or performance claim is established by these CPU examples.
 
 ### Build and CPU verification
 
@@ -176,5 +176,33 @@ CPU verification for this slice: `cargo test --test guards --test guard_capture 
 
 PR28 review correction: the earlier `14d31bb` reader was buffered. Its reported 37,509,546 bytes were logical accounting, not verified physical read volume; the earlier “no tensor payload reads” claim is withdrawn for those historical reports. They are preserved unchanged. Corrected verification used only generated toy metadata: `cargo test --test preflight review_` passed two new regressions (the original ten were filtered out), followed by Clippy/build. A 76-byte toy checkpoint left descriptor offsets/accounting at 8 then 72, before its four payload bytes. Actual `mil validate`/`mflux-preflight` accepted eleven explicit-null/omitted-option forms with identical identities and resolved arguments; three missing-required-field controls still failed. No real weight files were reread for this correction.
 
+
+### Bounded offline baseline/candidate/control studies
+
+`study-plan` and `compare` do not execute an adapter, import a runtime, download weights, or grant execution authorization:
+
+```sh
+mkdir -p runs
+target/debug/mil study-plan examples/cpu-study-plan.json \
+  --output runs/cpu-study.json
+target/debug/mil compare runs/cpu-study.json \
+  --output runs/cpu-study-report.json --inspection-seconds 60
+```
+
+The example declares a **CPU schema fixture study, not inference**. Its generated template initially contains twelve missing bindings, so the second command produces an `inconclusive` report and exits `1`. Before collecting a study, retain the intended plan; populate each binding afterward with its saved capture directory and `missing_reason: null`, or keep `capture: null` and an explicit missing reason. There is no automatic study executor or retry. Authorized CPU captures can use `supervise --cpu-only`; these commands do not make a native/GPU capture authorized.
+
+`src/study.rs` defines strict plan/input schema v1. The plan embeds the complete requested workload and names baseline/candidate variants, mode, metric, repetitions, warmups, and minimum sample count. Ordering is fixed: all declared warmup cycles first, then measured cycles; each cycle is **baseline → candidate → unchanged-baseline control**. Every slot has a zero-based index and must remain in order, including failures and warmups. Repetitions are 1–30 per role, warmups 0–3 per role, minimum samples 3–30, with at most 99 slots. Fewer repetitions than the declared minimum are allowed but cannot produce a complete study.
+
+Bindings use absolute paths or paths relative to the study JSON's directory. Existing capture inspection rules still require real directory components: use canonical absolute paths instead of symlinks or `..`. Plan JSON is capped at 1 MiB; populated studies and output JSON are capped at 16 MiB, so template expansion does not make a valid generated file unreadable. Outputs are private, create-new files and never overwrite existing evidence. Output I/O/size failure returns `2` and may leave a partial file; it is not a valid report. The 1–120 second inspection budget is cooperative between slots: existing per-capture inspection or stalled filesystem calls can overrun it. Remaining slots are retained with explicit unavailable observations.
+
+Select `{"kind":"host_execution"}` for the saved monotonic spawn-to-leader-exit/stop boundary, **not inference time**. Or select an adapter timing with `{"kind":"adapter","phase":"generation","scope":"native","method":"EXACT_RECORDED_METHOD","boundary":"EXACT_RECORDED_BOUNDARY"}`. Phase, scope, method and boundary must match exactly; duplicate matches or unavailable observations are not measurements. Seconds/milliseconds/nanoseconds normalize to seconds without silently underflowing a positive value to zero.
+
+`same_work` requires matching requested/resolved workload identities, observed model-level fingerprint and derivation, host/device/cache evidence, stable per-role runtime identity and unchanged baseline/control runtime. Named candidate runtime/source changes are disclosed. Strict unchanged-runtime checks require clean recorded source and available executable/module hashes; a dirty source revision does not fingerprint its working tree. Missing evidence and partial model-file inventories never establish equality. Measured cache state is compared against the measured baseline; warmup cache transitions remain visible but do not redefine that boundary. Declared warmups do not prove a warm cache.
+
+Reports retain every row, outcome/reason, listed timestamp order, provenance and selected metric or unavailability. Duplicate canonical directories and copied typed manifests cannot count as independent samples. Full typed-JSON hashes accompany bounded 512-byte provenance previews with explicit truncation; the previews are not identities. Each role reports planned/measured/failed/missing/warmup/excluded counts, individual included values, median and min/max. Candidate/baseline median ratios and control/baseline drift are **descriptive**, with change fraction `ratio - 1`; zero denominators and numeric overflow/underflow remain unavailable. Same-work ratios are suppressed when compatibility/order is not established. `descriptive` mode can expose cross-runtime/device or unknown-provenance ratios, but retains incompatibilities and an inconclusive status.
+
+Exit `0` means the declared plan/report is structurally valid and, for comparison, its evidence is complete under the configured policy. It is **not** a statistical significance, causal speedup, reproducibility, inference-performance or quality verdict. Exit `1` retains an inconclusive report; exit `2` indicates invalid study input or output/infrastructure failure. Hashes are not authentication, matching host metadata is not physical machine identity, and offline bindings cannot prove predeclaration, detect unlisted runs, or authorize execution.
+
+Focused CPU verification: 22 comparison fixtures and seven plan cases passed with `cargo test --test comparison --test study_plan`; the generated near-limit template regression passed with `cargo test --test study_cli`; Clippy/build passed. Integration regressions caught and corrected warmup-cache cohort selection, dirty-source identity, positive-ratio underflow and template expansion beyond the original input limit. Actual CLI proof retained twelve fresh CPU subprocess captures (three warmups, nine measured), then compared them without changing any of their 72 evidence files. Host medians were 0.068/0.087/0.058 seconds for baseline/candidate/control; the report correctly remained inconclusive because native model/runtime/device/cache provenance was unavailable. Strict ratios were suppressed, an unreadable slot remained visible, and an existing report was preserved on overwrite rejection. These are CPU fixture timings, not a real image/video study; #18's real-study acceptance remains unexecuted.
 
 The repository is private initially. Public release, licensing, and sharing local artifacts require an explicit owner decision; this repository does not grant rights to third-party runtimes, model weights, or unpublished patches.

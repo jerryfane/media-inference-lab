@@ -2,15 +2,19 @@ use anyhow::{Context, Result, ensure};
 use clap::{Parser, Subcommand};
 use media_inference_lab::{
     capture::{self, CaptureOptions},
+    comparison,
     guards::{GuardConfig, GuardMonitor, Lease},
     preflight::{self, PreflightOptions},
     schema::{AdapterResult, Workload},
+    study::{StudyInput, StudyPlan},
 };
+use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::{
     collections::BTreeMap,
     fs::{File, OpenOptions},
-    io::{Read, Write},
+    io::{BufWriter, Read, Write},
+    os::unix::fs::OpenOptionsExt,
     path::{Path, PathBuf},
     process::ExitCode,
     sync::{Arc, atomic::AtomicBool},
@@ -40,6 +44,20 @@ enum Command {
     },
     /// Inspect saved evidence offline; a non-success outcome returns exit code 1.
     Inspect { run_dir: PathBuf },
+    /// Generate a bounded baseline/candidate/unchanged-control study template; never execute it.
+    StudyPlan {
+        plan: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Compare saved captures offline; retain failures and never launch inference.
+    Compare {
+        study: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
+        inspection_seconds: u64,
+    },
     /// Supervise a trusted CPU-only process without platform guards.
     Supervise(ProcessArguments),
     /// Check lease/memory/swap/disk/live-process observations; never grants GPU access.
@@ -112,6 +130,63 @@ fn load<T: DeserializeOwned>(path: &Path) -> Result<T> {
     serde_json::from_slice(&bytes).with_context(|| format!("reading JSON {}", path.display()))
 }
 
+fn load_study<T: DeserializeOwned>(path: &Path, limit: u64) -> Result<T> {
+    let file = OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NONBLOCK | libc::O_NOFOLLOW)
+        .open(path)
+        .with_context(|| format!("opening study JSON {}", path.display()))?;
+    ensure!(
+        file.metadata()?.is_file(),
+        "study JSON must be a regular file"
+    );
+    let mut bytes = Vec::new();
+    file.take(limit + 1).read_to_end(&mut bytes)?;
+    ensure!(
+        bytes.len() as u64 <= limit,
+        "study JSON exceeds {limit} bytes"
+    );
+    serde_json::from_slice(&bytes).with_context(|| format!("reading study JSON {}", path.display()))
+}
+
+struct BoundedReport {
+    file: BufWriter<File>,
+    remaining: usize,
+}
+
+impl Write for BoundedReport {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if bytes.len() > self.remaining {
+            return Err(std::io::Error::other("study output exceeds 16 MiB"));
+        }
+        let written = self.file.write(bytes)?;
+        self.remaining -= written;
+        Ok(written)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.file.flush()
+    }
+}
+
+fn write_study(output: &Path, value: &impl Serialize) -> Result<()> {
+    let file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(output)
+        .with_context(|| format!("creating non-overwriting study output {}", output.display()))?;
+    let mut writer = BoundedReport {
+        file: BufWriter::new(file),
+        remaining: 16 * 1024 * 1024,
+    };
+    serde_json::to_writer_pretty(&mut writer, value)?;
+    writer.write_all(b"\n")?;
+    writer.flush()?;
+    writer.file.get_ref().sync_all()?;
+    Ok(())
+}
+
 fn run(cli: Cli) -> Result<bool> {
     match cli.command {
         Command::Validate { workload } => {
@@ -131,6 +206,26 @@ fn run(cli: Cli) -> Result<bool> {
             let record = capture::inspect(&run_dir)?;
             println!("{}", serde_json::to_string_pretty(&record)?);
             Ok(record.is_success())
+        }
+        Command::StudyPlan { plan, output } => {
+            let plan: StudyPlan = load_study(&plan, 1024 * 1024)?;
+            write_study(&output, &plan.template()?)?;
+            println!("{}", output.display());
+            Ok(true)
+        }
+        Command::Compare {
+            study,
+            output,
+            inspection_seconds,
+        } => {
+            let input: StudyInput = load_study(&study, 16 * 1024 * 1024)?;
+            let absolute = std::path::absolute(&study)?;
+            let base = absolute.parent().context("study path has no parent")?;
+            let report =
+                comparison::compare(&input, base, Duration::from_secs(inspection_seconds))?;
+            write_study(&output, &report)?;
+            println!("{}", output.display());
+            Ok(report.is_complete())
         }
         Command::Supervise(process) => supervise(process, None),
         Command::SuperviseGuarded {
