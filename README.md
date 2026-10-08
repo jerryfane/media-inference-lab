@@ -58,11 +58,11 @@ Begin with the evidence schema and capture lifecycle, then resource guards and a
 
 ## Implementation status
 
-The first Rust slice implements versioned image/video evidence contracts and a CPU-only subprocess supervisor (`mil`), with offline inspection. **There is no guarded model-capture command yet.** GPU serialization, live-job/memory/swap guards (#11), native adapters (#12/#15), and actual media decoding (#13/#16) remain prerequisites for inference. No image/video generation or performance claim is established by the CPU examples.
+The Rust CLI implements versioned image/video evidence contracts, CPU-only subprocess supervision, offline inspection, macOS resource observations and a cooperating-process lease, plus read-only MFLUX metadata preflight. **There is no authorized model-capture command yet.** `supervise-guarded` still requires `--cpu-only`; passing guards or static preflight never grants GPU access. Native inference adapters (#12/#15) and actual media decoding (#13/#16) remain prerequisites. No image/video generation or performance claim is established by these CPU examples.
 
 ### Build and CPU verification
 
-Use a Rust toolchain supporting edition 2024. The observed checks used Rust/Cargo 1.98.0 on Darwin arm64. The supervisor implements macOS/Linux process ownership; Linux has not been exercised yet. Default checks require no models, Python environment, GPU, or model downloads.
+Use a Rust toolchain supporting edition 2024 and an existing Python 3 for metadata-fixture tests. Observed checks used Rust/Cargo 1.98.0 on Darwin arm64. The supervisor implements macOS/Linux process ownership; Linux has not been exercised. Native collectors support macOS only and fail closed elsewhere. Default checks require no models, MLX/MFLUX installation, GPU, or model downloads.
 
 ```sh
 cargo build --locked
@@ -91,7 +91,7 @@ For a missing-result example, run `target/debug/mil supervise --cpu-only --workl
 
 ### Versioned evidence contract
 
-- `src/schema.rs` defines **workload version 1** and **adapter-result version 2**; `src/capture.rs` defines **capture-record version 1**. Unknown fields and unsupported versions are rejected. Adapter-result v1 is no longer accepted: v2 makes model-level fingerprint evidence explicit instead of treating a partial file inventory as an exhaustive model fingerprint. Workload identities are unchanged by this result-only cutover.
+- `src/schema.rs` defines **workload version 1** and **adapter-result version 2**; `src/capture.rs` defines **capture-record version 2**, adding optional guard-report provenance. Unknown fields and unsupported versions are rejected. Capture-record v1 evidence remains unchanged on disk but requires the earlier reader; no automatic migration occurs. Adapter-result v1 is no longer accepted: v2 makes model-level fingerprint evidence explicit instead of treating a partial file inventory as an exhaustive model fingerprint. Workload identities are unchanged by these cutovers.
 - Workload identity is SHA-256 of Rust's typed JSON serialization of **all** declared fields, including prompts, reference hashes, precision/quantization, optimizations, batching, process/cache policy, video layers, reuse intervals, playback FPS, and audio. Whitespace in strings is significant; JSON formatting/key order is not. Adapters copy the supervisor-supplied identity rather than reimplement its serialization.
 - Declared and resolved settings remain separate. Explicit settings cannot change. Only requested `precision: "auto"` and `compute_precision: null` can resolve to concrete choices; results must record those choices. Observed model/source/module/executable identity and actual cache state are separate from requests. Native adapters must reject unsupported settings; the shared schema alone does not prove a runtime supports them.
 - An available observed model requires `fingerprint`, either `{"status":"unavailable","reason":"Model fingerprint was not measured"}` or an available value containing `sha256` and its derivation `method`. A requested `model.sha256` is compared only with that available model-level observation. Independent `model.files` hashes remain partial provenance: an unrelated config hash cannot contradict an unmeasured weights fingerprint. A concrete model-level mismatch still fails validation.
@@ -121,10 +121,54 @@ Each requested/result JSON document and terminal manifest is bounded at 16 MiB. 
 
 Process ownership pins the unreaped leader until group cleanup completes. On Darwin, zombie-only groups can return `EPERM`; cleanup accepts that case only after confirming the exited owned leader is the sole listed member. Actual signal delivery and observed group quiescence are recorded separately. Trusted children must not escape with `setsid`/`setpgid`; embedding applications must not install competing child reapers. Group signaling does not prove that every descendant has exited.
 
-Execution has an explicit deadline, bounded stdout/stderr, and polled output-size limits. Disk polling is **not a filesystem quota** and can overshoot between observations. Cleanup uses a 100 ms TERM grace and a 1 s KILL observation bound; artifact hashing has a separate 30 s cooperative deadline. Stalled filesystem I/O is not bounded by an OS-enforced timeout. These CPU supervisor bounds do not replace #11's memory, swap, disk, live-job, and exclusive-GPU guards.
+Execution has an explicit deadline, bounded stdout/stderr, and polled output-size limits. Disk polling is **not a filesystem quota** and can overshoot between observations. Cleanup uses a 100 ms TERM grace and a 1 s KILL observation bound; artifact hashing has a separate 30 s cooperative deadline. Stalled filesystem I/O is not bounded by an OS-enforced timeout. Unguarded `supervise` does not perform the checks described below.
 
 Established baseline verification at `0346b2d`: 28 CPU regression tests passed (12 schema, 16 lifecycle), with the original CLI lifecycle smoke. Review corrections were verified separately with `cargo test --test review_capture --test review_schema`: **11 new regressions passed**, and Clippy passed with warnings denied. The original suites were not rerun merely to confirm the review observations.
 
 Actual before/after CLI proof reproduced and corrected the 9 MiB combined-manifest failure (64 MiB output budget), composed/decomposed APFS alias acceptance, partial model-file evidence rejection, and nested signed-zero compatibility. After correction, the combined-size case retains an inspectable terminal failure; aliases are rejected; unrelated config evidence leaves an unavailable model fingerprint unknown; concrete fingerprint mismatches and nested signed-zero changes fail validation. No real runtime/model capture was run.
+
+### CPU-only guarded supervision
+
+`mil guard-check --config GUARD.json --output NEW-REPORT.json` acquires the project lease, collects a launch snapshot, writes a non-overwriting report, and releases the lease. Exit `0` means these observations passed, **not that a GPU window is reserved**. Contention returns `2`; a recorded denial returns `1`.
+
+The guard config has five required fields:
+
+| Field | Meaning |
+| --- | --- |
+| `live_app_pid` | Freshly observed reference application PID |
+| `live_app_command_sha256` | Lowercase SHA-256 of its trimmed command column from `/bin/ps -axo pid=,ppid=,command=` |
+| `min_disk_free_bytes` | Positive filesystem available-space floor; smoke used 10 GiB |
+| `max_disk_growth_bytes` | Positive maximum decrease from baseline filesystem available bytes; ordinary smoke used 256 MiB |
+| `sample_interval_ms` | Target observation interval, 100–1000 ms; smoke used 100 ms |
+
+Do not store workstation PID/configuration in a committed example. The live reference signature is the existing `uvicorn backend.app:app` application on port 7860. Its PID/command identity must match exactly and uniquely. Any observed descendant or recognized image/video/H3 worker denies launch or cancels this project's owned capture. Raw process commands are not serialized. The live API lacks aggregate queue/idleness state; worker absence cannot exclude queued/in-process jobs, unrelated GPU work, PID reuse, or activity between polls.
+
+For a trusted CPU fixture, use the earlier `supervise` example with `supervise-guarded --guard-config GUARD.json` instead. Keep `--cpu-only`, the same schema fixture and literal arguments. Guarded execution is capped at 600 seconds. `guards.json` records methods, config, launch baseline, subsequent observations and decisions; terminal manifests reference its SHA-256/byte count. Offline `inspect` checks that evidence and rejects completed captures containing denied observations. The report is capture-owned, excluded from adapter output accounting, separately bounded at 16 MiB, and cannot be an adapter artifact.
+
+Fixed memory policy: launch requires at least 30% from `/usr/bin/memory_pressure -Q`; running capture cancels below 15% or when `/usr/sbin/sysctl vm.swapusage` indicates more than 512 MiB growth from baseline. These are rounded system indications, **not GPU-memory measurements**. `statvfs` supplies filesystem available bytes, not a per-run quota. Missing/malformed required observations deny execution. Each command collector has a 2-second bound and bounded output; sequential collection is not atomic and can delay polling.
+
+The persistent owner-private lease is `$HOME/.local/share/media-inference-lab/gpu.lock`. Kernel `flock` contention never triggers retries or killing another owner. Never unlink/replace the inode to “clear” a lease. Close-only release permits an owned child retaining the inherited descriptor to hold the lock after supervisor death; ownership recovers when all such descriptors close. Descendants that escape their process group or close that descriptor are outside these guarantees. The lease covers cooperating project processes only.
+
+Before any later heavy run: deliver the exact isolated environment/model identities, no-download evidence, full-shape command/settings and execution/disk bounds; obtain a fresh explicit `mac-studio` scheduling grant; immediately recheck live-job/unrelated-GPU state, lease contention, memory and swap. Existing reports are historical evidence, not a reusable grant.
+
+### Read-only native MFLUX preflight
+
+```sh
+target/debug/mil mflux-preflight \
+  --python /absolute/isolated-venv/bin/python \
+  --model-dir /absolute/existing/local-snapshot \
+  --workload /absolute/native-workload.json \
+  --output /absolute/new-preflight-report.json \
+  --timeout-seconds 60
+```
+
+Choose an existing isolated venv (`include-system-site-packages = false`); nothing is installed into it. Workload schema remains v1. Unlike the schema-only example, set `model.name` to `Qwen/Qwen-Image-2.1` or `qwen-image-2.1`, precision to `bfloat16` or `auto`, scheduler to `linear`, and dimensions to positive multiples of 16. Only batch-one text-to-image is supported. Compute precision may be null or explicit `float16`; unsupported reference/strength/cache flags fail before checkpoint traversal. Quantization is never added implicitly. Declared model payload hashes cannot be verified in this mode and are rejected. The CPU smoke inspected a 1536×864, 40-step, guidance-4, unquantized request without executing it.
+
+Rust launches the selected Python with `-I -S -B`, cleared environment and explicit offline variables. The stdlib-only adapter disables site hooks and blocks network operations, subprocess execution, native MLX/MFLUX imports and filesystem writes through its audit hook. The report records blocked network-resolution and subprocess probes, actual interpreter executable hash, venv config, installed distribution metadata, separately selected static MFLUX source/API hashes, local config/tokenizer metadata and safetensors header/index observations. Executable `.pth` lines are reported but never run. No third-party runtime is imported, no model/tensor payload is loaded, and no package/model download is attempted.
+
+Bounds: 1 MiB workload, 16 MiB per metadata/header read, 128 MiB cumulative reads, 4096 file reads, 200000 tensors per header, 64 MiB interpreter-hash limit, 4 MiB stdout, 64 KiB diagnostics, and 1–120 seconds execution. Existing reports are never overwritten; dependency/model/request/launcher failures retain actionable JSON reports and return `1`. Native imported-code identity, dependency ABI compatibility, complete parameter compatibility, shared-library identity and weight-payload integrity remain explicitly unavailable. This is not an adapter-result document or a working inference benchmark.
+
+CPU verification for this slice: `cargo test --test guards --test guard_capture --test preflight` (20 cases passed across focused runs), `cargo clippy --all-targets -- -D warnings`, and `cargo build --bin mil`. The migrated capture-version rejection case was checked separately. Actual CLI proof observed guard-check success, lease contention rejection, completed guarded capture plus offline inspect, and a disk-growth interruption after a bounded 4 MiB owned write, retaining a cancelled outcome and owned-group cleanup. Selected real-environment/local-model static preflight passed; a missing local model produced an actionable failure without downloads. No live service/configuration was changed and no GPU window, native import, model execution or benchmark was exercised.
+
 
 The repository is private initially. Public release, licensing, and sharing local artifacts require an explicit owner decision; this repository does not grant rights to third-party runtimes, model weights, or unpublished patches.

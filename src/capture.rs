@@ -1,4 +1,7 @@
-use crate::schema::{AdapterResult, ProcessPolicy, Workload};
+use crate::{
+    guards::{GuardConfig, GuardMonitor, GuardReport, Lease},
+    schema::{AdapterResult, ProcessPolicy, Workload},
+};
 use anyhow::{Context, Result, bail, ensure};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use sha2::{Digest, Sha256};
@@ -14,7 +17,7 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-const RECORD_VERSION: u32 = 1;
+const RECORD_VERSION: u32 = 2;
 const JSON_LIMIT: u64 = 16 * 1024 * 1024;
 // Failure text can expand sixfold when JSON-escaped. The remaining reserve
 // covers all fixed-size terminal counters, timestamps, exit and cleanup fields.
@@ -102,6 +105,16 @@ pub struct LogEvidence {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
+pub struct GuardEvidence {
+    pub path: String,
+    pub lease_path: String,
+    /// Finalized report identity; absent while capture is running.
+    pub sha256: Option<String>,
+    pub bytes: Option<u64>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct CaptureRecord {
     pub record_version: u32,
     pub sample_index: u32,
@@ -124,6 +137,7 @@ pub struct CaptureRecord {
     pub logs: LogEvidence,
     pub failure: Option<String>,
     pub adapter_result: Option<AdapterResult>,
+    pub guard_evidence: Option<GuardEvidence>,
 }
 
 impl CaptureRecord {
@@ -211,6 +225,30 @@ impl CaptureRecord {
                     && exit.signal.is_none_or(|n| n > 0),
                 "invalid exit status"
             );
+        }
+        if let Some(guard) = &self.guard_evidence {
+            ensure!(
+                guard.path == "guards.json",
+                "invalid guard report reference"
+            );
+            ensure!(
+                Path::new(&guard.lease_path).is_absolute(),
+                "guard lease path must be absolute"
+            );
+            if self.state == CaptureState::Running {
+                ensure!(
+                    guard.sha256.is_none() && guard.bytes.is_none(),
+                    "running guard evidence claims a final identity"
+                );
+            } else {
+                ensure!(
+                    guard.sha256.as_deref().is_some_and(valid_hash)
+                        && guard
+                            .bytes
+                            .is_some_and(|bytes| bytes > 0 && bytes <= JSON_LIMIT),
+                    "terminal guard report lacks a bounded hash/size"
+                );
+            }
         }
         if self.state == CaptureState::Running {
             ensure!(
@@ -565,7 +603,7 @@ fn output_bytes(directory: &Path, limit: u64) -> Result<u64> {
             if depth == 0
                 && matches!(
                     entry.file_name().to_str(),
-                    Some("manifest.json" | "requested.json")
+                    Some("manifest.json" | "requested.json" | "guards.json")
                 )
             {
                 ensure!(
@@ -649,6 +687,26 @@ pub fn inspect(run_dir: &Path) -> Result<CaptureRecord> {
         requested == record.request && requested.identity()? == record.workload_identity,
         "requested.json disagrees with capture manifest"
     );
+    if let Some(evidence) = &record.guard_evidence {
+        let path = directory.join(&evidence.path);
+        let report: GuardReport = load_json(&path, JSON_LIMIT)?;
+        report.validate()?;
+        if record.is_success() {
+            ensure!(
+                report.initial_decision.allowed
+                    && report.samples.iter().all(|sample| sample.decision.allowed),
+                "completed capture contains a denied guard decision"
+            );
+        }
+        if record.state != CaptureState::Running {
+            let (digest, bytes) =
+                hash_file(&path, JSON_LIMIT, Instant::now() + INSPECTION_LIMIT, None)?;
+            ensure!(
+                Some(digest) == evidence.sha256 && Some(bytes) == evidence.bytes,
+                "guard report hash/size differs from capture manifest"
+            );
+        }
+    }
     if record.state == CaptureState::Incomplete {
         ensure!(
             matches!(fs::symlink_metadata(directory.join("result.json")), Err(error) if error.kind() == std::io::ErrorKind::NotFound),
@@ -694,6 +752,31 @@ pub fn capture(
     options: CaptureOptions,
     cancelled: Arc<AtomicBool>,
 ) -> Result<PathBuf> {
+    capture_inner(request, options, cancelled, None)
+}
+
+/// CPU-only guarded supervision. A lease and passing observations are not a manager grant.
+pub fn capture_guarded(
+    request: Workload,
+    options: CaptureOptions,
+    cancelled: Arc<AtomicBool>,
+    config: GuardConfig,
+    lease: Lease,
+) -> Result<PathBuf> {
+    config.validate()?;
+    ensure!(
+        options.timeout <= Duration::from_secs(600),
+        "guarded execution is limited to 600 seconds"
+    );
+    capture_inner(request, options, cancelled, Some((config, lease)))
+}
+
+fn capture_inner(
+    request: Workload,
+    options: CaptureOptions,
+    cancelled: Arc<AtomicBool>,
+    guarded: Option<(GuardConfig, Lease)>,
+) -> Result<PathBuf> {
     request.validate()?;
     ensure!(
         request.process_policy == ProcessPolicy::FreshProcess,
@@ -726,17 +809,17 @@ pub fn capture(
     }
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     {
-        unix::capture(request, options, cancelled)
+        unix::capture(request, options, cancelled, guarded)
     }
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     {
-        let _ = (request, options, cancelled);
+        let _ = (request, options, cancelled, guarded);
         bail!("process ownership supervision is supported only on macOS and Linux")
     }
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
-mod unix {
+pub(crate) mod unix {
     use super::*;
     use std::{
         os::{
@@ -750,8 +833,8 @@ mod unix {
     // Never reap the group leader until all group signals have been sent. Its
     // unreaped PID pins the group ID, so cleanup cannot signal a reused PID/PGID.
     // Embedders must not install SIGCHLD auto-reaping or reap this module's child.
-    struct OwnedChild {
-        child: Child,
+    pub(crate) struct OwnedChild {
+        pub(crate) child: Child,
         anchored: bool,
         group_signalled: bool,
         group_quiescent: bool,
@@ -787,7 +870,16 @@ mod unix {
     }
 
     impl OwnedChild {
-        fn exited(&mut self) -> Result<bool> {
+        pub(crate) fn new(child: Child) -> Self {
+            Self {
+                child,
+                anchored: true,
+                group_signalled: false,
+                group_quiescent: false,
+            }
+        }
+
+        pub(crate) fn exited(&mut self) -> Result<bool> {
             let mut info: libc::siginfo_t = unsafe { std::mem::zeroed() };
             loop {
                 let result = unsafe {
@@ -843,7 +935,7 @@ mod unix {
             Ok(())
         }
 
-        fn cleanup(&mut self) -> Result<ExitStatus> {
+        pub(crate) fn cleanup(&mut self) -> Result<ExitStatus> {
             self.signal(libc::SIGTERM)?;
             thread::sleep(TERM_GRACE);
             self.signal(libc::SIGKILL)?;
@@ -970,6 +1062,7 @@ mod unix {
         request: Workload,
         options: CaptureOptions,
         cancelled: Arc<AtomicBool>,
+        guarded: Option<(GuardConfig, Lease)>,
     ) -> Result<PathBuf> {
         let executable = absolute(&options.executable)?;
         let executable_hash = hash_file(
@@ -979,6 +1072,14 @@ mod unix {
             None,
         );
         let directory = unique_run(&options.root)?;
+        let (mut monitor, lease) = match guarded {
+            Some((config, lease)) => (Some(GuardMonitor::start(config, &directory)?), Some(lease)),
+            None => (None, None),
+        };
+        let mut guard_failure = monitor
+            .as_ref()
+            .and_then(|monitor| monitor.initial_decision().err())
+            .map(|error| format!("launch guard rejected: {error:#}"));
         let mut environment: BTreeMap<_, _> = options
             .env
             .keys()
@@ -1014,8 +1115,15 @@ mod unix {
             },
             started_unix_ms: now_ms()?, ended_unix_ms: None, host_elapsed_ms: None, artifact_inspection_ms: None, cleanup_elapsed_ms: None,
             exit: None, cleanup: None, logs: LogEvidence::default(), failure: None, adapter_result: None,
+            guard_evidence: lease.as_ref().map(|lease| GuardEvidence {
+                path: "guards.json".into(), lease_path: lease.path().to_string_lossy().into_owned(),
+                sha256: None, bytes: None,
+            }),
         };
         atomic_json(&directory, "requested.json", &record.request, JSON_LIMIT)?;
+        if let Some(monitor) = &monitor {
+            atomic_json(&directory, "guards.json", monitor.report(), JSON_LIMIT)?;
+        }
         atomic_json(
             &directory,
             "manifest.json",
@@ -1044,15 +1152,22 @@ mod unix {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        let lease_fd = lease.as_ref().map(Lease::raw_fd);
         unsafe {
-            command.pre_exec(|| {
+            command.pre_exec(move || {
                 if libc::setpgid(0, 0) != 0 {
                     return Err(std::io::Error::last_os_error());
+                }
+                if let Some(fd) = lease_fd {
+                    let flags = libc::fcntl(fd, libc::F_GETFD);
+                    if flags < 0 || libc::fcntl(fd, libc::F_SETFD, flags & !libc::FD_CLOEXEC) < 0 {
+                        return Err(std::io::Error::last_os_error());
+                    }
                 }
                 Ok(())
             });
         }
-        let spawned = if cancelled.load(Ordering::Relaxed) {
+        let spawned = if guard_failure.is_some() || cancelled.load(Ordering::Relaxed) {
             None
         } else {
             Some(command.spawn())
@@ -1060,7 +1175,11 @@ mod unix {
         match spawned {
             None => {
                 record.state = CaptureState::Cancelled;
-                record.failure = Some("cancelled before spawn".into());
+                record.failure = Some(
+                    guard_failure
+                        .take()
+                        .unwrap_or_else(|| "cancelled before spawn".into()),
+                );
                 record.cleanup = Some(Cleanup {
                     process_group: None,
                     group_signalled: false,
@@ -1111,6 +1230,23 @@ mod unix {
                             record.state = CaptureState::TimedOut;
                             record.failure = Some("host execution deadline exceeded".into());
                             break;
+                        }
+                        if let Some(monitor) = &mut monitor {
+                            let count = monitor.sample_count();
+                            let decision = monitor.check();
+                            if monitor.sample_count() != count {
+                                atomic_json(
+                                    &directory,
+                                    "guards.json",
+                                    monitor.report(),
+                                    JSON_LIMIT,
+                                )?;
+                            }
+                            if let Err(error) = decision {
+                                record.state = CaptureState::Cancelled;
+                                record.failure = Some(format!("running guard rejected: {error:#}"));
+                                break;
+                            }
                         }
                         let (stdout_overflow, _) = drain(
                             &mut stdout,
@@ -1265,6 +1401,16 @@ mod unix {
                 }
                 record.artifact_inspection_ms = Some(millis(inspection_start.elapsed()));
             }
+        }
+        if let Some(evidence) = &mut record.guard_evidence {
+            let (digest, bytes) = hash_file(
+                &directory.join(&evidence.path),
+                JSON_LIMIT,
+                Instant::now() + INSPECTION_LIMIT,
+                None,
+            )?;
+            evidence.sha256 = Some(digest);
+            evidence.bytes = Some(bytes);
         }
         record.ended_unix_ms = Some(now_ms()?);
         if let Some(reason) = &mut record.failure {

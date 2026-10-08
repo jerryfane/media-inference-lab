@@ -462,7 +462,12 @@ pub fn validate_artifact_path(path: &str) -> Result<()> {
     ensure!(
         !matches!(
             first.as_str(),
-            "requested.json" | "manifest.json" | "result.json" | "stdout.log" | "stderr.log"
+            "requested.json"
+                | "manifest.json"
+                | "guards.json"
+                | "result.json"
+                | "stdout.log"
+                | "stderr.log"
         ),
         "artifact path conflicts with a capture-owned file: {path:?}"
     );
