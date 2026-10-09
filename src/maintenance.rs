@@ -5,7 +5,10 @@ use crate::{
     native_guard::{self, GuardianClock, NativeBinding, ScopeAuthority, ScopePurpose},
     process_scope::{self, CommandSpec, OwnedProcess, ProcessIdentity, Settlement},
     restore_qualification::{AuthorizedPermissions, ReviewedPermissionInput},
-    service_lifecycle::{ServiceHandle, ServiceRole, ServiceSpec},
+    service_lifecycle::{
+        RecoveryBudget, RecoveryControl, ServiceEnrollmentFailure, ServiceHandle, ServiceRole,
+        ServiceSpec,
+    },
 };
 use anyhow::{Context, Result, bail, ensure};
 use serde::{Deserialize, Serialize};
@@ -25,6 +28,7 @@ use std::{
     },
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    rc::Rc,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -496,6 +500,7 @@ struct Runtime {
     last_scope_observation: Option<Instant>,
     lost: Option<String>,
     services: Vec<ServiceHandle>,
+    service_recovery: Rc<RefCell<RecoveryBudget>>,
     authority: ScopeAuthority,
     journal: File,
     journal_bytes: u64,
@@ -577,7 +582,12 @@ impl Runtime {
         {
             return Ok(());
         }
-        let reading = self.authority.collect(&mut self.services, &mut self.clock);
+        let reading = self.authority.collect(
+            &mut self.services,
+            &mut self.clock,
+            self.wall_ceiling,
+            Rc::clone(&self.service_recovery),
+        );
         let result = if reading.decision.allowed {
             Ok(())
         } else {
@@ -662,8 +672,13 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
     let wall_ceiling = (std::time::UNIX_EPOCH
         + Duration::from_millis(envelope.authorization.expires_unix_ms))
     .min(SystemTime::now() + Duration::from_millis(transaction.budgets.total_ms));
+    let clock = GuardianClock::new(Duration::from_millis(remaining))?;
+    let service_recovery = Rc::new(RefCell::new(RecoveryBudget::new(
+        Duration::from_millis(transaction.budgets.recovery_ms),
+        clock.hard_deadline(),
+    )));
     let runtime = RefCell::new(Runtime {
-        clock: GuardianClock::new(Duration::from_millis(remaining))?,
+        clock,
         wall_ceiling,
         link,
         controller: envelope.controller,
@@ -671,10 +686,13 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
         last_scope_observation: None,
         lost: None,
         services: Vec::new(),
+        service_recovery: Rc::clone(&service_recovery),
         authority: ScopeAuthority::new(identity.clone())?,
         journal,
         journal_bytes: 0,
     });
+    let mut recovery_tick = || runtime.borrow_mut().recovery_tick();
+    let mut recovery = RecoveryControl::new(Rc::clone(&service_recovery), &mut recovery_tick);
     let mut settlement: Option<Settlement> = None;
     let mut capture_directory = None;
     let mut creation_attempted = false;
@@ -702,6 +720,7 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
             permissions.as_ref(),
             arming,
             &mut || runtime.borrow_mut().tick(),
+            &mut recovery,
         )?;
         runtime.borrow_mut().services.push(omlx);
         let studio = ServiceHandle::enroll(
@@ -710,6 +729,7 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
             permissions.as_ref(),
             arming,
             &mut || runtime.borrow_mut().tick(),
+            &mut recovery,
         )?;
         runtime.borrow_mut().services.insert(0, studio);
         for (index, budget, label) in [
@@ -721,7 +741,8 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                 .clock
                 .phase_deadline(Duration::from_millis(budget));
             let mut services = std::mem::take(&mut runtime.borrow_mut().services);
-            let result = services[index].stop(deadline, &mut || runtime.borrow_mut().tick());
+            let result =
+                services[index].stop(deadline, &mut || runtime.borrow_mut().tick(), &mut recovery);
             runtime.borrow_mut().services = services;
             let observation = result?;
             runtime.borrow_mut().event(label, observation)?;
@@ -748,26 +769,31 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                     .write(true)
                     .mode(0o600)
                     .open(transaction.evidence_root.join("experiment.stderr"))?;
-                creation_attempted = true;
+                runtime.borrow_mut().active_tick()?;
+                ensure!(
+                    Instant::now() < prelaunch,
+                    "CPU setup exceeded prelaunch slot"
+                );
                 let spawned = OwnedProcess::spawn_with_lease(
                     command,
-                    deadline,
+                    deadline.min(prelaunch),
                     &mut || runtime.borrow_mut().active_tick(),
                     lease.as_ref().context("CPU lease lost")?.raw_fd(),
                 );
-                let mut child = match spawned {
-                    Ok(child) => child,
-                    Err(error) => {
-                        if let Some(failure) = error.downcast_ref::<process_scope::SpawnFailure>() {
-                            settlement = Some(failure.settlement.clone());
-                        }
-                        return Err(error);
-                    }
-                };
-                let mut stdout = child.stdout.take().context("CPU stdout absent")?;
-                let mut stderr = child.stderr.take().context("CPU stderr absent")?;
+                let attempt = spawned?;
+                creation_attempted = true;
+                let mut child = attempt.process;
+                let mut stdout = child.stdout.take();
+                let mut stderr = child.stderr.take();
                 let mut remaining = OUTPUT_BOUND;
                 let execution = (|| -> Result<()> {
+                    runtime.borrow_mut().event("experiment_creation_attempt",
+                        serde_json::json!({"pid":child.pid(),"failure":attempt.failure,"identity":child.identity().ok()}))?;
+                    if let Some(failure) = attempt.failure {
+                        bail!("owned experiment launch failed: {failure}");
+                    }
+                    let stdout = stdout.as_mut().context("CPU stdout absent")?;
+                    let stderr = stderr.as_mut().context("CPU stderr absent")?;
                     runtime
                         .borrow_mut()
                         .event("experiment_created", child.identity()?)?;
@@ -777,8 +803,8 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                             Instant::now() < deadline,
                             "experiment phase deadline expired"
                         );
-                        drain(&mut stdout, &mut out, &mut remaining)?;
-                        drain(&mut stderr, &mut err, &mut remaining)?;
+                        drain(stdout, &mut out, &mut remaining)?;
+                        drain(stderr, &mut err, &mut remaining)?;
                         child.check_membership()?;
                         if child.exited_unreaped()? {
                             break;
@@ -795,8 +821,12 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                     Some(child.settle(cleanup, Duration::from_millis(100), &mut || {
                         runtime.borrow_mut().recovery_tick()
                     })?);
-                drain(&mut stdout, &mut out, &mut remaining)?;
-                drain(&mut stderr, &mut err, &mut remaining)?;
+                if let Some(stdout) = stdout.as_mut() {
+                    drain(stdout, &mut out, &mut remaining)?;
+                }
+                if let Some(stderr) = stderr.as_mut() {
+                    drain(stderr, &mut err, &mut remaining)?;
+                }
                 runtime
                     .borrow_mut()
                     .event("experiment_settlement", &settlement)?;
@@ -827,6 +857,7 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                     recovery_tick: &mut recovery_tick,
                     cleanup_budget: Duration::from_millis(transaction.budgets.cleanup_ms),
                     automation_deadline: runtime.borrow().clock.hard_deadline(),
+                    prelaunch_deadline: prelaunch,
                     creation_attempted: false,
                     directory: None,
                     settlement: None,
@@ -864,10 +895,23 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
         }
         Ok(())
     })();
+    // Observation-helper failures return promptly so capture can stop its
+    // experiment first. Continue their retained ownership within the SAME
+    // recovery slot before considering any conflicting service restoration.
+    if let Err(error) = recovery.finish_pending() {
+        recovery_failure = Some(format!(
+            "deferred service helper cleanup incomplete: {error:#}"
+        ));
+    }
+    let enrollment_failure = outcome
+        .as_ref()
+        .err()
+        .and_then(|error| error.downcast_ref::<ServiceEnrollmentFailure>())
+        .map(|failure| failure.observation.clone());
     // Authority loss is sticky for the experiment. Recovery is a separately
     // authorized action; it cannot erase failure or run before proven settlement.
-    let safe_to_restore =
-        !creation_attempted || settlement.as_ref().is_some_and(|value| value.complete);
+    let safe_to_restore = recovery.complete()
+        && (!creation_attempted || settlement.as_ref().is_some_and(|value| value.complete));
     if safe_to_restore && runtime.borrow().services.len() == 2 {
         let result = (|| -> Result<()> {
             for (index, budget, label) in [
@@ -879,8 +923,11 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                     .clock
                     .phase_deadline(Duration::from_millis(budget));
                 let mut services = std::mem::take(&mut runtime.borrow_mut().services);
-                let result =
-                    services[index].restore(deadline, &mut || runtime.borrow_mut().recovery_tick());
+                let result = services[index].restore(
+                    deadline,
+                    &mut || runtime.borrow_mut().recovery_tick(),
+                    &mut recovery,
+                );
                 runtime.borrow_mut().services = services;
                 let observation = result?;
                 ensure!(
@@ -895,25 +942,25 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
             Ok(()) => restored = true,
             Err(error) => recovery_failure = Some(format!("{error:#}")),
         }
-    } else if creation_attempted {
-        recovery_failure = Some("experiment settlement unproved: all restoration withheld".into());
+    } else if creation_attempted || !recovery.complete() {
+        recovery_failure =
+            Some("experiment/helper settlement unproved: all restoration withheld".into());
     }
     // Disposal of this transaction's CPU fixtures is not production recovery.
     if transaction.purpose == ScopePurpose::Cpu {
-        let deadline = runtime
-            .borrow()
-            .clock
-            .phase_deadline(Duration::from_millis(transaction.budgets.recovery_ms));
         let mut services = std::mem::take(&mut runtime.borrow_mut().services);
         for service in services.iter_mut().rev() {
-            if let Err(error) =
-                service.finish_owned_cpu(deadline, &mut || runtime.borrow_mut().recovery_tick())
-            {
+            if let Err(error) = service.finish_owned_cpu(&mut recovery) {
                 recovery_failure
                     .get_or_insert_with(|| format!("owned CPU fixture disposal failed: {error:#}"));
             }
         }
         runtime.borrow_mut().services = services;
+    }
+    if !recovery.complete() {
+        recovery_failure.get_or_insert_with(|| {
+            "service helper accounting remains incomplete; no retry or budget extension".into()
+        });
     }
     let success = outcome.is_ok() && restored && recovery_failure.is_none();
     let service_outcomes: Vec<_> = runtime
@@ -926,7 +973,21 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
         &transaction.evidence_root.join("service-outcomes.json"),
         &service_outcomes,
     )?;
-    let receipt = serde_json::json!({"schema_version":1,"kind":if transaction.purpose==ScopePurpose::Cpu{"cpu_maintenance_transaction"}else{"native_maintenance_transaction"},"transaction_sha256":identity,"transaction_id":transaction.transaction_id,"guardian_pid":std::process::id(),"controller_identity":runtime.borrow().controller,"success":success,"experiment_failure":outcome.err().map(|error|format!("{error:#}")),"creation_attempted":creation_attempted,"settlement":settlement,"restored":restored,"recovery_failure":recovery_failure,"capture_directory":capture_directory,"elapsed_ms":runtime.borrow().clock.elapsed_ms(),"lease_path":transaction.lease_path,"scope":"Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee","automation_ceiling_note":"Bounds automation, not a failed outage; GUI may remain paused for manual recovery"});
+    let receipt = serde_json::json!({
+        "schema_version":1,
+        "kind":if transaction.purpose==ScopePurpose::Cpu{"cpu_maintenance_transaction"}else{"native_maintenance_transaction"},
+        "transaction_sha256":identity,"transaction_id":transaction.transaction_id,
+        "guardian_pid":std::process::id(),"controller_identity":runtime.borrow().controller,
+        "success":success,"experiment_failure":outcome.err().map(|error|format!("{error:#}")),
+        "creation_attempted":creation_attempted,"settlement":settlement,"restored":restored,
+        "recovery_failure":recovery_failure,"capture_directory":capture_directory,
+        "service_enrollment_failure":enrollment_failure,
+        "service_process_dispositions":recovery.observations(),
+        "service_accounting_complete":recovery.complete(),
+        "elapsed_ms":runtime.borrow().clock.elapsed_ms(),"lease_path":transaction.lease_path,
+        "scope":"Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee",
+        "automation_ceiling_note":"Bounds automation, not a failed outage; GUI may remain paused for manual recovery"
+    });
     private_json(&transaction.evidence_root.join("receipt.json"), &receipt)?;
     runtime.borrow_mut().journal.sync_all()?;
     drop(lease);
@@ -1022,6 +1083,8 @@ pub fn run_cpu(root: &Path, scenario: &str) -> Result<PathBuf> {
                 | "cleanup-deadline"
                 | "restore-failure"
                 | "stale"
+                | "arming-deadline"
+                | "restore-launch-deadline"
         ),
         "unknown CPU lifecycle scenario"
     );
@@ -1064,13 +1127,21 @@ pub fn run_cpu(root: &Path, scenario: &str) -> Result<PathBuf> {
         lease_path: root.join(".cpu-maintenance.lock"),
         guardian_sha256: executable_digest(&executable)?,
         budgets: Budgets {
-            arming_ms: 3000,
+            arming_ms: if scenario == "arming-deadline" {
+                50
+            } else {
+                3000
+            },
             studio_stop_ms: 2000,
             omlx_stop_ms: 2000,
             prelaunch_ms: 1000,
             experiment_ms,
             cleanup_ms,
-            omlx_restore_ms: 3000,
+            omlx_restore_ms: if scenario == "restore-launch-deadline" {
+                50
+            } else {
+                3000
+            },
             studio_restore_ms: 2000,
             recovery_ms: 3000,
             total_ms: 30_000,

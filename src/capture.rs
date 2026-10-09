@@ -48,9 +48,32 @@ pub(crate) struct NativeCaptureControl<'a> {
     pub recovery_tick: &'a mut dyn FnMut() -> Result<()>,
     pub cleanup_budget: Duration,
     pub automation_deadline: Instant,
+    pub prelaunch_deadline: Instant,
     pub creation_attempted: bool,
     pub directory: Option<PathBuf>,
     pub settlement: Option<Settlement>,
+}
+
+impl NativeCaptureControl<'_> {
+    fn check_prelaunch(&mut self) -> Result<()> {
+        ensure!(
+            Instant::now() < self.prelaunch_deadline && Instant::now() < self.automation_deadline,
+            "native prelaunch deadline expired"
+        );
+        (self.tick)()?;
+        ensure!(
+            Instant::now() < self.prelaunch_deadline && Instant::now() < self.automation_deadline,
+            "native prelaunch deadline expired during authority observation"
+        );
+        Ok(())
+    }
+}
+
+fn prelaunch_checkpoint(native: &mut Option<&mut NativeCaptureControl<'_>>) -> Result<()> {
+    if let Some(control) = native.as_mut() {
+        control.check_prelaunch()?;
+    }
+    Ok(())
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -861,7 +884,7 @@ pub(crate) fn capture_native_guarded(
         native.binding.guardian_pid == std::process::id(),
         "native capture must run in its bound guardian"
     );
-    (native.tick)()?;
+    native.check_prelaunch()?;
     ensure!(
         options.timeout <= Duration::from_secs(600),
         "native execution is limited to 600 seconds"
@@ -1218,23 +1241,31 @@ pub(crate) mod unix {
         guarded: Option<(GuardConfig, &Lease)>,
         mut native: Option<&mut NativeCaptureControl<'_>>,
     ) -> Result<PathBuf> {
+        prelaunch_checkpoint(&mut native)?;
         let executable = absolute(&options.executable)?;
         // Preserve the selected venv invocation, while hashing its resolved binary.
-        let native_config = native.as_ref().map(|control| &control.binding);
-        let canonical_executable = native_config
+        let canonical_executable = native
+            .as_ref()
             .map(|_| fs::canonicalize(&executable))
             .transpose()?;
         let executable_hash = hash_file(
             canonical_executable.as_deref().unwrap_or(&executable),
             512 * 1024 * 1024,
-            Instant::now() + Duration::from_secs(2),
+            native
+                .as_ref()
+                .map_or(Instant::now() + Duration::from_secs(2), |control| {
+                    (Instant::now() + Duration::from_secs(2))
+                        .min(control.prelaunch_deadline)
+                        .min(control.automation_deadline)
+                }),
             None,
         );
+        prelaunch_checkpoint(&mut native)?;
         let directory = unique_run(&options.root)?;
-        let native_invocation = native_config.map(|native| NativeInvocation {
-            invocation_sha256: native.invocation_sha256.clone(),
-            transaction_sha256: native.transaction_sha256.clone(),
-            guardian_pid: native.guardian_pid,
+        let native_invocation = native.as_ref().map(|control| NativeInvocation {
+            invocation_sha256: control.binding.invocation_sha256.clone(),
+            transaction_sha256: control.binding.transaction_sha256.clone(),
+            guardian_pid: control.binding.guardian_pid,
             sandbox_executable: SANDBOX_EXECUTABLE.into(),
             sandbox_profile: SANDBOX_PROFILE.into(),
         });
@@ -1242,6 +1273,7 @@ pub(crate) mod unix {
         if let Some(control) = native.as_mut() {
             control.directory = Some(directory.clone());
         }
+        prelaunch_checkpoint(&mut native)?;
         if is_native {
             use std::os::unix::fs::PermissionsExt;
             fs::set_permissions(&directory, fs::Permissions::from_mode(0o700))?;
@@ -1250,6 +1282,7 @@ pub(crate) mod unix {
             Some((config, lease)) => (Some(GuardMonitor::start(config, &directory)?), Some(lease)),
             None => (None, None),
         };
+        prelaunch_checkpoint(&mut native)?;
         let mut guard_failure = monitor
             .as_ref()
             .and_then(|monitor| monitor.initial_decision().err())
@@ -1309,16 +1342,20 @@ pub(crate) mod unix {
                 sha256: None, bytes: None,
             }),
         };
+        prelaunch_checkpoint(&mut native)?;
         atomic_json(&directory, "requested.json", &record.request, JSON_LIMIT)?;
+        prelaunch_checkpoint(&mut native)?;
         if let Some(monitor) = &monitor {
             atomic_json(&directory, "guards.json", monitor.report(), JSON_LIMIT)?;
         }
+        prelaunch_checkpoint(&mut native)?;
         atomic_json(
             &directory,
             "manifest.json",
             &record,
             JSON_LIMIT - TERMINAL_HEADROOM,
         )?;
+        prelaunch_checkpoint(&mut native)?;
         let mut stdout_log = OpenOptions::new()
             .create_new(true)
             .write(true)
@@ -1329,7 +1366,7 @@ pub(crate) mod unix {
             .write(true)
             .mode(0o600)
             .open(directory.join("stderr.log"))?;
-        let execution_start = Instant::now();
+        prelaunch_checkpoint(&mut native)?;
         let mut native_cleanup_deadline = None;
         let mut command = if is_native {
             let mut command = Command::new(SANDBOX_EXECUTABLE);
@@ -1392,15 +1429,16 @@ pub(crate) mod unix {
             });
         }
         if let Some(control) = native.as_mut()
-            && let Err(error) = (control.tick)()
+            && let Err(error) = control.check_prelaunch()
         {
             guard_failure = Some(format!("named scope revoked before creation: {error:#}"));
         }
+        let execution_start = Instant::now();
+        let mut spawn_failure = None;
         let spawned: Option<Result<CaptureChild>> =
             if guard_failure.is_some() || cancelled.load(Ordering::Relaxed) {
                 None
             } else if let Some(control) = native.as_mut() {
-                control.creation_attempted = true;
                 let spec = CommandSpec {
                     executable: PathBuf::from(command.get_program()),
                     args: command
@@ -1423,11 +1461,17 @@ pub(crate) mod unix {
                 Some(
                     OwnedProcess::spawn_with_lease(
                         &spec,
-                        (Instant::now() + options.timeout).min(control.automation_deadline),
+                        (execution_start + options.timeout)
+                            .min(control.prelaunch_deadline)
+                            .min(control.automation_deadline),
                         control.tick,
                         lease_fd.context("native lease missing")?,
                     )
-                    .map(CaptureChild::Native),
+                    .map(|attempt| {
+                        control.creation_attempted = true;
+                        spawn_failure = attempt.failure;
+                        CaptureChild::Native(attempt.process)
+                    }),
                 )
             } else {
                 Some(
@@ -1468,34 +1512,21 @@ pub(crate) mod unix {
                     group_quiescent: false,
                     leader_reaped: false,
                 });
-                if let Some(failure) = error.downcast_ref::<crate::process_scope::SpawnFailure>() {
-                    let status = &failure.settlement;
-                    record.cleanup = Some(Cleanup {
-                        process_group: Some(failure.pid),
-                        group_signalled: status.group_signalled,
-                        group_quiescent: status.group_absent,
-                        leader_reaped: status.leader_reaped,
-                    });
-                    record.cleanup_elapsed_ms = Some(failure.cleanup_elapsed_ms);
-                    if status.leader_reaped {
-                        record.exit = Some(ChildExit {
-                            code: status.exit_code,
-                            signal: status.exit_signal,
-                        });
-                    }
-                    if let Some(control) = native.as_mut() {
-                        control.settlement = Some(status.clone());
-                    }
-                }
             }
             Some(Ok(mut owned)) => {
                 let group = owned.pid();
-                let (mut stdout, mut stderr) = owned.take_io()?;
+                let mut streams = owned.take_io();
                 let mut remaining = options.max_output_bytes;
                 let mut last_size_check = Instant::now();
                 let execution = (|| -> Result<()> {
-                    nonblocking(&stdout)?;
-                    nonblocking(&stderr)?;
+                    if let Some(failure) = spawn_failure {
+                        bail!("owned launch handshake failed: {failure}");
+                    }
+                    let (stdout, stderr) = streams.as_mut().map_err(|error| {
+                        anyhow::anyhow!("owned process streams unavailable: {error:#}")
+                    })?;
+                    nonblocking(stdout)?;
+                    nonblocking(stderr)?;
                     loop {
                         if let Some(control) = native.as_mut() {
                             (control.tick)()?;
@@ -1528,13 +1559,13 @@ pub(crate) mod unix {
                             }
                         }
                         let (stdout_overflow, _) = drain(
-                            &mut stdout,
+                            stdout,
                             &mut stdout_log,
                             &mut remaining,
                             &mut record.logs.stdout_bytes,
                         )?;
                         let (stderr_overflow, _) = drain(
-                            &mut stderr,
+                            stderr,
                             &mut stderr_log,
                             &mut remaining,
                             &mut record.logs.stderr_bytes,
@@ -1616,17 +1647,20 @@ pub(crate) mod unix {
                 // Nonblocking drains have a separate 100 ms bound per pipe: an
                 // escaped descendant can never make us wait indefinitely for EOF.
                 let final_logs = (|| -> Result<bool> {
-                    nonblocking(&stdout)?;
-                    nonblocking(&stderr)?;
+                    let (stdout, stderr) = streams.as_mut().map_err(|error| {
+                        anyhow::anyhow!("owned process streams unavailable: {error:#}")
+                    })?;
+                    nonblocking(stdout)?;
+                    nonblocking(stderr)?;
                     let out = final_drain(
-                        &mut stdout,
+                        stdout,
                         &mut stdout_log,
                         &mut remaining,
                         &mut record.logs.stdout_bytes,
                         native_cleanup_deadline,
                     )?;
                     let err = final_drain(
-                        &mut stderr,
+                        stderr,
                         &mut stderr_log,
                         &mut remaining,
                         &mut record.logs.stderr_bytes,
@@ -1649,8 +1683,7 @@ pub(crate) mod unix {
                         record.failure = Some(format!("retaining final logs failed: {error}"));
                     }
                 }
-                drop(stdout);
-                drop(stderr);
+                drop(streams);
             }
         }
         record
@@ -1746,5 +1779,88 @@ pub(crate) mod unix {
             atomic_json(&directory, "manifest.json", &record, JSON_LIMIT)?;
         }
         Ok(directory)
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod deadline_review_tests {
+    use super::*;
+
+    #[test]
+    fn review_prelaunch_callback_overrun_never_attempts_creation() {
+        prelaunch_overrun(1);
+    }
+
+    #[test]
+    fn review_prelaunch_setup_callback_cannot_renew_phase() {
+        prelaunch_overrun(2);
+    }
+
+    fn prelaunch_overrun(delay_at: usize) {
+        let root = tempfile::tempdir().unwrap();
+        let output = fs::canonicalize(root.path()).unwrap().join("capture");
+        let boundary = Instant::now() + Duration::from_millis(if delay_at == 1 { 5 } else { 100 });
+        let mut calls = 0;
+        let mut tick = || {
+            calls += 1;
+            if calls == delay_at {
+                std::thread::sleep(
+                    boundary.saturating_duration_since(Instant::now()) + Duration::from_millis(20),
+                );
+            }
+            Ok(())
+        };
+        let mut recovery = || Ok(());
+        let mut control = NativeCaptureControl {
+            binding: NativeBinding {
+                invocation_sha256: "0".repeat(64),
+                transaction_sha256: "0".repeat(64),
+                guardian_pid: std::process::id(),
+            },
+            tick: &mut tick,
+            recovery_tick: &mut recovery,
+            cleanup_budget: Duration::from_millis(500),
+            automation_deadline: Instant::now() + Duration::from_secs(2),
+            prelaunch_deadline: boundary,
+            creation_attempted: false,
+            directory: None,
+            settlement: None,
+        };
+        // Internal setup rejection only, not minted production authority. No
+        // lease/collector/native runtime is supplied; even the old path cannot
+        // execute its harmless /usr/bin/true target without a lease.
+        let result = unix::capture(
+            serde_json::from_str(include_str!("../examples/image-workload.json")).unwrap(),
+            CaptureOptions {
+                root: output.clone(),
+                executable: "/usr/bin/true".into(),
+                args: Vec::new(),
+                env: BTreeMap::new(),
+                timeout: Duration::from_millis(100),
+                max_output_bytes: 1024 * 1024,
+            },
+            Arc::new(AtomicBool::new(false)),
+            None,
+            Some(&mut control),
+        );
+        eprintln!(
+            "review prelaunch: expired={} creation_attempted={} directory_created={} result={result:?}",
+            Instant::now() >= control.prelaunch_deadline,
+            control.creation_attempted,
+            output.exists()
+        );
+        assert!(
+            !control.creation_attempted,
+            "expired prelaunch reached process creation"
+        );
+        assert!(
+            !output.exists(),
+            "overrunning authority check allowed setup effects"
+        );
+        assert!(result.is_err());
+        assert_eq!(
+            calls, delay_at,
+            "probe did not reach its selected setup observation"
+        );
     }
 }

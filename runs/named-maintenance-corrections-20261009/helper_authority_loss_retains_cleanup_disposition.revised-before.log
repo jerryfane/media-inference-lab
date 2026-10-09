@@ -1,0 +1,13 @@
+
+running 1 test
+test service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition ... FAILED
+
+failures:
+
+failures:
+    service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 30 filtered out; finished in 0.02s
+
+helper authority probe: pid=Some(18407), marker_ticks=5, live_before_disposal=true, error=execution authority revoked
+Error: helper retained live actor after authority loss

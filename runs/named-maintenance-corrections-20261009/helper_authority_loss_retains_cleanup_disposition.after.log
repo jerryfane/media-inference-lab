@@ -1,0 +1,10 @@
+
+running 1 test
+test service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.06s
+
+helper authority probe: pid=71271, marker_ticks=4, absent=true, result=Err(helper pid 71271 cleanup complete=true: Ok(())
+
+Caused by:
+    execution authority revoked), accounting=[ActorDisposition { kind: "bounded helper", pid: 71271, identity: Some(ProcessIdentity { pid: 71271, ppid: 71270, pgid: 71271, sid: 71271, uid: 501, start_seconds: 1791556186, start_subseconds: 700230, executable: "/bin/bash", cwd: "/", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: "/bin/sh", args: ["-c", "echo $$ > '/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmprWhdtT/pid'; exec /bin/sleep 2"], cwd: "/", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: None }), complete: true, known_absent: true, failure: Some("execution authority revoked; cleanup: Ok(())"), descendant_uncertainty: None }]

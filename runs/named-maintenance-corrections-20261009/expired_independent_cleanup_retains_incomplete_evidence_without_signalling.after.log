@@ -1,0 +1,7 @@
+
+running 1 test
+test process_scope::tests::expired_independent_cleanup_retains_incomplete_evidence_without_signalling ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 2.01s
+
+expired retained cleanup pid=70995 still_live=true lease_busy=true natural_status=0 settlement=Settlement { complete: false, leader_reaped: false, group_absent: false, group_signalled: false, exit_code: None, exit_signal: None, failure: Some("settlement control denied: guardian process deadline reached") }

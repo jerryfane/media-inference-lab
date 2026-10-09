@@ -1,0 +1,13 @@
+
+running 1 test
+test service_lifecycle::tests::deadline_after_term_never_escalates ... FAILED
+
+failures:
+
+failures:
+    service_lifecycle::tests::deadline_after_term_never_escalates
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 30 filtered out; finished in 0.12s
+
+TERM deadline probe: result=Err(service deadline expired), exited_before_cleanup=true, cleanup=Ok(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(9), failure: None })
+Error: KILL occurred after TERM deadline

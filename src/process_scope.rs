@@ -138,32 +138,22 @@ pub struct Settlement {
     pub failure: Option<String>,
 }
 
-/// A failed spawn may still have an unreaped child. Never restore services unless
-/// this evidence is complete; an incomplete error requires guardian escalation.
-#[derive(Debug)]
-pub struct SpawnFailure {
-    pub pid: u32,
-    pub cause: String,
-    pub settlement: Settlement,
-    pub cleanup_elapsed_ms: u64,
+/// Once fork succeeds, the caller always receives the child ownership, including
+/// failed enrollment or exec. `Err` from a spawn means no child was created.
+///
+/// A failure is not a settlement: retain `process` and explicitly settle it with
+/// separately authorized cleanup and its already-enrolled absolute deadline.
+#[must_use = "inspect spawn failure and explicitly settle the retained child"]
+pub struct SpawnAttempt {
+    pub process: OwnedProcess,
+    pub failure: Option<String>,
 }
 
-impl std::fmt::Display for SpawnFailure {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "spawn of owned pid {} failed: {}; cleanup complete={}, reaped={}, group_absent={}, failure={:?}",
-            self.pid,
-            self.cause,
-            self.settlement.complete,
-            self.settlement.leader_reaped,
-            self.settlement.group_absent,
-            self.settlement.failure
-        )
+impl SpawnAttempt {
+    pub fn into_parts(self) -> (OwnedProcess, Option<String>) {
+        (self.process, self.failure)
     }
 }
-
-impl std::error::Error for SpawnFailure {}
 
 pub fn verify_identity(expected: &ProcessIdentity) -> Result<ProcessIdentity> {
     let actual = observe(expected.pid)?.context("bound process no longer exists")?;
@@ -748,7 +738,7 @@ mod darwin {
             spec: &CommandSpec,
             deadline: Instant,
             tick: &mut dyn FnMut() -> Result<()>,
-        ) -> Result<Self> {
+        ) -> Result<SpawnAttempt> {
             Self::spawn_inner(spec, deadline, tick, None)
         }
 
@@ -759,7 +749,7 @@ mod darwin {
             deadline: Instant,
             tick: &mut dyn FnMut() -> Result<()>,
             lease_fd: i32,
-        ) -> Result<Self> {
+        ) -> Result<SpawnAttempt> {
             ensure!(
                 lease_fd >= 3 && unsafe { libc::fcntl(lease_fd, libc::F_GETFD) } >= 0,
                 "invalid owned project lease descriptor"
@@ -772,7 +762,7 @@ mod darwin {
             deadline: Instant,
             tick: &mut dyn FnMut() -> Result<()>,
             lease: Option<RawFd>,
-        ) -> Result<Self> {
+        ) -> Result<SpawnAttempt> {
             let mut prepared = Prepared::new(spec)?;
             checkpoint(deadline, tick)?;
             // Resolve/validate libproc before fork as well as in the child.
@@ -827,6 +817,8 @@ mod darwin {
                 stdout: Some(stdout_read),
                 stderr: Some(stderr_read),
             };
+            #[cfg(test)]
+            super::tests::SPAWN_PHASE.set(Some((owned.pid, false)));
             let result = (|| -> Result<()> {
                 let change = libc::kevent {
                     ident: pid as usize,
@@ -870,18 +862,26 @@ mod darwin {
                 // F_SETNOSIGPIPE handles a child dying after ready without
                 // changing guardian-wide signal disposition.
                 release_barrier(barrier_write.as_raw_fd())?;
+                #[cfg(test)]
+                super::tests::SPAWN_PHASE.set(Some((owned.pid, true)));
                 let status = read_status(&mut status_read, deadline, tick)?;
                 if let Some(error) = status {
                     bail!("execve failed: {}", io::Error::from_raw_os_error(error));
                 }
                 loop {
                     checkpoint(deadline, tick)?;
-                    owned.poll_events()?;
+                    if let Err(error) = owned.poll_events() {
+                        owned.fail(format!("kernel observation failed during spawn: {error:#}"));
+                        return Err(error);
+                    }
                     if owned.saw_exec {
                         break;
                     }
                     if owned.exited_unreaped()? {
-                        owned.poll_events()?;
+                        if let Err(error) = owned.poll_events() {
+                            owned.fail(format!("final spawn observation failed: {error:#}"));
+                            return Err(error);
+                        }
                         ensure!(owned.saw_exec, "child status closed without observed exec");
                         break;
                     }
@@ -892,22 +892,13 @@ mod darwin {
                 Ok(())
             })();
             drop(barrier_write);
-            if let Err(error) = result {
-                let cause = format!("{error:#}");
-                // No command-side retry. Cleanup remains bounded by the same
-                // guardian deadline and reports an unreaped child explicitly.
-                let cleanup_started = Instant::now();
-                let settlement = owned.settle(deadline, Duration::ZERO, tick)?;
-                return Err(SpawnFailure {
-                    pid: owned.pid,
-                    cause,
-                    settlement,
-                    cleanup_elapsed_ms: cleanup_started.elapsed().as_millis().min(u64::MAX as u128)
-                        as u64,
-                }
-                .into());
-            }
-            Ok(owned)
+            // Closing an unreleased barrier prevents command execution, but
+            // does not reap the child or relinquish its ownership. In particular,
+            // the failed execution callback never authorizes cleanup here.
+            Ok(SpawnAttempt {
+                process: owned,
+                failure: result.err().map(|error| format!("{error:#}")),
+            })
         }
 
         pub fn pid(&self) -> u32 {
@@ -996,7 +987,29 @@ mod darwin {
                 self.fail(format!("unreaped child ownership unavailable: {error}"));
                 return Err(error).context("observing child without reaping");
             }
-            Ok(unsafe { info.si_pid() } != 0)
+            let waited_pid = unsafe { info.si_pid() };
+            ensure!(
+                waited_pid == 0 || waited_pid == self.pid as i32,
+                "waitid returned a different owned child"
+            );
+            // A PID alone does not establish termination. In particular a stop
+            // or continue notification must leave this root eligible for bounded
+            // cleanup, not lead to an unreapable "quiescent" scope.
+            if waited_pid == 0
+                || info.si_signo != libc::SIGCHLD
+                || !matches!(
+                    info.si_code,
+                    libc::CLD_EXITED | libc::CLD_KILLED | libc::CLD_DUMPED
+                )
+            {
+                return Ok(false);
+            }
+            let root = basic(self.pid)?.context("unreaped child disappeared after waitid")?;
+            ensure!(
+                root.ppid == unsafe { libc::getpid() } as u32,
+                "unreaped child no longer belongs to guardian"
+            );
+            Ok(root.state == ProcessState::Zombie)
         }
 
         fn snapshot(&mut self) -> Result<GroupSnapshot> {
@@ -1182,7 +1195,7 @@ mod darwin {
                 };
                 let quiescent = if self.session_ready {
                     match self.snapshot() {
-                        Ok(members) => members.count == 1 && exited,
+                        Ok(members) => members.count == 1 && members.all_zombies && exited,
                         Err(error) => {
                             self.fail(format!("group settlement observation failed: {error:#}"));
                             false
@@ -1265,6 +1278,13 @@ mod darwin {
     }
 
     fn checkpoint(deadline: Instant, tick: &mut dyn FnMut() -> Result<()>) -> Result<()> {
+        // Callbacks may observe via their own owned helper. Expired authority
+        // cannot start that work, and time spent inside it cannot permit a late
+        // signal or barrier release after it returns.
+        ensure!(
+            Instant::now() < deadline,
+            "guardian process deadline reached"
+        );
         tick()?;
         ensure!(
             Instant::now() < deadline,
@@ -1399,7 +1419,7 @@ impl OwnedProcess {
         _spec: &CommandSpec,
         _deadline: Instant,
         _tick: &mut dyn FnMut() -> Result<()>,
-    ) -> Result<Self> {
+    ) -> Result<SpawnAttempt> {
         bail!(
             "owned process scope requires Darwin pre-exec kernel fork observation; no polling fallback"
         )
@@ -1409,7 +1429,7 @@ impl OwnedProcess {
         deadline: Instant,
         tick: &mut dyn FnMut() -> Result<()>,
         _lease_fd: i32,
-    ) -> Result<Self> {
+    ) -> Result<SpawnAttempt> {
         Self::spawn_with_deadline(spec, deadline, tick)
     }
     pub fn pid(&self) -> u32 {
@@ -1440,6 +1460,254 @@ impl OwnedProcess {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "macos")]
+    thread_local! {
+        // Records only the real spawn phase; the caller's tick revokes authority.
+        pub(super) static SPAWN_PHASE: std::cell::Cell<Option<(u32, bool)>> = const {
+            std::cell::Cell::new(None)
+        };
+    }
+
+    #[cfg(target_os = "macos")]
+    struct FiniteChildReaper;
+
+    #[cfg(target_os = "macos")]
+    impl FiniteChildReaper {
+        fn reap(&mut self) -> Result<Option<i32>> {
+            let Some((pid, _)) = SPAWN_PHASE.take() else {
+                return Ok(None);
+            };
+            // These fixtures have finite natural lifetimes. Never signal after
+            // failed cleanup; retain the original incomplete settlement evidence.
+            loop {
+                let mut status = 0;
+                let waited = unsafe { libc::waitpid(pid as i32, &mut status, 0) };
+                if waited == pid as i32 {
+                    return Ok(Some(status));
+                }
+                let error = std::io::Error::last_os_error();
+                match error.raw_os_error() {
+                    Some(libc::EINTR) => continue,
+                    Some(libc::ECHILD) => return Ok(None),
+                    _ => return Err(error).context("disposing finite owned test child"),
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    impl Drop for FiniteChildReaper {
+        fn drop(&mut self) {
+            let _ = self.reap();
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn revoked_spawn(
+        deadline: Instant,
+        after_barrier: bool,
+        lease_fd: Option<i32>,
+    ) -> (Result<SpawnAttempt>, bool) {
+        let spec = CommandSpec {
+            executable: "/bin/sleep".into(),
+            args: vec!["2".into()],
+            cwd: "/".into(),
+            environment: BTreeMap::new(),
+        };
+        SPAWN_PHASE.set(None);
+        let mut revoked = false;
+        let mut execution_tick = || {
+            if let Some((pid, released)) = SPAWN_PHASE.get()
+                && released == after_barrier
+            {
+                while after_barrier && !revoked {
+                    ensure!(Instant::now() < deadline, "finite exec observation expired");
+                    if observe(pid).is_ok_and(|identity| {
+                        identity
+                            .is_some_and(|identity| identity.executable == Path::new("/bin/sleep"))
+                    }) {
+                        revoked = true;
+                    } else {
+                        std::thread::sleep(Duration::from_millis(1));
+                    }
+                }
+                revoked = true;
+                bail!("execution authority revoked during spawn");
+            }
+            Ok(())
+        };
+        let result = match lease_fd {
+            Some(fd) => OwnedProcess::spawn_with_lease(&spec, deadline, &mut execution_tick, fd),
+            None => OwnedProcess::spawn_with_deadline(&spec, deadline, &mut execution_tick),
+        };
+        (result, revoked)
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn post_barrier_revocation_retains_child_for_independent_cleanup() {
+        use std::os::fd::AsRawFd;
+
+        // Both authorities receive an explicit absolute ceiling before spawn;
+        // the process owner is not permitted to allocate cleanup time itself.
+        let execution_deadline = Instant::now() + Duration::from_secs(5);
+        let cleanup_deadline = execution_deadline;
+        let lease = tempfile::NamedTempFile::new().unwrap();
+        let contender = lease.reopen().unwrap();
+        assert_eq!(
+            unsafe { libc::flock(lease.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) },
+            0
+        );
+        let reaper = FiniteChildReaper;
+        let (result, revoked) = revoked_spawn(execution_deadline, true, Some(lease.as_raw_fd()));
+        let (mut process, failure) = result.unwrap().into_parts();
+        drop(lease);
+        let lease_busy =
+            unsafe { libc::flock(contender.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0;
+        let mut cleanup_tick = || Ok(());
+        let settlement = process
+            .settle(
+                cleanup_deadline,
+                Duration::from_millis(100),
+                &mut cleanup_tick,
+            )
+            .unwrap();
+        let lease_released =
+            unsafe { libc::flock(contender.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0;
+        eprintln!(
+            "post-barrier retained pid={} revoked={revoked} lease_busy={lease_busy} lease_released={lease_released} settlement={settlement:?}",
+            process.pid()
+        );
+        drop(reaper);
+        assert!(revoked && lease_busy);
+        assert!(failure.is_some());
+        assert!(settlement.complete, "{settlement:?}");
+        assert!(settlement.leader_reaped && settlement.group_absent && lease_released);
+        assert_eq!(settlement.exit_signal, Some(libc::SIGTERM));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn expired_independent_cleanup_retains_incomplete_evidence_without_signalling() {
+        use std::os::fd::AsRawFd;
+
+        let cleanup_deadline = Instant::now();
+        let execution_deadline = cleanup_deadline + Duration::from_secs(5);
+        let lease = tempfile::NamedTempFile::new().unwrap();
+        let contender = lease.reopen().unwrap();
+        assert_eq!(
+            unsafe { libc::flock(lease.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) },
+            0
+        );
+        let mut reaper = FiniteChildReaper;
+        let (result, revoked) = revoked_spawn(execution_deadline, true, Some(lease.as_raw_fd()));
+        let (mut process, failure) = result.unwrap().into_parts();
+        drop(lease);
+        let mut expired_tick_called = false;
+        let settlement = process
+            .settle(cleanup_deadline, Duration::ZERO, &mut || {
+                expired_tick_called = true;
+                Ok(())
+            })
+            .unwrap();
+        let still_live = !process.exited_unreaped().unwrap();
+        let lease_busy =
+            unsafe { libc::flock(contender.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0;
+        // A second call cannot replace incomplete evidence or extend authority.
+        let cached = process
+            .settle(execution_deadline, Duration::ZERO, &mut || {
+                bail!("a completed settlement attempt must not reacquire control")
+            })
+            .unwrap();
+        let natural_status = reaper.reap().unwrap().unwrap();
+        let lease_released =
+            unsafe { libc::flock(contender.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0;
+        eprintln!(
+            "expired retained cleanup pid={} still_live={still_live} lease_busy={lease_busy} natural_status={natural_status} settlement={settlement:?}",
+            process.pid()
+        );
+        assert!(revoked && failure.is_some());
+        assert!(!settlement.complete && !settlement.leader_reaped && !settlement.group_absent);
+        assert!(!settlement.group_signalled && still_live && lease_busy);
+        assert!(!expired_tick_called);
+        assert!(settlement.failure.is_some());
+        assert!(!cached.complete && !cached.leader_reaped && !cached.group_signalled);
+        assert_eq!(cached.failure, settlement.failure);
+        assert!(libc::WIFEXITED(natural_status) && libc::WEXITSTATUS(natural_status) == 0);
+        assert!(lease_released);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn enrollment_revocation_retains_barrier_child_for_independent_cleanup() {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let reaper = FiniteChildReaper;
+        let (result, revoked) = revoked_spawn(deadline, false, None);
+        let (mut process, failure) = result.unwrap().into_parts();
+        let was_behind_barrier = SPAWN_PHASE.get().is_some_and(|(_, released)| !released);
+        let settlement = process
+            .settle(deadline, Duration::ZERO, &mut || Ok(()))
+            .unwrap();
+        drop(reaper);
+        assert!(revoked && failure.is_some() && was_behind_barrier);
+        assert!(settlement.complete, "{settlement:?}");
+        assert!(settlement.leader_reaped && settlement.group_absent);
+        assert!(!settlement.group_signalled);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn setup_or_exec_failure_retains_child_until_explicit_settlement() {
+        let directory = tempfile::tempdir().unwrap();
+        let missing = directory.path().join("absent");
+        for fail_setup in [true, false] {
+            let deadline = Instant::now() + Duration::from_secs(5);
+            let spec = CommandSpec {
+                executable: if fail_setup {
+                    "/bin/sleep".into()
+                } else {
+                    missing.clone()
+                },
+                args: vec!["2".into()],
+                cwd: if fail_setup {
+                    missing.clone()
+                } else {
+                    "/".into()
+                },
+                environment: BTreeMap::new(),
+            };
+            SPAWN_PHASE.set(None);
+            let reaper = FiniteChildReaper;
+            let (mut process, failure) =
+                OwnedProcess::spawn_with_deadline(&spec, deadline, &mut || Ok(()))
+                    .unwrap()
+                    .into_parts();
+            let observed_exit = (|| -> Result<()> {
+                while !process.exited_unreaped()? {
+                    ensure!(
+                        Instant::now() < deadline,
+                        "finite failed-exec observation expired"
+                    );
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+                Ok(())
+            })();
+            let settlement = process
+                .settle(deadline, Duration::ZERO, &mut || Ok(()))
+                .unwrap();
+            drop(reaper);
+            observed_exit.unwrap();
+            assert!(
+                failure.is_some(),
+                "failed setup/exec must not report success"
+            );
+            assert!(settlement.complete, "{settlement:?}");
+            assert!(settlement.leader_reaped && settlement.group_absent);
+            assert_eq!(settlement.exit_code, Some(127));
+            assert!(!settlement.group_signalled);
+        }
+    }
 
     fn command() -> CommandSpec {
         CommandSpec {
@@ -1505,7 +1773,11 @@ mod tests {
         use std::io::Read;
         let deadline = Instant::now() + Duration::from_secs(5);
         let mut tick = || Ok(());
-        let mut process = OwnedProcess::spawn_with_deadline(spec, deadline, &mut tick).unwrap();
+        SPAWN_PHASE.set(None);
+        let _reaper = FiniteChildReaper;
+        let (mut process, failure) = OwnedProcess::spawn_with_deadline(spec, deadline, &mut tick)
+            .unwrap()
+            .into_parts();
         let observed_exit = loop {
             match process.exited_unreaped() {
                 Ok(true) => break Ok(()),
@@ -1517,6 +1789,7 @@ mod tests {
             }
         };
         let settlement = process.settle(deadline, Duration::ZERO, &mut tick).unwrap();
+        assert!(failure.is_none(), "{failure:?}");
         observed_exit.unwrap();
         let mut stdout = String::new();
         let mut stderr = String::new();
@@ -1584,10 +1857,15 @@ mod tests {
         };
         let deadline = Instant::now() + Duration::from_secs(5);
         let mut tick = || Ok(());
-        let mut process = OwnedProcess::spawn_with_deadline(&spec, deadline, &mut tick).unwrap();
+        SPAWN_PHASE.set(None);
+        let _reaper = FiniteChildReaper;
+        let (mut process, failure) = OwnedProcess::spawn_with_deadline(&spec, deadline, &mut tick)
+            .unwrap()
+            .into_parts();
         let settlement = process
             .settle(deadline, Duration::from_millis(100), &mut tick)
             .unwrap();
+        assert!(failure.is_none(), "{failure:?}");
         assert!(settlement.complete, "{settlement:?}");
         assert!(settlement.leader_reaped && settlement.group_absent);
         assert_eq!(settlement.exit_signal, Some(libc::SIGTERM));
@@ -1604,7 +1882,11 @@ mod tests {
         };
         let deadline = Instant::now() + Duration::from_secs(5);
         let mut tick = || Ok(());
-        let mut process = OwnedProcess::spawn_with_deadline(&spec, deadline, &mut tick).unwrap();
+        SPAWN_PHASE.set(None);
+        let _reaper = FiniteChildReaper;
+        let (mut process, failure) = OwnedProcess::spawn_with_deadline(&spec, deadline, &mut tick)
+            .unwrap()
+            .into_parts();
         let observations = (|| -> Result<_> {
             let identity = process.identity()?;
             let live_absent = bound_absent(&identity)?;
@@ -1624,6 +1906,7 @@ mod tests {
         })();
         // Cleanup precedes assertions, including failed observation assertions.
         let settlement = process.settle(deadline, Duration::ZERO, &mut tick).unwrap();
+        assert!(failure.is_none(), "{failure:?}");
         let (identity, live_absent, reuse_rejected, zombie_absent) = observations.unwrap();
         assert!(settlement.complete, "{settlement:?}");
         assert!(!live_absent && !zombie_absent);

@@ -1,0 +1,7 @@
+
+running 1 test
+test process_scope::tests::post_barrier_revocation_retains_child_for_independent_cleanup ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.01s
+
+post-barrier retained pid=70987 revoked=true lease_busy=true lease_released=true settlement=Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: None }

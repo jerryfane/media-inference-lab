@@ -1,0 +1,16 @@
+
+running 1 test
+test capture::deadline_review_tests::review_prelaunch_callback_overrun_never_attempts_creation ... FAILED
+
+failures:
+
+failures:
+    capture::deadline_review_tests::review_prelaunch_callback_overrun_never_attempts_creation
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 32 filtered out; finished in 0.07s
+
+review prelaunch: expired=true creation_attempted=true directory_created=true result=Err(native lease missing)
+
+thread 'capture::deadline_review_tests::review_prelaunch_callback_overrun_never_attempts_creation' (67362343) panicked at src/capture.rs:1801:9:
+expired prelaunch reached process creation
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

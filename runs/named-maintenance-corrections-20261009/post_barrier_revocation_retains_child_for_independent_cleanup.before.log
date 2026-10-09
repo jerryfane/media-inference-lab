@@ -1,0 +1,16 @@
+
+running 1 test
+test process_scope::tests::post_barrier_revocation_retains_child_for_independent_cleanup ... FAILED
+
+failures:
+
+failures:
+    process_scope::tests::post_barrier_revocation_retains_child_for_independent_cleanup
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 32 filtered out; finished in 2.02s
+
+post-barrier baseline pid=10025 revoked=true lease_busy=true settlement=Settlement { complete: false, leader_reaped: false, group_absent: false, group_signalled: false, exit_code: None, exit_signal: None, failure: Some("settlement control denied: execution authority revoked after barrier") }
+
+thread 'process_scope::tests::post_barrier_revocation_retains_child_for_independent_cleanup' (67361670) panicked at src/process_scope.rs:1535:9:
+revoked execution discarded owned child instead of allowing independent cleanup
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

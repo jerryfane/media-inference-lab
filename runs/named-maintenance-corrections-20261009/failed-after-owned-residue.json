@@ -1,0 +1,8 @@
+{
+  "kind": "independent_test_harness_residue_disposal",
+  "failed_test": "deadline_after_term_never_escalates",
+  "original_slot_result": "expired; incomplete; never renewed or accepted",
+  "identity_before_signal": "71080     1 71080 Ts   Fri Oct  9 18:29:41 2026     /bin/sleep 2\n",
+  "action": "SIGKILL only recorded project-owned stopped sleep PID71080; not production recovery or a passing test result",
+  "after_signal_observation": "Target-only ps exited1 with empty output; PID absent."
+}

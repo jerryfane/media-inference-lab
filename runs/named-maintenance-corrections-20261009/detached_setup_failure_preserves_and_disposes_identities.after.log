@@ -1,0 +1,10 @@
+
+running 1 test
+test service_lifecycle::tests::detached_setup_failure_preserves_and_disposes_identities ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.06s
+
+detached setup probe: result=Err(detached pid 71366 intermediate 71365 cleanup complete=true: Ok(())
+
+Caused by:
+    detached exec/setup failed), accounting=[ActorDisposition { kind: "detached launch", pid: 71366, identity: None, intermediate_pid: Some(71365), intermediate_identity: Some(ProcessIdentity { pid: 71365, ppid: 71364, pgid: 66229, sid: 66229, uid: 501, start_seconds: 1791556189, start_subseconds: 147448, executable: "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-f2e656554c1e4b94", cwd: "/Users/jerry/Desktop/repos/media-inference-lab", state: Running }), intermediate_reaped: true, intermediate_status: Some(0), launch_record: CommandSpec { executable: "/bin/sh", args: ["-c", "echo $$ > '/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpF6S5EE/executed'; exec /bin/sleep 2"], cwd: "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpF6S5EE/missing", environment: {} }, settlement: None, complete: true, known_absent: true, failure: Some("detached exec/setup failed; cleanup: Ok(()); descendant uncertainty: None"), descendant_uncertainty: None }]

@@ -1,0 +1,257 @@
+[
+  {
+    "role": "studio",
+    "root": {
+      "pid": 90497,
+      "ppid": 90438,
+      "pgid": 90497,
+      "sid": 90497,
+      "uid": 501,
+      "start_seconds": 1791556646,
+      "start_subseconds": 519327,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+      "state": "running"
+    },
+    "gui": null,
+    "inhibited": true,
+    "restored": false,
+    "failure": null,
+    "evidence": [
+      "owned backend settled and reaped; group absent"
+    ],
+    "launch_record": null,
+    "actors": [
+      {
+        "kind": "failed CPU replacement",
+        "pid": 90525,
+        "identity": {
+          "pid": 90525,
+          "ppid": 90438,
+          "pgid": 90525,
+          "sid": 90525,
+          "uid": 501,
+          "start_seconds": 1791556647,
+          "start_subseconds": 52957,
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+          "state": "running"
+        },
+        "intermediate_pid": null,
+        "intermediate_identity": null,
+        "intermediate_reaped": true,
+        "intermediate_status": null,
+        "launch_record": {
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "args": [
+            "maintenance-participant",
+            "--mode",
+            "service",
+            "--duration-ms",
+            "30000"
+          ],
+          "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+          "environment": {}
+        },
+        "settlement": {
+          "complete": true,
+          "leader_reaped": true,
+          "group_absent": true,
+          "group_signalled": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null
+        },
+        "complete": true,
+        "known_absent": true,
+        "failure": null,
+        "descendant_uncertainty": null
+      },
+      {
+        "kind": "CPU fixture disposal",
+        "pid": 90488,
+        "identity": {
+          "pid": 90488,
+          "ppid": 90438,
+          "pgid": 90488,
+          "sid": 90488,
+          "uid": 501,
+          "start_seconds": 1791556646,
+          "start_subseconds": 243930,
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+          "state": "stopped"
+        },
+        "intermediate_pid": null,
+        "intermediate_identity": null,
+        "intermediate_reaped": true,
+        "intermediate_status": null,
+        "launch_record": {
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "args": [
+            "maintenance-participant",
+            "--mode",
+            "service",
+            "--duration-ms",
+            "30000"
+          ],
+          "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+          "environment": {}
+        },
+        "settlement": {
+          "complete": true,
+          "leader_reaped": true,
+          "group_absent": true,
+          "group_signalled": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null
+        },
+        "complete": true,
+        "known_absent": true,
+        "failure": null,
+        "descendant_uncertainty": null
+      }
+    ]
+  },
+  {
+    "role": "omlx",
+    "root": {
+      "pid": 90525,
+      "ppid": 90438,
+      "pgid": 90525,
+      "sid": 90525,
+      "uid": 501,
+      "start_seconds": 1791556647,
+      "start_subseconds": 52957,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+      "state": "running"
+    },
+    "gui": {
+      "pid": 90488,
+      "ppid": 90438,
+      "pgid": 90488,
+      "sid": 90488,
+      "uid": 501,
+      "start_seconds": 1791556646,
+      "start_subseconds": 243930,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+      "state": "stopped"
+    },
+    "inhibited": false,
+    "restored": false,
+    "failure": "insufficient CPU lifetime observation budget",
+    "evidence": [
+      "same GUI birth identity observed stopped after SIGSTOP",
+      "owned backend settled and reaped; group absent",
+      "owned replacement launch PID 90525",
+      "GUI state observed on failure: Stopped; no recovery signal sent"
+    ],
+    "launch_record": {
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "args": [
+        "maintenance-participant",
+        "--mode",
+        "service",
+        "--duration-ms",
+        "30000"
+      ],
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+      "environment": {}
+    },
+    "actors": [
+      {
+        "kind": "failed CPU replacement",
+        "pid": 90525,
+        "identity": {
+          "pid": 90525,
+          "ppid": 90438,
+          "pgid": 90525,
+          "sid": 90525,
+          "uid": 501,
+          "start_seconds": 1791556647,
+          "start_subseconds": 52957,
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+          "state": "running"
+        },
+        "intermediate_pid": null,
+        "intermediate_identity": null,
+        "intermediate_reaped": true,
+        "intermediate_status": null,
+        "launch_record": {
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "args": [
+            "maintenance-participant",
+            "--mode",
+            "service",
+            "--duration-ms",
+            "30000"
+          ],
+          "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+          "environment": {}
+        },
+        "settlement": {
+          "complete": true,
+          "leader_reaped": true,
+          "group_absent": true,
+          "group_signalled": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null
+        },
+        "complete": true,
+        "known_absent": true,
+        "failure": null,
+        "descendant_uncertainty": null
+      },
+      {
+        "kind": "CPU fixture disposal",
+        "pid": 90488,
+        "identity": {
+          "pid": 90488,
+          "ppid": 90438,
+          "pgid": 90488,
+          "sid": 90488,
+          "uid": 501,
+          "start_seconds": 1791556646,
+          "start_subseconds": 243930,
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+          "state": "stopped"
+        },
+        "intermediate_pid": null,
+        "intermediate_identity": null,
+        "intermediate_reaped": true,
+        "intermediate_status": null,
+        "launch_record": {
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "args": [
+            "maintenance-participant",
+            "--mode",
+            "service",
+            "--duration-ms",
+            "30000"
+          ],
+          "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+          "environment": {}
+        },
+        "settlement": {
+          "complete": true,
+          "leader_reaped": true,
+          "group_absent": true,
+          "group_signalled": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null
+        },
+        "complete": true,
+        "known_absent": true,
+        "failure": null,
+        "descendant_uncertainty": null
+      }
+    ]
+  }
+]

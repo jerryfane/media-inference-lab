@@ -1,11 +1,17 @@
 //! Named-scope exclusion is observed by the independent guardian, not supplied as readiness JSON.
 use crate::{
     guards::GuardDecision,
-    service_lifecycle::{ServiceHandle, ServiceObservation, ServiceRole},
+    service_lifecycle::{
+        RecoveryBudget, RecoveryControl, ServiceHandle, ServiceObservation, ServiceRole,
+    },
 };
 use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
 
 pub const SANDBOX_EXECUTABLE: &str = "/usr/bin/sandbox-exec";
 pub const SANDBOX_PROFILE: &str = "(version 1)(allow default)(deny network*)(deny process-fork)(deny file-write* (require-not (subpath (param \"MIL_RUN\"))))";
@@ -169,9 +175,12 @@ impl ScopeAuthority {
         &mut self,
         services: &mut [ServiceHandle],
         clock: &mut GuardianClock,
+        wall_ceiling: SystemTime,
+        recovery_budget: Rc<RefCell<RecoveryBudget>>,
     ) -> NamedScopeReading {
+        let clock = RefCell::new(clock);
         let mut reasons = Vec::new();
-        if let Err(error) = clock.check() {
+        if let Err(error) = clock.borrow_mut().check() {
             reasons.push(error.to_string());
         }
         if let Some(reason) = &self.revoked {
@@ -179,16 +188,36 @@ impl ScopeAuthority {
         }
         let mut observations = Vec::with_capacity(services.len());
         for service in services {
-            match service.observe_inhibited() {
+            let deadline = clock.borrow().phase_deadline(Duration::from_millis(500));
+            let mut active = || {
+                ensure!(
+                    SystemTime::now() < wall_ceiling,
+                    "authorization wall ceiling expired"
+                );
+                clock.borrow_mut().check()
+            };
+            let mut recovery_tick = || {
+                ensure!(
+                    SystemTime::now() < wall_ceiling,
+                    "authorization wall ceiling expired"
+                );
+                clock.borrow_mut().recovery_check()
+            };
+            let mut recovery =
+                RecoveryControl::deferred(Rc::clone(&recovery_budget), &mut recovery_tick);
+            match service.observe_inhibited(deadline, &mut active, &mut recovery) {
                 Ok(observation) => {
                     if !observation.inhibited || observation.failure.is_some() {
                         reasons.push(format!("{:?} inhibition is unqualified", observation.role));
                     }
                     observations.push(observation);
                 }
-                Err(error) => reasons.push(format!(
-                    "required service observation unavailable: {error:#}"
-                )),
+                Err(error) => {
+                    reasons.push(format!(
+                        "required service observation unavailable: {error:#}"
+                    ));
+                    observations.push(service.last_observation());
+                }
             }
         }
         if observations.len() != 2
@@ -197,14 +226,14 @@ impl ScopeAuthority {
         {
             reasons.push("named scope requires exactly Studio and oMLX, in enrolled order".into());
         }
-        if let Err(error) = clock.check() {
+        if let Err(error) = clock.borrow_mut().check() {
             reasons.push(error.to_string());
         }
         if !reasons.is_empty() && self.revoked.is_none() {
             self.revoked = Some(reasons.join("; "));
         }
         NamedScopeReading {
-            guardian_elapsed_ms: clock.elapsed_ms(), transaction_sha256: self.transaction_sha256.clone(), services: observations,
+            guardian_elapsed_ms: clock.borrow().elapsed_ms(), transaction_sha256: self.transaction_sha256.clone(), services: observations,
             decision: GuardDecision { allowed: reasons.is_empty(), reasons },
             authority_scope: "Only enrolled Studio/oMLX admissions and the guardian-owned experiment; not whole-host GPU exclusion or arbitrary descendants".into(),
         }
