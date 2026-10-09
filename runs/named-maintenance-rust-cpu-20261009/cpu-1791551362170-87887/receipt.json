@@ -1,0 +1,38 @@
+{
+  "automation_ceiling_note": "Bounds automation, not a failed outage; GUI may remain paused for manual recovery",
+  "capture_directory": null,
+  "controller_identity": {
+    "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "pgid": 66229,
+    "pid": 87887,
+    "ppid": 66229,
+    "sid": 66229,
+    "start_seconds": 1791551362,
+    "start_subseconds": 162813,
+    "state": "running",
+    "uid": 501
+  },
+  "creation_attempted": true,
+  "elapsed_ms": 922,
+  "experiment_failure": "fork observed; Darwin cannot atomically enroll arbitrary descendants; escaped-descendant absence remains unqualified even after known-group cleanup; descendant observed; complete fork/escape enrollment cannot be established",
+  "guardian_pid": 87927,
+  "kind": "cpu_maintenance_transaction",
+  "lease_path": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r/.cpu-maintenance.lock",
+  "recovery_failure": "experiment settlement unproved: all restoration withheld",
+  "restored": false,
+  "schema_version": 1,
+  "scope": "Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee",
+  "settlement": {
+    "complete": false,
+    "exit_code": null,
+    "exit_signal": 15,
+    "failure": "fork observed; Darwin cannot atomically enroll arbitrary descendants; escaped-descendant absence remains unqualified even after known-group cleanup; descendant observed; complete fork/escape enrollment cannot be established",
+    "group_absent": true,
+    "group_signalled": true,
+    "leader_reaped": true
+  },
+  "success": false,
+  "transaction_id": "cpu-1791551362170-87887",
+  "transaction_sha256": "3eb201f43f2ae57aea145410bf3edbb466a55435da3f9085d1458c4e2694d4c5"
+}

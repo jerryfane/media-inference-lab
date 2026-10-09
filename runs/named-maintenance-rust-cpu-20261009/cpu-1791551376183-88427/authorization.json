@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "transaction_sha256": "a047e9aabe8e7037e002944354fc6905a8b85d809f83ce53e195c44b78666d85",
+  "purpose": "cpu",
+  "owner_uid": 501,
+  "not_before_unix_ms": 1791551376814,
+  "expires_unix_ms": 1791551411814,
+  "review_reference": "explicit CLI CPU-only transaction; no live service or native permissions",
+  "service_interruption_approved": true,
+  "cold_restore_approved": true,
+  "interrupted_work_loss_approved": true
+}

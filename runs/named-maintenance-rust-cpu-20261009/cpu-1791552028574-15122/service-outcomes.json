@@ -1,0 +1,63 @@
+[
+  {
+    "role": "studio",
+    "root": {
+      "pid": 15250,
+      "ppid": 15199,
+      "pgid": 15250,
+      "sid": 15250,
+      "uid": 501,
+      "start_seconds": 1791552030,
+      "start_subseconds": 983048,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "gui": null,
+    "inhibited": true,
+    "restored": false,
+    "failure": null,
+    "evidence": [
+      "owned backend settled and reaped; group absent",
+      "owned CPU fixture disposal pid 15250: {\"complete\":true,\"leader_reaped\":true,\"group_absent\":true,\"group_signalled\":true,\"exit_code\":null,\"exit_signal\":15,\"failure\":null}"
+    ],
+    "launch_record": null
+  },
+  {
+    "role": "omlx",
+    "root": {
+      "pid": 15227,
+      "ppid": 15199,
+      "pgid": 15227,
+      "sid": 15227,
+      "uid": 501,
+      "start_seconds": 1791552030,
+      "start_subseconds": 437817,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "gui": {
+      "pid": 15249,
+      "ppid": 15199,
+      "pgid": 15249,
+      "sid": 15249,
+      "uid": 501,
+      "start_seconds": 1791552030,
+      "start_subseconds": 701285,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "stopped"
+    },
+    "inhibited": true,
+    "restored": false,
+    "failure": null,
+    "evidence": [
+      "same GUI birth identity observed stopped after SIGSTOP",
+      "owned backend settled and reaped; group absent",
+      "owned CPU fixture disposal pid 15227: {\"complete\":true,\"leader_reaped\":true,\"group_absent\":true,\"group_signalled\":true,\"exit_code\":null,\"exit_signal\":15,\"failure\":null}",
+      "owned CPU fixture disposal pid 15249: {\"complete\":true,\"leader_reaped\":true,\"group_absent\":true,\"group_signalled\":true,\"exit_code\":null,\"exit_signal\":15,\"failure\":null}"
+    ],
+    "launch_record": null
+  }
+]

@@ -1,0 +1,302 @@
+   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.44s
+     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-f2e656554c1e4b94)
+
+running 28 tests
+test process_scope::darwin::metadata_tests::absence_binding_rejects_reuse_and_escape_but_accepts_zombie_transition ... ok
+test native_guard::tests::backwards_wall_clock_and_automation_ceiling_revoke ... ok
+test native_guard::tests::stale_authority_is_sticky_even_after_clock_recovery ... ok
+test process_scope::tests::identity_distinguishes_reuse_escape_and_exec_but_not_stop_or_reparent ... ok
+test process_scope::tests::command_rejects_ambiguous_or_unbounded_exec_input ... ok
+test restore_qualification::tests::operational_pass_without_fidelity_does_not_resume_gui ... ok
+test frame_sequence::tests::byte_limits_include_every_role_and_reject_before_committing_overage ... ok
+test restore_qualification::tests::environment_cannot_hide_concurrency_override ... ok
+test restore_qualification::tests::absent_gate_denies_without_invoking_tick_or_stop ... ok
+test restore_qualification::tests::launcher_exports_require_private_value_equality_without_secret_output ... ok
+test restore_qualification::tests::cloned_permissions_cannot_repeat_restricted_observations ... ok
+test restore_qualification::tests::reviewed_projection_excludes_unknown_secrets_at_every_depth ... ok
+test restore_qualification::tests::snapshot_inequality_and_explicit_exclusions ... ok
+test restore_qualification::tests::metadata_detects_ctime_mode_and_replacement_without_reading_contents ... ok
+test process_scope::tests::short_lived_exec_preserves_clean_environment_and_unreaped_exit ... ok
+test capture_archive::tests::preparation_is_inert_bounded_and_never_reuses_directories ... ok
+test capture_archive::tests::reload_and_preparation_reject_symlinks ... ok
+test restore_qualification::tests::corrupt_and_profile_backup_names_are_detected_without_reading_files ... ok
+test capture_archive::tests::reload_preserves_missing_slots_and_rejects_tampering ... ok
+test capture_archive::tests::reload_rejects_oversized_and_non_utf8_snapshots ... ok
+test restore_qualification::tests::subsequence_forbidden_and_rotation_fail_closed ... ok
+test restore_qualification::tests::full_bundle_includes_native_files_and_internal_symlink_targets ... ok
+test process_scope::tests::bound_absence_waits_for_zombie_reap_and_rejects_mismatched_birth ... ok
+test process_scope::tests::reaped_fork_still_disqualifies_otherwise_complete_known_group_cleanup ... ok
+test process_scope::tests::live_term_transition_settles_without_requiring_dying_process_session ... ok
+test capture_archive::tests::writer_enforces_per_file_and_remaining_archive_quotas ... ok
+test service_lifecycle::tests::failed_cpu_replacement_keeps_same_gui_paused_and_blocks_retry ... ok
+test service_lifecycle::tests::cpu_restore_replaces_backend_and_resumes_same_gui_once ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.12s
+
+     Running unittests src/main.rs (target/debug/deps/mil-8e6d070187e16333)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/comparison.rs (target/debug/deps/comparison-e11e1597a7bb8258)
+
+running 28 tests
+test unsupported_budget_and_structurally_omitted_slots_are_errors ... ok
+test failed_cancelled_missing_invalid_and_running_rows_are_retained ... ok
+test finite_extreme_samples_do_not_produce_infinite_ratios_or_overflowed_medians ... ok
+test integration_positive_ratio_underflow_does_not_become_a_zero_measurement ... ok
+test slower_candidate_and_control_drift_are_descriptive_median_ratios ... ok
+test workload_mismatch_is_not_included_as_the_requested_work ... ok
+test reversed_and_overlapping_persisted_order_is_not_repaired_by_sorting ... ok
+test cache_mismatch_and_timing_boundary_mismatch_prevent_same_work_ratios ... ok
+test host_execution_uses_saved_spawn_to_exit_boundary_not_adapter_timing ... ok
+test zero_measurements_are_kept_and_zero_denominator_is_explicit ... ok
+test model_fingerprint_method_and_host_changes_are_not_same_work ... ok
+test descriptive_mode_discloses_cross_device_ratios_without_claiming_same_work ... ok
+test directory_aliases_and_copied_manifests_cannot_create_replicates ... ok
+test review_protocol_fields_and_known_candidate_launch_variant_remain_comparable ... ok
+test unavailable_model_device_and_partial_file_hashes_never_establish_equality ... ok
+test integration_dirty_source_revision_is_not_an_unchanged_runtime_fingerprint ... ok
+test minimum_samples_applies_to_each_role_after_warmup_exclusion ... ok
+test mixed_units_normalize_but_ambiguous_exact_selectors_are_unavailable ... ok
+test review_positive_median_underflow_preserves_values_and_unavailability ... ok
+test metadata_preview_is_bounded_but_full_identity_detects_hidden_differences ... ok
+test control_mutation_is_inconclusive_but_named_candidate_runtime_change_is_disclosed ... ok
+test review_baseline_median_underflow_suppresses_both_comparisons ... ok
+test unavailable_selected_timing_and_failed_warmup_remain_inconclusive ... ok
+test noisy_unchanged_candidate_and_declared_warmups_are_not_hidden ... ok
+test integration_warmup_cache_transition_does_not_redefine_measured_cache_boundary ... ok
+test review_launch_changes_gate_controls_and_within_role_stability ... ok
+test review_equal_redactions_do_not_prove_equal_launch_values ... ok
+test review_genuine_zero_and_representable_subnormal_medians_remain_available ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/frame_sequence.rs (target/debug/deps/frame_sequence-02ee58a6de2a6386)
+
+running 11 tests
+test non_utf8_paths_are_rejected_before_io ... ok
+test alignment_rejects_different_counts_and_intervals_before_any_visit ... ok
+test declared_timeline_count_and_text_boundaries_are_strict ... ok
+test visitor_failure_stops_in_order_and_propagates_without_skipping ... ok
+test malformed_assessment_and_audio_claims_fail_before_visiting ... ok
+test full_sixteen_bit_integer_aggregation_does_not_overflow_or_quantize_low_bits ... ok
+test assessments_bind_complete_sequences_and_never_override_numerical_classification ... ok
+test aggregate_metrics_use_all_samples_not_duration_or_average_psnr_and_repeat_is_separate ... ok
+test whole_sequence_identity_binds_encoded_contents_order_and_timing_not_provenance_or_paths ... ok
+test late_decode_and_geometry_failures_abort_without_visiting_bad_frame ... ok
+test every_frame_including_last_at_count_limit_contributes_and_visits_exact_snapshots ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/frame_sequence_cli.rs (target/debug/deps/frame_sequence_cli-b596ad6b3833e91c)
+
+running 3 tests
+test timeline_errors_prevent_output_and_a_late_corrupt_frame_never_yields_a_complete_report ... ok
+test every_frame_snapshot_and_sheet_survives_relocation_with_exact_metrics_and_local_links ... ok
+test bound_temporal_notes_remain_literal_and_never_override_numerical_difference ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.62s
+
+     Running tests/guard_capture.rs (target/debug/deps/guard_capture-f4af4b038b87871c)
+
+running 1 test
+test denied_launch_never_spawns_and_retains_integrity_checked_guard_evidence ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/guards.rs (target/debug/deps/guards-d1085661b5603f72)
+
+running 8 tests
+test lease_subprocess_helper ... ok
+test fixed_memory_and_swap_threshold_boundaries ... ok
+test collectors_reject_malformed_or_ambiguous_numbers ... ok
+test disk_and_every_missing_resource_observation_fail_closed ... ok
+test guard_evidence_validation_rejects_forged_or_unbounded_decisions ... ok
+test abnormal_owner_exit_recovers_without_touching_unrelated_process ... ok
+test inherited_child_keeps_lease_after_supervisor_sigkill_until_natural_exit ... ok
+test lease_contention_close_recovery_and_link_rejection ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/image_comparison.rs (target/debug/deps/image_comparison-80e1c36026aff997)
+
+running 14 tests
+test reviewer_observations_remain_independent_of_exact_numerical_results ... ok
+test tolerance_rejects_invalid_rationale_and_out_of_dtype_bound_even_when_exact ... ok
+test strict_schemas_reject_unknown_assessment_tolerance_report_and_metric_fields ... ok
+test assessment_rejects_unsupported_version_missing_disclosures_and_empty_observations ... ok
+test assessment_hashes_bind_encoded_inputs_not_just_equal_decoded_samples ... ok
+test eight_bit_metrics_preserve_integer_totals_and_all_sample_denominators ... ok
+test numerical_classification_requires_an_explicit_nonrelaxed_maximum_bound ... ok
+test sixteen_bit_gray_alpha_counts_full_precision_alpha_samples ... ok
+test sixteen_bit_endianness_and_large_squared_error_use_integer_precision ... ok
+test sixteen_bit_low_order_differences_are_not_quantized_to_eight_bits ... ok
+test encoded_identity_is_separate_from_exact_decoded_samples_and_infinite_psnr ... ok
+test alpha_is_compared_without_compositing_or_masking ... ok
+test baseline_variation_is_retained_without_changing_candidate_classification ... ok
+test shape_color_and_depth_mismatches_are_rejected_for_candidates_and_repeats ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/image_comparison_cli.rs (target/debug/deps/image_comparison_cli-5a325805fcd61eed)
+
+running 2 tests
+test differing_samples_retain_evidence_with_exit_one_and_invalid_shape_creates_no_bundle ... ok
+test bundle_retains_originals_and_integrity_after_sources_are_removed_and_refuses_overwrite ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/lifecycle.rs (target/debug/deps/lifecycle-a997a24542cf0ed1)
+
+running 16 tests
+test rejects_unsupported_execution_policy_and_reserved_environment ... ok
+test retains_spawn_failure_without_invented_native_or_cleanup_measurements ... ok
+test pre_cancelled_capture_never_spawns_a_child ... ok
+test inspect_rejects_signed_zero_request_identity_tampering ... ok
+test redacts_argument_and_environment_values_without_shell_interpolation ... ok
+test cancellation_retains_live_running_then_terminal_evidence ... ok
+test accepts_actual_protocol_artifacts_and_unavailable_native_phases ... ok
+test inspect_rechecks_persisted_result_artifact_and_log_evidence ... ok
+test inspect_rejects_malformed_record_invariants_without_rewriting ... ok
+test bounds_combined_logs_and_adapter_created_files ... ok
+test unique_directories_preserve_existing_evidence_and_reject_directory_links ... ok
+test killed_supervisor_leaves_read_only_unresolved_running_manifest ... ok
+test crash_nonzero_missing_and_malformed_results_never_succeed ... ok
+test normal_leader_exit_cleans_descendants_holding_output_pipes ... ok
+test rejects_hash_size_missing_and_symlink_artifacts ... ok
+test timeout_kills_term_ignoring_group_but_not_an_unrelated_process ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.40s
+
+     Running tests/maintenance_authorization.rs (target/debug/deps/maintenance_authorization-daa69910d21bac42)
+
+running 2 tests
+test cpu_scope_cannot_select_shared_gpu_lease_or_borrow_phase_time ... ok
+test changed_work_or_permission_cannot_create_guardian_evidence_or_lease ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+     Running tests/native_adapter.rs (target/debug/deps/native_adapter-ccc5efcc12900952)
+
+running 11 tests
+test check_only_audit_denies_import_network_execution_and_filesystem_mutations ... ok
+test review_journal_recovers_from_interrupted_publications ... ok
+test native_cli_denies_unapproved_transaction_before_python_lease_or_capture ... ok
+test native_cli_retains_invalid_request_and_never_overwrites_an_attempt ... ok
+test check_only_keeps_native_and_site_hooks_unexecuted_and_metadata_honest ... ok
+test review_watchdog_fails_closed_when_scan_cannot_complete ... ok
+test review_watchdog_recounts_publication_races ... ok
+test real_filesystem_headers_symlinks_and_mutations_are_validated ... ok
+test missing_dependencies_model_and_source_mismatch_are_actionable_errors ... ok
+test unsupported_requests_fail_before_model_traversal ... ok
+test review_native_ratio_open_interval ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.19s
+
+     Running tests/png_image.rs (target/debug/deps/png_image-c546d9fd252f9857)
+
+running 15 tests
+test adam7_is_deinterlaced_without_sample_changes ... ok
+test refuses_nonregular_symlink_and_oversized_files ... ok
+test sheet_rejects_layout_mismatch_and_propagates_final_write_failures ... ok
+test accepts_consecutive_tiny_idat_chunks_and_maximum_axis ... ok
+test preserves_each_supported_channel_layout_and_16bit_endianness ... ok
+test rejects_malformed_recognized_metadata_instead_of_silently_discarding_it ... ok
+test review_trns_rejects_duplicate_and_misordered_transparency ... ok
+test review_trns_preserves_valid_metadata_and_raw_samples_without_expansion ... ok
+test rejects_bad_crc_even_for_ignored_ancillary_chunks ... ok
+test validates_complete_zlib_stream_and_exact_filtered_raster_size ... ok
+test sheet_is_raw_reproducible_and_drops_source_metadata ... ok
+test rejects_early_late_and_malformed_animation_chunks ... ok
+test rejects_unsupported_layouts_dimensions_and_chunk_structure ... ok
+test review_trns_rejects_wrong_lengths_and_alpha_color_types ... ok
+test rejects_all_truncations_crc_failures_and_data_after_iend ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/png_report.rs (target/debug/deps/png_report-3a5aa99294ae492a)
+
+running 3 tests
+test caller_fields_cannot_escape_into_markdown_html_or_external_resources ... ok
+test maximum_embedded_fence_and_terminal_controls_remain_inert_readable_data ... ok
+test readable_bundle_survives_relocation_and_source_removal_with_verified_local_links ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/preflight.rs (target/debug/deps/preflight-85325c8f99de5c63)
+
+running 12 tests
+test launcher_preserves_existing_reports_and_records_missing_python ... ok
+test executable_identity_distinguishes_bytes_and_reports_unreadable_targets ... ok
+test incompatible_requests_fail_before_loading ... ok
+test review_header_reads_stop_before_payload_and_account_actual_bytes ... ok
+test malformed_headers_are_bounded_and_rejected ... ok
+test local_headers_and_inventory_do_not_claim_payload_integrity ... ok
+test audit_blocks_network_execution_native_import_and_writes ... ok
+test missing_model_tokenizer_and_index_shards_fail_without_downloads ... ok
+test selected_environment_reports_missing_dependencies_and_skips_pth_execution ... ok
+test launcher_completes_static_fixture_and_preserves_unrelated_process ... ok
+test launcher_timeout_reaps_owned_process_without_touching_unrelated_process ... ok
+test review_optional_fields_preserve_identity_and_native_resolution ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.92s
+
+     Running tests/review_capture.rs (target/debug/deps/review_capture-b64ee900e4e7b814)
+
+running 4 tests
+test hardlinked_artifacts_are_rejected_but_distinct_files_with_equal_content_are_valid ... ok
+test running_manifest_reserves_terminal_headroom_before_spawning ... ok
+test near_limit_request_retains_bounded_unicode_failure_and_cleanup ... ok
+test aggregate_manifest_overflow_retains_inspectable_terminal_failure_and_raw_evidence ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.78s
+
+     Running tests/review_schema.rs (target/debug/deps/review_schema-c7c6bcc18c3feb92)
+
+running 7 tests
+test distinct_unicode_artifact_names_remain_valid ... ok
+test concrete_model_fingerprint_controls_matching_independently_of_file_inventory ... ok
+test partial_file_evidence_cannot_contradict_an_unavailable_model_fingerprint ... ok
+test canonical_unicode_artifact_ancestors_are_rejected_in_either_order ... ok
+test canonical_unicode_artifact_duplicates_are_rejected ... ok
+test model_fingerprint_requires_valid_explicit_evidence_and_result_v2 ... ok
+test nested_signed_zero_changes_identity_and_cannot_pass_compatibility ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/schema.rs (target/debug/deps/schema-e349d1b4da305316)
+
+running 12 tests
+test video_constraints_are_modality_specific_not_h3_specific ... ok
+test unsafe_artifact_paths_and_cross_platform_aliases_are_rejected ... ok
+test unsupported_versions_and_unknown_contract_fields_are_not_accepted ... ok
+test resolved_settings_cannot_silently_change_even_with_matching_claimed_identity ... ok
+test video_layers_and_independent_reuse_intervals_are_declared_and_validated ... ok
+test observed_model_contradictions_are_not_hidden_as_declared_settings ... ok
+test automatic_precision_resolves_but_explicit_precision_cannot_change ... ok
+test nonfinite_and_out_of_range_workloads_are_rejected_before_identity ... ok
+test output_comparison_evidence_requires_provenance_without_quality_claims ... ok
+test complete_image_and_video_contracts_roundtrip_without_losing_evidence ... ok
+test malformed_measurements_and_missing_evidence_cannot_be_success_results ... ok
+test all_declared_identity_dimensions_affect_identity ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/study_cli.rs (target/debug/deps/study_cli-37c8334c1d5faf5f)
+
+running 1 test
+test generated_template_near_plan_limit_remains_readable_with_all_slots ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/study_plan.rs (target/debug/deps/study_plan-98d7627b4a50cb28)
+
+running 7 tests
+test bindings_cannot_omit_duplicate_reorder_or_append_slots ... ok
+test warmups_and_measurements_preserve_explicit_role_cycles ... ok
+test capture_paths_and_missing_reasons_are_exclusive_and_validated ... ok
+
+[Showing lines 1-300 of 316. Use :301 to continue]

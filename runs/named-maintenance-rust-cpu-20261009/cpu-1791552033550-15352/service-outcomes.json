@@ -1,0 +1,76 @@
+[
+  {
+    "role": "studio",
+    "root": {
+      "pid": 15445,
+      "ppid": 15394,
+      "pgid": 15445,
+      "sid": 15445,
+      "uid": 501,
+      "start_seconds": 1791552035,
+      "start_subseconds": 959299,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "gui": null,
+    "inhibited": true,
+    "restored": false,
+    "failure": null,
+    "evidence": [
+      "owned backend settled and reaped; group absent",
+      "owned CPU fixture disposal pid 15445: {\"complete\":true,\"leader_reaped\":true,\"group_absent\":true,\"group_signalled\":true,\"exit_code\":null,\"exit_signal\":15,\"failure\":null}"
+    ],
+    "launch_record": null
+  },
+  {
+    "role": "omlx",
+    "root": {
+      "pid": 15412,
+      "ppid": 15394,
+      "pgid": 15412,
+      "sid": 15412,
+      "uid": 501,
+      "start_seconds": 1791552035,
+      "start_subseconds": 402381,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "gui": {
+      "pid": 15444,
+      "ppid": 15394,
+      "pgid": 15444,
+      "sid": 15444,
+      "uid": 501,
+      "start_seconds": 1791552035,
+      "start_subseconds": 686651,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "stopped"
+    },
+    "inhibited": false,
+    "restored": false,
+    "failure": "full zombie executable/cwd/session identity unavailable",
+    "evidence": [
+      "same GUI birth identity observed stopped after SIGSTOP",
+      "owned backend settled and reaped; group absent",
+      "owned replacement launch PID 15464",
+      "GUI state observed on failure: Stopped; no recovery signal sent",
+      "owned CPU fixture disposal pid 15464: {\"complete\":true,\"leader_reaped\":true,\"group_absent\":true,\"group_signalled\":false,\"exit_code\":1,\"exit_signal\":null,\"failure\":null}",
+      "owned CPU fixture disposal pid 15444: {\"complete\":true,\"leader_reaped\":true,\"group_absent\":true,\"group_signalled\":true,\"exit_code\":null,\"exit_signal\":15,\"failure\":null}"
+    ],
+    "launch_record": {
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "args": [
+        "maintenance-participant",
+        "--mode",
+        "fail",
+        "--duration-ms",
+        "1"
+      ],
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "environment": {}
+    }
+  }
+]

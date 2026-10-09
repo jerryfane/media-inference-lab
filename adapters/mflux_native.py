@@ -391,7 +391,7 @@ def resources(mx):
 
 
 def execute(args, report, session):
-    """The only native-import boundary. Production guards currently cannot authorize it."""
+    """The native-import boundary; the Rust guardian authorizes and owns this process."""
     require(report["ok"], "static native checks failed: " + json.dumps(report["errors"]))
     source_root = Path(args.source_dir).resolve(strict=True)
     initial_inventory = report["model"]["stat_inventory"]

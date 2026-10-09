@@ -1,0 +1,192 @@
+    Checking media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+error: this `if` statement can be collapsed
+    --> src/capture.rs:1394:9
+     |
+1394 | /         if let Some(control) = native.as_mut() {
+1395 | |             if let Err(error) = (control.tick)() {
+1396 | |                 guard_failure = Some(format!("named scope revoked before creation: {error:#}"));
+1397 | |             }
+1398 | |         }
+     | |_________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#collapsible_if
+     = note: `-D clippy::collapsible-if` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+     |
+1394 ~         if let Some(control) = native.as_mut()
+1395 ~             && let Err(error) = (control.tick)() {
+1396 |                 guard_failure = Some(format!("named scope revoked before creation: {error:#}"));
+1397 ~             }
+     |
+
+error: large size difference between variants
+  --> src/maintenance.rs:95:1
+   |
+95 | / pub enum Experiment {
+96 | |     Cpu { command: CommandSpec },
+   | |     ---------------------------- the second-largest variant contains at least 96 bytes
+97 | |     Native { plan: crate::native::PreparedPlan },
+   | |     -------------------------------------------- the largest variant contains at least 1112 bytes
+98 | | }
+   | |_^ the entire enum is at least 1112 bytes
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#large_enum_variant
+   = note: `-D clippy::large-enum-variant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+97 -     Native { plan: crate::native::PreparedPlan },
+97 +     Native { plan: Box<crate::native::PreparedPlan> },
+   |
+
+error: this `if` statement can be collapsed
+   --> src/process_scope.rs:697:13
+    |
+697 | /             if let Some(fd) = lease {
+698 | |                 if libc::fcntl(fd, libc::F_SETFD, 0) < 0 {
+699 | |                     child_error(status, *libc::__error());
+700 | |                 }
+701 | |             }
+    | |_____________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#collapsible_if
+help: collapse nested if block
+    |
+697 ~             if let Some(fd) = lease
+698 ~                 && libc::fcntl(fd, libc::F_SETFD, 0) < 0 {
+699 |                     child_error(status, *libc::__error());
+700 ~                 }
+    |
+
+error: this `if` statement can be collapsed
+    --> src/process_scope.rs:1154:13
+     |
+1154 | /             if control_allowed {
+1155 | |                 if let Err(error) =
+1156 | |                     self.signal_checked(libc::SIGTERM, &mut || checkpoint(deadline, tick))
+...    |
+1161 | |             }
+     | |_____________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#collapsible_if
+help: collapse nested if block
+     |
+1154 ~             if control_allowed
+1155 ~                 && let Err(error) =
+1156 |                     self.signal_checked(libc::SIGTERM, &mut || checkpoint(deadline, tick))
+ ...
+1159 |                     control_allowed = false;
+1160 ~                 }
+     |
+
+error: this `if` statement can be collapsed
+    --> src/process_scope.rs:1170:17
+     |
+1170 | /                 if control_allowed {
+1171 | |                     if let Err(error) = checkpoint(deadline, tick) {
+1172 | |                         self.fail(format!("settlement control denied: {error:#}"));
+1173 | |                         control_allowed = false;
+1174 | |                     }
+1175 | |                 }
+     | |_________________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#collapsible_if
+help: collapse nested if block
+     |
+1170 ~                 if control_allowed
+1171 ~                     && let Err(error) = checkpoint(deadline, tick) {
+1172 |                         self.fail(format!("settlement control denied: {error:#}"));
+1173 |                         control_allowed = false;
+1174 ~                     }
+     |
+
+error: field assignment outside of initializer for an instance created with Default::default()
+    --> src/restore_qualification.rs:1551:9
+     |
+1551 |         fidelity.compared_settings_pointers = self.gate.comparison_fields.clone();
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: consider initializing the variable with `restore_qualification::FidelityReport { compared_settings_pointers: self.gate.comparison_fields.clone(), excluded_volatile_pointers: self.gate.volatile_fields.clone(), comparison_coverage_review_reference: Some(self.gate.coverage_review_reference.clone()), environment_comparison: Some(self.gate.environment_comparison.clone()), ..Default::default() }` and removing relevant reassignments
+    --> src/restore_qualification.rs:1550:9
+     |
+1550 |         let mut fidelity = FidelityReport::default();
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#field_reassign_with_default
+     = note: `-D clippy::field-reassign-with-default` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::field_reassign_with_default)]`
+
+error: this `if` statement can be collapsed
+    --> src/restore_qualification.rs:2055:13
+     |
+2055 | /             if let Some((key, value)) = line.split_once(':') {
+2056 | |                 if key.eq_ignore_ascii_case("set-cookie") {
+2057 | |                     let pair = value
+2058 | |                         .trim()
+...    |
+2075 | |             }
+     | |_____________^
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#collapsible_if
+help: collapse nested if block
+     |
+2055 ~             if let Some((key, value)) = line.split_once(':')
+2056 ~                 && key.eq_ignore_ascii_case("set-cookie") {
+2057 |                     let pair = value
+ ...
+2073 |                     }
+2074 ~                 }
+     |
+
+error: large size difference between variants
+  --> src/service_lifecycle.rs:26:1
+   |
+26 | /   pub enum ServiceSpec {
+27 | | /     OwnedCpu {
+28 | | |         role: ServiceRole,
+29 | | |         command: CommandSpec,
+30 | | |         restore_command: CommandSpec,
+31 | | |         gui_command: Option<CommandSpec>,
+32 | | |     },
+   | | |_____- the second-largest variant contains at least 289 bytes
+...  |
+38 | | /     Omlx {
+39 | | |         gui: ProcessIdentity,
+40 | | |         gui_group_members: Vec<ProcessIdentity>,
+41 | | |         backend: ProcessIdentity,
+...  | |
+44 | | |         qualification: QualificationPlan,
+45 | | |     },
+   | | |_____- the largest variant contains at least 664 bytes
+46 | |   }
+   | |___^ the entire enum is at least 664 bytes
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#large_enum_variant
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+44 -         qualification: QualificationPlan,
+44 +         qualification: Box<QualificationPlan>,
+   |
+
+error: this `if` statement can be collapsed
+   --> src/service_lifecycle.rs:674:17
+    |
+674 | /                 if let Some(qualification) = &self.qualification {
+675 | |                     if let Ok(report) = serde_json::to_string(&qualification.report()) {
+676 | |                         self.evidence.push(report);
+677 | |                     }
+678 | |                 }
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#collapsible_if
+help: collapse nested if block
+    |
+674 ~                 if let Some(qualification) = &self.qualification
+675 ~                     && let Ok(report) = serde_json::to_string(&qualification.report()) {
+676 |                         self.evidence.push(report);
+677 ~                     }
+    |
+
+error: could not compile `media-inference-lab` (lib) due to 9 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `media-inference-lab` (lib test) due to 9 previous errors

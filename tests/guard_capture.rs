@@ -22,8 +22,6 @@ fn denied_launch_never_spawns_and_retains_integrity_checked_guard_evidence() {
         serde_json::from_str(include_str!("../examples/image-workload.json")).unwrap();
     // Impossible disk minimum guarantees denial independent of host observations.
     let config = GuardConfig {
-        live_app_pid: u32::MAX,
-        live_app_command_sha256: "0".repeat(64),
         min_disk_free_bytes: u64::MAX,
         max_disk_growth_bytes: 1,
         sample_interval_ms: 100,

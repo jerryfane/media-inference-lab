@@ -7,6 +7,7 @@ use media_inference_lab::{
     frame_sequence::{self, SequenceAssessment, SequenceInput, SequenceSource},
     guards::{GuardConfig, GuardMonitor, Lease},
     image_comparison::{self, ImageAssessment, Tolerance},
+    maintenance,
     native::{self, NativeOptions},
     png_image::{self, DecodedPng},
     png_report,
@@ -111,7 +112,7 @@ enum Command {
     },
     /// Supervise a trusted CPU-only process without platform guards.
     Supervise(ProcessArguments),
-    /// Check lease/memory/swap/disk/live-process observations; never grants GPU access.
+    /// Check lease/memory/swap/disk observations; never grants service exclusion or GPU access.
     GuardCheck {
         #[arg(long)]
         config: PathBuf,
@@ -138,7 +139,7 @@ enum Command {
         #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
         timeout_seconds: u64,
     },
-    /// Prepare or explicitly attempt a native Qwen run; missing native readiness always denies launch.
+    /// Prepare or execute an exactly authorized guardian-owned native transaction.
     MfluxRun {
         #[arg(long)]
         python: PathBuf,
@@ -163,9 +164,10 @@ enum Command {
         max_output_bytes: u64,
         #[arg(long)]
         guard_config: Option<PathBuf>,
-        /// External grant reference is provenance only, never a readiness override.
         #[arg(long)]
-        manager_grant_reference: Option<String>,
+        maintenance_transaction: Option<PathBuf>,
+        #[arg(long)]
+        authorization: Option<PathBuf>,
         #[arg(long, conflicts_with = "execute", required_unless_present = "execute")]
         check_only: bool,
         #[arg(
@@ -174,6 +176,32 @@ enum Command {
             required_unless_present = "check_only"
         )]
         execute: bool,
+    },
+    /// Run genuine finite CPU services/work under one guardian using a private-root lease.
+    MaintenanceCpu {
+        #[arg(long)]
+        root: PathBuf,
+        #[arg(long, default_value = "normal")]
+        scenario: String,
+    },
+    /// Execute an exact reviewed maintenance transaction; no-grant/live gates deny before effects.
+    MaintenanceRun {
+        #[arg(long)]
+        transaction: PathBuf,
+        #[arg(long)]
+        authorization: PathBuf,
+    },
+    #[command(hide = true)]
+    MaintenanceGuardian {
+        #[arg(long)]
+        control_fd: i32,
+    },
+    #[command(hide = true)]
+    MaintenanceParticipant {
+        #[arg(long)]
+        mode: String,
+        #[arg(long)]
+        duration_ms: u64,
     },
 }
 
@@ -736,6 +764,31 @@ fn run(cli: Cli) -> Result<bool> {
                 assessment,
             )
         }
+        Command::MaintenanceCpu { root, scenario } => {
+            let receipt = maintenance::run_cpu(&root, &scenario)?;
+            let evidence: serde_json::Value = maintenance::read_private(&receipt)?;
+            println!("{}", receipt.display());
+            Ok(evidence["success"] == true)
+        }
+        Command::MaintenanceRun {
+            transaction,
+            authorization,
+        } => {
+            let receipt = maintenance::run_controller(
+                maintenance::read_private(&transaction)?,
+                maintenance::read_private(&authorization)?,
+            )?;
+            let evidence: serde_json::Value = maintenance::read_private(&receipt)?;
+            println!("{}", receipt.display());
+            Ok(evidence["success"] == true)
+        }
+        Command::MaintenanceGuardian { control_fd } => {
+            maintenance::guardian_main(control_fd)?;
+            Ok(true)
+        }
+        Command::MaintenanceParticipant { mode, duration_ms } => {
+            maintenance::participant(&mode, duration_ms)
+        }
         Command::Supervise(process) => supervise(process, None),
         Command::SuperviseGuarded {
             guard_config,
@@ -800,7 +853,8 @@ fn run(cli: Cli) -> Result<bool> {
             check_timeout_seconds,
             max_output_bytes,
             guard_config,
-            manager_grant_reference,
+            maintenance_transaction,
+            authorization,
             check_only: _,
             execute,
         } => {
@@ -816,7 +870,8 @@ fn run(cli: Cli) -> Result<bool> {
                 check_timeout: Duration::from_secs(check_timeout_seconds),
                 max_output_bytes,
                 guard_config,
-                manager_grant_reference,
+                maintenance_transaction,
+                authorization,
                 execute,
             })?;
             println!("{}", output.display());

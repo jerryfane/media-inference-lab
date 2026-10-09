@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "transaction_id": "cpu-1791551376183-88427",
+  "purpose": "cpu",
+  "evidence_root": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r/cpu-1791551376183-88427",
+  "lease_path": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r/.cpu-maintenance.lock",
+  "guardian_sha256": "e3f18532b113e308877e995ab67c0f3d66ee19c599959670ba63bae25656ef01",
+  "budgets": {
+    "arming_ms": 3000,
+    "studio_stop_ms": 2000,
+    "omlx_stop_ms": 2000,
+    "prelaunch_ms": 1000,
+    "experiment_ms": 3000,
+    "cleanup_ms": 2000,
+    "omlx_restore_ms": 3000,
+    "studio_restore_ms": 2000,
+    "recovery_ms": 3000,
+    "total_ms": 30000
+  },
+  "services": [
+    {
+      "kind": "owned_cpu",
+      "role": "studio",
+      "command": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "environment": {}
+      },
+      "restore_command": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "environment": {}
+      },
+      "gui_command": null
+    },
+    {
+      "kind": "owned_cpu",
+      "role": "omlx",
+      "command": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "environment": {}
+      },
+      "restore_command": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "fail",
+          "--duration-ms",
+          "1"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "environment": {}
+      },
+      "gui_command": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "environment": {}
+      }
+    }
+  ],
+  "experiment": {
+    "kind": "cpu",
+    "command": {
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "args": [
+        "maintenance-participant",
+        "--mode",
+        "compute",
+        "--duration-ms",
+        "200"
+      ],
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "environment": {}
+    }
+  },
+  "reviewed_permissions": null
+}

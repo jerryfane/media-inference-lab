@@ -1,0 +1,1116 @@
+//! One independent guardian owns the transaction, experiment and ordered recovery.
+use crate::{
+    capture::{self, CaptureOptions, NativeCaptureControl},
+    guards::Lease,
+    native_guard::{self, GuardianClock, NativeBinding, ScopeAuthority, ScopePurpose},
+    process_scope::{self, CommandSpec, OwnedProcess, ProcessIdentity, Settlement},
+    restore_qualification::{AuthorizedPermissions, ReviewedPermissionInput},
+    service_lifecycle::{ServiceHandle, ServiceRole, ServiceSpec},
+};
+use anyhow::{Context, Result, bail, ensure};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::{
+    cell::RefCell,
+    collections::BTreeMap,
+    fs::{self, File, OpenOptions},
+    io::{Read, Write},
+    os::{
+        fd::{AsRawFd, FromRawFd},
+        unix::{
+            fs::{DirBuilderExt, MetadataExt, OpenOptionsExt},
+            net::UnixStream,
+            process::CommandExt,
+        },
+    },
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    thread,
+    time::{Duration, Instant, SystemTime},
+};
+
+const JSON_BOUND: u64 = 16 * 1024 * 1024;
+const OUTPUT_BOUND: u64 = 64 * 1024 * 1024;
+const POLL: Duration = Duration::from_millis(20);
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Budgets {
+    pub arming_ms: u64,
+    pub studio_stop_ms: u64,
+    pub omlx_stop_ms: u64,
+    pub prelaunch_ms: u64,
+    pub experiment_ms: u64,
+    pub cleanup_ms: u64,
+    pub omlx_restore_ms: u64,
+    pub studio_restore_ms: u64,
+    pub recovery_ms: u64,
+    pub total_ms: u64,
+}
+impl Budgets {
+    fn assigned_ms(&self) -> u64 {
+        self.arming_ms
+            + self.studio_stop_ms
+            + self.omlx_stop_ms
+            + self.prelaunch_ms
+            + self.experiment_ms
+            + self.cleanup_ms
+            + self.omlx_restore_ms
+            + self.studio_restore_ms
+            + self.recovery_ms
+    }
+    fn validate(&self) -> Result<()> {
+        let values = [
+            (self.arming_ms, 60_000),
+            (self.studio_stop_ms, 120_000),
+            (self.omlx_stop_ms, 120_000),
+            (self.prelaunch_ms, 90_000),
+            (self.experiment_ms, 600_000),
+            (self.cleanup_ms, 30_000),
+            (self.omlx_restore_ms, 120_000),
+            (self.studio_restore_ms, 120_000),
+            (self.recovery_ms, 120_000),
+        ];
+        ensure!(
+            values.iter().all(|(value, max)| *value > 0 && value <= max),
+            "phase budget exceeds fixed policy"
+        );
+        ensure!(
+            self.total_ms > 0 && self.total_ms <= 1_800_000,
+            "invalid total ceiling"
+        );
+        ensure!(
+            values.iter().map(|(value, _)| value).sum::<u64>() <= self.total_ms,
+            "phase budgets exceed ceiling; borrowing is forbidden"
+        );
+        Ok(())
+    }
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum Experiment {
+    Cpu {
+        command: CommandSpec,
+    },
+    Native {
+        plan: Box<crate::native::PreparedPlan>,
+    },
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Transaction {
+    pub schema_version: u32,
+    pub transaction_id: String,
+    pub purpose: ScopePurpose,
+    pub evidence_root: PathBuf,
+    pub lease_path: PathBuf,
+    pub guardian_sha256: String,
+    pub budgets: Budgets,
+    pub services: Vec<ServiceSpec>,
+    pub experiment: Experiment,
+    pub reviewed_permissions: Option<ReviewedPermissionInput>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Authorization {
+    pub schema_version: u32,
+    pub transaction_sha256: String,
+    pub purpose: ScopePurpose,
+    pub owner_uid: u32,
+    pub not_before_unix_ms: u64,
+    pub expires_unix_ms: u64,
+    pub review_reference: String,
+    pub service_interruption_approved: bool,
+    pub cold_restore_approved: bool,
+    pub interrupted_work_loss_approved: bool,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Envelope {
+    transaction: Transaction,
+    authorization: Authorization,
+    controller: ProcessIdentity,
+}
+
+pub fn digest<T: Serialize>(value: &T) -> Result<String> {
+    Ok(format!("{:x}", Sha256::digest(serde_json::to_vec(value)?)))
+}
+pub fn executable_digest(path: &Path) -> Result<String> {
+    let mut file = File::open(path)?;
+    let before = file.metadata()?;
+    ensure!(
+        before.is_file() && before.len() <= 512 * 1024 * 1024,
+        "executable identity outside bound"
+    );
+    let mut hash = Sha256::new();
+    let mut buffer = [0u8; 65536];
+    let mut bytes = 0u64;
+    loop {
+        let n = file.read(&mut buffer)?;
+        if n == 0 {
+            break;
+        }
+        bytes += n as u64;
+        ensure!(bytes <= 512 * 1024 * 1024, "executable grew beyond bound");
+        hash.update(&buffer[..n]);
+    }
+    let after = file.metadata()?;
+    ensure!(
+        bytes == before.len()
+            && before.dev() == after.dev()
+            && before.ino() == after.ino()
+            && before.mtime() == after.mtime()
+            && before.mtime_nsec() == after.mtime_nsec()
+            && before.ctime() == after.ctime()
+            && before.ctime_nsec() == after.ctime_nsec(),
+        "executable changed while hashing"
+    );
+    Ok(format!("{:x}", hash.finalize()))
+}
+pub fn read_private<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T> {
+    let file = OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK)
+        .open(path)?;
+    let metadata = file.metadata()?;
+    ensure!(
+        metadata.is_file()
+            && metadata.nlink() == 1
+            && metadata.uid() == unsafe { libc::geteuid() }
+            && metadata.mode() & 0o077 == 0
+            && metadata.len() <= JSON_BOUND,
+        "transaction/authorization must be bounded owner-private regular files"
+    );
+    let mut bytes = Vec::new();
+    file.take(JSON_BOUND + 1).read_to_end(&mut bytes)?;
+    ensure!(bytes.len() as u64 <= JSON_BOUND, "JSON exceeds bound");
+    Ok(serde_json::from_slice(&bytes)?)
+}
+fn private_json(path: &Path, value: &impl Serialize) -> Result<()> {
+    let bytes = serde_json::to_vec_pretty(value)?;
+    ensure!(bytes.len() as u64 <= JSON_BOUND, "evidence exceeds bound");
+    let temporary = path.with_extension("json.partial");
+    let mut file = OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .mode(0o600)
+        .open(&temporary)?;
+    file.write_all(&bytes)?;
+    file.sync_all()?;
+    // Publish complete bytes without replacing any prior evidence/consumption record.
+    fs::hard_link(&temporary, path)?;
+    fs::remove_file(&temporary)?;
+    Ok(())
+}
+impl Transaction {
+    pub fn validate(&self) -> Result<()> {
+        ensure!(
+            self.schema_version == 1
+                && !self.transaction_id.is_empty()
+                && self.transaction_id.len() <= 128
+                && self
+                    .transaction_id
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'-'),
+            "invalid transaction identity"
+        );
+        self.budgets.validate()?;
+        ensure!(
+            native_guard::valid_hash(&self.guardian_sha256),
+            "invalid guardian executable identity"
+        );
+        ensure!(
+            self.evidence_root.is_absolute() && self.lease_path.is_absolute(),
+            "scope paths must be absolute"
+        );
+        ensure!(
+            self.services.len() == 2
+                && self.services[0].role() == ServiceRole::Studio
+                && self.services[1].role() == ServiceRole::Omlx,
+            "exact Studio/oMLX named scope required"
+        );
+        for service in &self.services {
+            service.validate(self.purpose)?;
+        }
+        match (&self.experiment, self.purpose) {
+            (Experiment::Cpu { command }, ScopePurpose::Cpu) => {
+                command.validate()?;
+                ensure!(
+                    self.reviewed_permissions.is_none(),
+                    "CPU scope cannot carry live credential permissions"
+                );
+                ensure!(
+                    self.lease_path.parent() == self.evidence_root.parent()
+                        && self
+                            .lease_path
+                            .file_name()
+                            .is_some_and(|name| name == ".cpu-maintenance.lock"),
+                    "CPU transaction must use its own temporary-root lease"
+                );
+                for service in &self.services {
+                    if let ServiceSpec::OwnedCpu {
+                        command,
+                        restore_command,
+                        gui_command,
+                        ..
+                    } = service
+                    {
+                        validate_cpu_command(command)?;
+                        validate_cpu_command(restore_command)?;
+                        if let Some(gui) = gui_command {
+                            validate_cpu_command(gui)?;
+                        }
+                    } else {
+                        bail!("CPU transaction contains a live service");
+                    }
+                }
+                validate_cpu_command(command)?;
+            }
+            (Experiment::Native { plan }, ScopePurpose::Native) => {
+                plan.validate_enrolled()?;
+                ensure!(
+                    self.budgets.experiment_ms == plan.command.timeout_ms,
+                    "native phase and invocation deadlines differ"
+                );
+                let reviewed=self.reviewed_permissions.as_ref().context("native activation denied before effects: explicit reviewed X2/X3 permission absent")?;
+                for service in &self.services {
+                    if let ServiceSpec::Omlx { qualification, .. } = service {
+                        qualification.validate_reviewed_permissions(Some(reviewed))?;
+                    }
+                }
+            }
+            _ => bail!("experiment purpose mismatch"),
+        }
+        Ok(())
+    }
+}
+fn validate_cpu_command(command: &CommandSpec) -> Result<()> {
+    command.validate()?;
+    ensure!(
+        command.executable == std::env::current_exe()?
+            && command
+                .args
+                .first()
+                .is_some_and(|arg| arg == "maintenance-participant")
+            && command.environment.is_empty(),
+        "CPU scope only permits this executable's finite CPU participant, with empty environment"
+    );
+    Ok(())
+}
+pub fn validate_authorization(
+    transaction: &Transaction,
+    authorization: &Authorization,
+) -> Result<()> {
+    transaction.validate()?;
+    ensure!(
+        authorization.schema_version == 1
+            && authorization.transaction_sha256 == digest(transaction)?
+            && authorization.purpose == transaction.purpose
+            && authorization.owner_uid == unsafe { libc::geteuid() },
+        "authorization transaction/purpose/owner mismatch"
+    );
+    ensure!(
+        !authorization.review_reference.trim().is_empty()
+            && authorization.review_reference.len() <= 2048,
+        "explicit authorization review reference required"
+    );
+    ensure!(
+        authorization.service_interruption_approved
+            && authorization.cold_restore_approved
+            && authorization.interrupted_work_loss_approved,
+        "maintenance effects not authorized"
+    );
+    let now = native_guard::unix_ms()?;
+    ensure!(
+        authorization.not_before_unix_ms <= now
+            && now < authorization.expires_unix_ms
+            && authorization.expires_unix_ms - authorization.not_before_unix_ms <= 1_800_000,
+        "authorization outside exact validity interval"
+    );
+    ensure!(
+        authorization.expires_unix_ms - now >= transaction.budgets.assigned_ms(),
+        "authorization cannot cover assigned phase budgets"
+    );
+    ensure!(
+        executable_digest(&std::env::current_exe()?)? == transaction.guardian_sha256,
+        "guardian binary differs from approved transaction"
+    );
+    Ok(())
+}
+
+/// Validate all no-effect gates before creating a guardian, lease, service or capture.
+fn guardian_environment(transaction: &Transaction) -> Result<BTreeMap<String, String>> {
+    let mut environment = BTreeMap::new();
+    if transaction.purpose == ScopePurpose::Native {
+        // Only after exact authorization. Read these four names from OUR process,
+        // never another process's environment or an inherited arbitrary map.
+        for key in ["HOME", "USER", "LOGNAME", "TMPDIR"] {
+            let value = std::env::var(key).map_err(|_| {
+                anyhow::anyhow!("PF3 allowlisted guardian variable {key} unavailable")
+            })?;
+            environment.insert(key.into(), value);
+        }
+        environment.insert("PATH".into(), "/usr/bin:/bin:/usr/sbin:/sbin".into());
+        let ServiceSpec::Omlx { launcher, .. } = &transaction.services[1] else {
+            bail!("native oMLX specification absent");
+        };
+        ensure!(
+            environment == launcher.environment,
+            "PF3 constructed environment differs from exact reviewed launch plan"
+        );
+    }
+    Ok(environment)
+}
+
+struct ControllerSignals([Option<signal_hook::SigId>; 2]);
+impl Drop for ControllerSignals {
+    fn drop(&mut self) {
+        for registration in &mut self.0 {
+            if let Some(id) = registration.take() {
+                signal_hook::low_level::unregister(id);
+            }
+        }
+    }
+}
+
+pub fn run_controller(transaction: Transaction, authorization: Authorization) -> Result<PathBuf> {
+    validate_authorization(&transaction, &authorization)?;
+    let environment = guardian_environment(&transaction)?;
+    let parent = transaction
+        .evidence_root
+        .parent()
+        .context("missing scope parent")?;
+    let metadata = fs::symlink_metadata(parent)?;
+    ensure!(
+        metadata.is_dir()
+            && metadata.uid() == unsafe { libc::geteuid() }
+            && metadata.mode() & 0o077 == 0
+            && fs::canonicalize(parent)? == parent,
+        "scope parent must be existing canonical owner-private directory"
+    );
+    fs::DirBuilder::new()
+        .mode(0o700)
+        .create(&transaction.evidence_root)?;
+    let receipt = transaction.evidence_root.join("receipt.json");
+    private_json(
+        &transaction.evidence_root.join("transaction.json"),
+        &transaction,
+    )?;
+    private_json(
+        &transaction.evidence_root.join("authorization.json"),
+        &authorization,
+    )?;
+    let controller =
+        process_scope::observe(std::process::id())?.context("controller identity unavailable")?;
+    let envelope = Envelope {
+        transaction,
+        authorization,
+        controller,
+    };
+    let bytes = serde_json::to_vec(&envelope)?;
+    ensure!(
+        bytes.len() as u64 <= JSON_BOUND,
+        "guardian envelope too large"
+    );
+    let (mut controller_link, guardian_link) = UnixStream::pair()?;
+    let fd = guardian_link.as_raw_fd();
+    let log = OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .mode(0o600)
+        .open(envelope.transaction.evidence_root.join("guardian.log"))?;
+    let mut command = Command::new(std::env::current_exe()?);
+    command
+        .args(["maintenance-guardian", "--control-fd", &fd.to_string()])
+        .env_clear()
+        .envs(environment)
+        .stdin(Stdio::null())
+        .stdout(log.try_clone()?)
+        .stderr(log);
+    unsafe {
+        command.pre_exec(move || {
+            if libc::setsid() < 0 || libc::fcntl(fd, libc::F_SETFD, 0) < 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(())
+        });
+    }
+    let mut guardian = command.spawn().context("creating independent guardian")?;
+    drop(guardian_link);
+    controller_link.set_write_timeout(Some(Duration::from_secs(2)))?;
+    controller_link.write_all(&(bytes.len() as u32).to_be_bytes())?;
+    controller_link.write_all(&bytes)?;
+    controller_link.set_nonblocking(true)?;
+    println!(
+        "{}",
+        serde_json::json!({"guardian_pid":guardian.id(),"controller_pid":std::process::id(),"receipt":receipt})
+    );
+    std::io::stdout().flush()?;
+    let cancelled = Arc::new(AtomicBool::new(false));
+    let mut signals = ControllerSignals([None, None]);
+    for (index, signal) in [signal_hook::consts::SIGINT, signal_hook::consts::SIGTERM]
+        .into_iter()
+        .enumerate()
+    {
+        signals.0[index] = Some(signal_hook::flag::register(signal, cancelled.clone())?);
+    }
+    let status = loop {
+        if let Some(status) = guardian.try_wait()? {
+            break status;
+        }
+        let byte = if cancelled.load(Ordering::Relaxed) {
+            b'C'
+        } else {
+            b'H'
+        };
+        match controller_link.write(&[byte]) {
+            Ok(_) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {}
+            Err(_) => {
+                break guardian.wait()?;
+            }
+        }
+        thread::sleep(Duration::from_millis(100));
+    };
+    ensure!(
+        receipt.exists(),
+        "guardian exited without terminal evidence; no recovery inference permitted"
+    );
+    ensure!(
+        status.success(),
+        "guardian terminal infrastructure failed ({status}); retained receipt is not successful completion authority"
+    );
+    Ok(receipt)
+}
+
+struct Runtime {
+    clock: GuardianClock,
+    wall_ceiling: SystemTime,
+    link: UnixStream,
+    controller: ProcessIdentity,
+    last_heartbeat: Instant,
+    last_scope_observation: Option<Instant>,
+    lost: Option<String>,
+    services: Vec<ServiceHandle>,
+    authority: ScopeAuthority,
+    journal: File,
+    journal_bytes: u64,
+}
+impl Runtime {
+    fn event(&mut self, phase: &str, value: impl Serialize) -> Result<()> {
+        let mut bytes = serde_json::to_vec(
+            &serde_json::json!({"guardian_elapsed_ms":self.clock.elapsed_ms(),"phase":phase,"evidence":value}),
+        )?;
+        bytes.push(b'\n');
+        ensure!(
+            self.journal_bytes + bytes.len() as u64 <= OUTPUT_BOUND,
+            "guardian journal bound reached"
+        );
+        self.journal.write_all(&bytes)?;
+        self.journal_bytes += bytes.len() as u64;
+        self.journal.flush()?;
+        Ok(())
+    }
+    fn recovery_tick(&mut self) -> Result<()> {
+        self.clock.recovery_check()?;
+        ensure!(
+            Instant::now() < self.clock.hard_deadline() && SystemTime::now() < self.wall_ceiling,
+            "automation ceiling expired; manual recovery required"
+        );
+        Ok(())
+    }
+    fn tick(&mut self) -> Result<()> {
+        self.recovery_tick()?;
+        self.clock.check()?;
+        if let Some(reason) = &self.lost {
+            bail!("controller authority revoked: {reason}");
+        }
+        let mut bytes = [0u8; 128];
+        loop {
+            match self.link.read(&mut bytes) {
+                Ok(0) => {
+                    self.lost = Some("controller EOF".into());
+                    break;
+                }
+                Ok(n) => {
+                    ensure!(
+                        bytes[..n].iter().all(|byte| *byte == b'H' || *byte == b'C'),
+                        "invalid controller protocol"
+                    );
+                    if bytes[..n].contains(&b'C') {
+                        self.lost = Some("controller cancelled".into());
+                        break;
+                    }
+                    self.last_heartbeat = Instant::now();
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => break,
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(error) => {
+                    self.lost = Some(format!("controller channel lost: {error}"));
+                    break;
+                }
+            }
+        }
+        if self.last_heartbeat.elapsed() > native_guard::MAX_AUTHORITY_GAP {
+            self.lost = Some("controller heartbeat expired".into());
+        }
+        if let Some(reason) = &self.lost {
+            bail!("controller authority revoked: {reason}");
+        }
+        let current =
+            process_scope::observe(self.controller.pid)?.context("controller vanished")?;
+        ensure!(
+            self.controller.same_process(&current),
+            "controller identity changed"
+        );
+        Ok(())
+    }
+    fn active_tick(&mut self) -> Result<()> {
+        self.tick()?;
+        if self
+            .last_scope_observation
+            .is_some_and(|at| at.elapsed() < Duration::from_millis(100))
+        {
+            return Ok(());
+        }
+        let reading = self.authority.collect(&mut self.services, &mut self.clock);
+        let result = if reading.decision.allowed {
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!(
+                "named scope revoked: {}",
+                reading.decision.reasons.join("; ")
+            ))
+        };
+        self.event("scope_observation", reading)?;
+        if result.is_ok() {
+            self.last_scope_observation = Some(Instant::now());
+        }
+        result
+    }
+}
+
+/// Hidden process entrypoint. A private IPC envelope is necessary, not sufficient:
+/// exact authorization and current identities are revalidated here before effects.
+pub fn guardian_main(control_fd: i32) -> Result<()> {
+    ensure!(control_fd > 2, "guardian requires private control socket");
+    let flags = unsafe { libc::fcntl(control_fd, libc::F_GETFD) };
+    ensure!(
+        flags >= 0
+            && unsafe { libc::fcntl(control_fd, libc::F_SETFD, flags | libc::FD_CLOEXEC) } == 0,
+        "protecting guardian control descriptor failed"
+    );
+    let mut socket_type = 0_i32;
+    let mut socket_type_size = std::mem::size_of::<i32>() as libc::socklen_t;
+    ensure!(
+        unsafe {
+            libc::getsockopt(
+                control_fd,
+                libc::SOL_SOCKET,
+                libc::SO_TYPE,
+                (&mut socket_type as *mut i32).cast(),
+                &mut socket_type_size,
+            )
+        } == 0
+            && socket_type == libc::SOCK_STREAM,
+        "guardian control must be a stream socket"
+    );
+    let mut link = unsafe { UnixStream::from_raw_fd(control_fd) };
+    link.set_read_timeout(Some(Duration::from_secs(2)))?;
+    let mut size = [0u8; 4];
+    link.read_exact(&mut size)?;
+    let size = u32::from_be_bytes(size) as usize;
+    ensure!(
+        size > 0 && size as u64 <= JSON_BOUND,
+        "invalid envelope size"
+    );
+    let mut bytes = vec![0; size];
+    link.read_exact(&mut bytes)?;
+    let envelope: Envelope = serde_json::from_slice(&bytes)?;
+    validate_authorization(&envelope.transaction, &envelope.authorization)?;
+    guardian_environment(&envelope.transaction)?;
+    ensure!(
+        unsafe { libc::getppid() } as u32 == envelope.controller.pid,
+        "guardian controller parent differs"
+    );
+    process_scope::verify_identity(&envelope.controller)?;
+    link.set_read_timeout(None)?;
+    link.set_nonblocking(true)?;
+    let transaction = envelope.transaction;
+    let identity = digest(&transaction)?;
+    private_json(
+        &transaction
+            .evidence_root
+            .join("authorization-consumed.json"),
+        &serde_json::json!({"transaction_sha256":identity,"guardian_pid":std::process::id()}),
+    )?;
+    let journal = OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .mode(0o600)
+        .open(transaction.evidence_root.join("guardian.jsonl"))?;
+    let remaining = envelope
+        .authorization
+        .expires_unix_ms
+        .checked_sub(native_guard::unix_ms()?)
+        .context("authorization expired while arming")?
+        .min(transaction.budgets.total_ms);
+    let wall_ceiling = (std::time::UNIX_EPOCH
+        + Duration::from_millis(envelope.authorization.expires_unix_ms))
+    .min(SystemTime::now() + Duration::from_millis(transaction.budgets.total_ms));
+    let runtime = RefCell::new(Runtime {
+        clock: GuardianClock::new(Duration::from_millis(remaining))?,
+        wall_ceiling,
+        link,
+        controller: envelope.controller,
+        last_heartbeat: Instant::now(),
+        last_scope_observation: None,
+        lost: None,
+        services: Vec::new(),
+        authority: ScopeAuthority::new(identity.clone())?,
+        journal,
+        journal_bytes: 0,
+    });
+    let mut settlement: Option<Settlement> = None;
+    let mut capture_directory = None;
+    let mut creation_attempted = false;
+    let mut restored = false;
+    let mut recovery_failure = None;
+    let mut lease = None;
+    let outcome = (|| -> Result<()> {
+        runtime.borrow_mut().tick()?;
+        let permissions = transaction
+            .reviewed_permissions
+            .as_ref()
+            .map(|reviewed| {
+                AuthorizedPermissions::from_transaction_authorization(reviewed, &identity)
+            })
+            .transpose()?;
+        lease = Some(Lease::acquire(&transaction.lease_path)?);
+        let arming = runtime
+            .borrow()
+            .clock
+            .phase_deadline(Duration::from_millis(transaction.budgets.arming_ms));
+        // oMLX's complete pre-stop fidelity gate runs before any service is stopped.
+        let omlx = ServiceHandle::enroll(
+            &transaction.services[1],
+            transaction.purpose,
+            permissions.as_ref(),
+            arming,
+            &mut || runtime.borrow_mut().tick(),
+        )?;
+        runtime.borrow_mut().services.push(omlx);
+        let studio = ServiceHandle::enroll(
+            &transaction.services[0],
+            transaction.purpose,
+            permissions.as_ref(),
+            arming,
+            &mut || runtime.borrow_mut().tick(),
+        )?;
+        runtime.borrow_mut().services.insert(0, studio);
+        for (index, budget, label) in [
+            (0, transaction.budgets.studio_stop_ms, "studio_stop"),
+            (1, transaction.budgets.omlx_stop_ms, "omlx_stop"),
+        ] {
+            let deadline = runtime
+                .borrow()
+                .clock
+                .phase_deadline(Duration::from_millis(budget));
+            let mut services = std::mem::take(&mut runtime.borrow_mut().services);
+            let result = services[index].stop(deadline, &mut || runtime.borrow_mut().tick());
+            runtime.borrow_mut().services = services;
+            let observation = result?;
+            runtime.borrow_mut().event(label, observation)?;
+        }
+        let prelaunch = runtime
+            .borrow()
+            .clock
+            .phase_deadline(Duration::from_millis(transaction.budgets.prelaunch_ms));
+        runtime.borrow_mut().active_tick()?;
+        ensure!(Instant::now() < prelaunch, "prelaunch deadline expired");
+        match &transaction.experiment {
+            Experiment::Cpu { command } => {
+                let deadline = runtime
+                    .borrow()
+                    .clock
+                    .phase_deadline(Duration::from_millis(transaction.budgets.experiment_ms));
+                let mut out = OpenOptions::new()
+                    .create_new(true)
+                    .write(true)
+                    .mode(0o600)
+                    .open(transaction.evidence_root.join("experiment.stdout"))?;
+                let mut err = OpenOptions::new()
+                    .create_new(true)
+                    .write(true)
+                    .mode(0o600)
+                    .open(transaction.evidence_root.join("experiment.stderr"))?;
+                creation_attempted = true;
+                let spawned = OwnedProcess::spawn_with_lease(
+                    command,
+                    deadline,
+                    &mut || runtime.borrow_mut().active_tick(),
+                    lease.as_ref().context("CPU lease lost")?.raw_fd(),
+                );
+                let mut child = match spawned {
+                    Ok(child) => child,
+                    Err(error) => {
+                        if let Some(failure) = error.downcast_ref::<process_scope::SpawnFailure>() {
+                            settlement = Some(failure.settlement.clone());
+                        }
+                        return Err(error);
+                    }
+                };
+                let mut stdout = child.stdout.take().context("CPU stdout absent")?;
+                let mut stderr = child.stderr.take().context("CPU stderr absent")?;
+                let mut remaining = OUTPUT_BOUND;
+                let execution = (|| -> Result<()> {
+                    runtime
+                        .borrow_mut()
+                        .event("experiment_created", child.identity()?)?;
+                    loop {
+                        runtime.borrow_mut().active_tick()?;
+                        ensure!(
+                            Instant::now() < deadline,
+                            "experiment phase deadline expired"
+                        );
+                        drain(&mut stdout, &mut out, &mut remaining)?;
+                        drain(&mut stderr, &mut err, &mut remaining)?;
+                        child.check_membership()?;
+                        if child.exited_unreaped()? {
+                            break;
+                        }
+                        thread::sleep(POLL);
+                    }
+                    Ok(())
+                })();
+                let cleanup = runtime
+                    .borrow()
+                    .clock
+                    .phase_deadline(Duration::from_millis(transaction.budgets.cleanup_ms));
+                settlement =
+                    Some(child.settle(cleanup, Duration::from_millis(100), &mut || {
+                        runtime.borrow_mut().recovery_tick()
+                    })?);
+                drain(&mut stdout, &mut out, &mut remaining)?;
+                drain(&mut stderr, &mut err, &mut remaining)?;
+                runtime
+                    .borrow_mut()
+                    .event("experiment_settlement", &settlement)?;
+                execution?;
+                let status = settlement.as_ref().context("settlement absent")?;
+                ensure!(
+                    status.complete && status.exit_code == Some(0),
+                    "CPU experiment failed or ownership incomplete"
+                );
+            }
+            Experiment::Native { plan } => {
+                plan.verify_files()?;
+                runtime.borrow_mut().active_tick()?;
+                ensure!(
+                    Instant::now() < prelaunch,
+                    "native preparation exceeded prelaunch slot"
+                );
+                let command = &plan.command;
+                let mut tick = || runtime.borrow_mut().active_tick();
+                let mut recovery_tick = || runtime.borrow_mut().recovery_tick();
+                let mut control = NativeCaptureControl {
+                    binding: NativeBinding {
+                        invocation_sha256: plan.sha256.clone(),
+                        transaction_sha256: identity.clone(),
+                        guardian_pid: std::process::id(),
+                    },
+                    tick: &mut tick,
+                    recovery_tick: &mut recovery_tick,
+                    cleanup_budget: Duration::from_millis(transaction.budgets.cleanup_ms),
+                    automation_deadline: runtime.borrow().clock.hard_deadline(),
+                    creation_attempted: false,
+                    directory: None,
+                    settlement: None,
+                };
+                let result = capture::capture_native_guarded(
+                    command.workload.clone(),
+                    CaptureOptions {
+                        root: command.output_root.clone(),
+                        executable: command.python.selected_path.clone(),
+                        args: command.python_arguments.clone(),
+                        env: BTreeMap::new(),
+                        timeout: Duration::from_millis(transaction.budgets.experiment_ms),
+                        max_output_bytes: command.max_output_bytes,
+                    },
+                    Arc::new(AtomicBool::new(false)),
+                    command
+                        .guard_config
+                        .clone()
+                        .context("resource policy absent")?,
+                    lease.as_ref().context("native lease lost")?,
+                    &mut control,
+                );
+                creation_attempted = control.creation_attempted;
+                settlement = control.settlement.take();
+                capture_directory = control.directory.take();
+                let directory = result?;
+                let record = capture::inspect(&directory)?;
+                capture_directory = Some(directory);
+                ensure!(
+                    record.is_success(),
+                    "native capture failed: {:?}",
+                    record.failure
+                );
+            }
+        }
+        Ok(())
+    })();
+    // Authority loss is sticky for the experiment. Recovery is a separately
+    // authorized action; it cannot erase failure or run before proven settlement.
+    let safe_to_restore =
+        !creation_attempted || settlement.as_ref().is_some_and(|value| value.complete);
+    if safe_to_restore && runtime.borrow().services.len() == 2 {
+        let result = (|| -> Result<()> {
+            for (index, budget, label) in [
+                (1, transaction.budgets.omlx_restore_ms, "omlx_restore"),
+                (0, transaction.budgets.studio_restore_ms, "studio_restore"),
+            ] {
+                let deadline = runtime
+                    .borrow()
+                    .clock
+                    .phase_deadline(Duration::from_millis(budget));
+                let mut services = std::mem::take(&mut runtime.borrow_mut().services);
+                let result =
+                    services[index].restore(deadline, &mut || runtime.borrow_mut().recovery_tick());
+                runtime.borrow_mut().services = services;
+                let observation = result?;
+                ensure!(
+                    observation.restored && observation.failure.is_none(),
+                    "restore unqualified; no next callback"
+                );
+                runtime.borrow_mut().event(label, observation)?;
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => restored = true,
+            Err(error) => recovery_failure = Some(format!("{error:#}")),
+        }
+    } else if creation_attempted {
+        recovery_failure = Some("experiment settlement unproved: all restoration withheld".into());
+    }
+    // Disposal of this transaction's CPU fixtures is not production recovery.
+    if transaction.purpose == ScopePurpose::Cpu {
+        let deadline = runtime
+            .borrow()
+            .clock
+            .phase_deadline(Duration::from_millis(transaction.budgets.recovery_ms));
+        let mut services = std::mem::take(&mut runtime.borrow_mut().services);
+        for service in services.iter_mut().rev() {
+            if let Err(error) =
+                service.finish_owned_cpu(deadline, &mut || runtime.borrow_mut().recovery_tick())
+            {
+                recovery_failure
+                    .get_or_insert_with(|| format!("owned CPU fixture disposal failed: {error:#}"));
+            }
+        }
+        runtime.borrow_mut().services = services;
+    }
+    let success = outcome.is_ok() && restored && recovery_failure.is_none();
+    let service_outcomes: Vec<_> = runtime
+        .borrow()
+        .services
+        .iter()
+        .map(ServiceHandle::last_observation)
+        .collect();
+    private_json(
+        &transaction.evidence_root.join("service-outcomes.json"),
+        &service_outcomes,
+    )?;
+    let receipt = serde_json::json!({"schema_version":1,"kind":if transaction.purpose==ScopePurpose::Cpu{"cpu_maintenance_transaction"}else{"native_maintenance_transaction"},"transaction_sha256":identity,"transaction_id":transaction.transaction_id,"guardian_pid":std::process::id(),"controller_identity":runtime.borrow().controller,"success":success,"experiment_failure":outcome.err().map(|error|format!("{error:#}")),"creation_attempted":creation_attempted,"settlement":settlement,"restored":restored,"recovery_failure":recovery_failure,"capture_directory":capture_directory,"elapsed_ms":runtime.borrow().clock.elapsed_ms(),"lease_path":transaction.lease_path,"scope":"Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee","automation_ceiling_note":"Bounds automation, not a failed outage; GUI may remain paused for manual recovery"});
+    private_json(&transaction.evidence_root.join("receipt.json"), &receipt)?;
+    runtime.borrow_mut().journal.sync_all()?;
+    drop(lease);
+    Ok(())
+}
+fn drain(input: &mut File, output: &mut File, remaining: &mut u64) -> Result<()> {
+    let mut bytes = [0u8; 8192];
+    loop {
+        match input.read(&mut bytes) {
+            Ok(0) => return Ok(()),
+            Ok(n) => {
+                ensure!((n as u64) <= *remaining, "CPU output exceeded 64 MiB");
+                output.write_all(&bytes[..n])?;
+                *remaining -= n as u64;
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => return Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+}
+
+/// A real finite CPU participant. It never imports native runtimes or emits media
+/// inference evidence. Fork cases deliberately exercise the observation limit.
+pub fn participant(mode: &str, duration_ms: u64) -> Result<bool> {
+    ensure!(
+        (1..=30_000).contains(&duration_ms),
+        "participant duration outside finite CPU limit"
+    );
+    match mode {
+        "service" | "hold" => thread::sleep(Duration::from_millis(duration_ms)),
+        "fail" => return Ok(false),
+        "ignore-term" => {
+            unsafe {
+                libc::signal(libc::SIGTERM, libc::SIG_IGN);
+            }
+            thread::sleep(Duration::from_millis(duration_ms));
+        }
+        "retained" | "escaped" => {
+            let escaped = mode == "escaped";
+            let pid = unsafe { libc::fork() };
+            ensure!(pid >= 0, "CPU participant fork failed");
+            if pid == 0 {
+                unsafe {
+                    if escaped && libc::setsid() < 0 {
+                        libc::_exit(91);
+                    }
+                    if escaped {
+                        let evidence = b"{\"cpu_child_event\":\"setsid_succeeded\"}\n";
+                        libc::write(1, evidence.as_ptr().cast(), evidence.len());
+                    }
+                    libc::usleep((duration_ms.min(5000) * 1000) as u32);
+                    libc::_exit(0);
+                }
+            }
+            // Keep the root anchored long enough for the enrolled kernel event.
+            thread::sleep(Duration::from_millis(duration_ms));
+        }
+        "compute" => {
+            let start = Instant::now();
+            let mut accumulator = 0x9e3779b97f4a7c15u64;
+            let mut iterations = 0u64;
+            while start.elapsed() < Duration::from_millis(duration_ms) {
+                for _ in 0..4096 {
+                    accumulator = std::hint::black_box(
+                        accumulator
+                            .rotate_left(7)
+                            .wrapping_mul(6364136223846793005)
+                            .wrapping_add(1),
+                    );
+                    iterations += 1;
+                }
+            }
+            println!(
+                "{}",
+                serde_json::json!({"kind":"integer_cpu_work","iterations":iterations,"checksum":format!("{accumulator:016x}"),"participant_elapsed_ms":start.elapsed().as_millis(),"native_inference":false})
+            );
+        }
+        _ => bail!("unknown finite CPU participant mode"),
+    }
+    Ok(true)
+}
+
+pub fn run_cpu(root: &Path, scenario: &str) -> Result<PathBuf> {
+    ensure!(
+        matches!(
+            scenario,
+            "normal"
+                | "controller-loss"
+                | "retained"
+                | "escaped"
+                | "deadline"
+                | "cleanup-deadline"
+                | "restore-failure"
+                | "stale"
+        ),
+        "unknown CPU lifecycle scenario"
+    );
+    let root = fs::canonicalize(root)?;
+    let metadata = fs::symlink_metadata(&root)?;
+    ensure!(
+        metadata.is_dir()
+            && metadata.uid() == unsafe { libc::geteuid() }
+            && metadata.mode() & 0o077 == 0,
+        "CPU root must be owner-private"
+    );
+    let executable = std::env::current_exe()?;
+    let command = |mode: &str, duration: u64| CommandSpec {
+        executable: executable.clone(),
+        args: vec![
+            "maintenance-participant".into(),
+            "--mode".into(),
+            mode.into(),
+            "--duration-ms".into(),
+            duration.to_string(),
+        ],
+        cwd: root.clone(),
+        environment: BTreeMap::new(),
+    };
+    let id = format!("cpu-{}-{}", native_guard::unix_ms()?, std::process::id());
+    let (mode, duration, experiment_ms, cleanup_ms) = match scenario {
+        "controller-loss" | "stale" => ("hold", 5000, 6000, 2000),
+        "retained" => ("retained", 1500, 3000, 2000),
+        "escaped" => ("escaped", 1500, 3000, 2000),
+        "deadline" => ("hold", 2000, 100, 2000),
+        "cleanup-deadline" => ("ignore-term", 2000, 200, 1),
+        _ => ("compute", 200, 3000, 2000),
+    };
+    let service = command("service", 30_000);
+    let transaction = Transaction {
+        schema_version: 1,
+        transaction_id: id.clone(),
+        purpose: ScopePurpose::Cpu,
+        evidence_root: root.join(id),
+        lease_path: root.join(".cpu-maintenance.lock"),
+        guardian_sha256: executable_digest(&executable)?,
+        budgets: Budgets {
+            arming_ms: 3000,
+            studio_stop_ms: 2000,
+            omlx_stop_ms: 2000,
+            prelaunch_ms: 1000,
+            experiment_ms,
+            cleanup_ms,
+            omlx_restore_ms: 3000,
+            studio_restore_ms: 2000,
+            recovery_ms: 3000,
+            total_ms: 30_000,
+        },
+        services: vec![
+            ServiceSpec::OwnedCpu {
+                role: ServiceRole::Studio,
+                command: service.clone(),
+                restore_command: service.clone(),
+                gui_command: None,
+            },
+            ServiceSpec::OwnedCpu {
+                role: ServiceRole::Omlx,
+                command: service.clone(),
+                restore_command: if scenario == "restore-failure" {
+                    command("fail", 1)
+                } else {
+                    service.clone()
+                },
+                gui_command: Some(service),
+            },
+        ],
+        experiment: Experiment::Cpu {
+            command: command(mode, duration),
+        },
+        reviewed_permissions: None,
+    };
+    let now = native_guard::unix_ms()?;
+    let authorization = Authorization {
+        schema_version: 1,
+        transaction_sha256: digest(&transaction)?,
+        purpose: ScopePurpose::Cpu,
+        owner_uid: unsafe { libc::geteuid() },
+        not_before_unix_ms: now,
+        expires_unix_ms: now + 35_000,
+        review_reference:
+            "explicit CLI CPU-only transaction; no live service or native permissions".into(),
+        service_interruption_approved: true,
+        cold_restore_approved: true,
+        interrupted_work_loss_approved: true,
+    };
+    run_controller(transaction, authorization)
+}

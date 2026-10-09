@@ -1,6 +1,7 @@
 use crate::{
     guards::{GuardConfig, GuardMonitor, GuardReport, Lease},
-    native_guard::{NativeGuardConfig, SANDBOX_EXECUTABLE, SANDBOX_PROFILE},
+    native_guard::{NativeBinding, SANDBOX_EXECUTABLE, SANDBOX_PROFILE},
+    process_scope::{CommandSpec, OwnedProcess, Settlement},
     schema::{AdapterResult, ProcessPolicy, Workload},
 };
 use anyhow::{Context, Result, bail, ensure};
@@ -19,7 +20,7 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-const RECORD_VERSION: u32 = 2;
+const RECORD_VERSION: u32 = 3;
 const JSON_LIMIT: u64 = 16 * 1024 * 1024;
 // Failure text can expand sixfold when JSON-escaped. The remaining reserve
 // covers all fixed-size terminal counters, timestamps, exit and cleanup fields.
@@ -39,6 +40,17 @@ pub struct CaptureOptions {
     pub env: BTreeMap<String, String>,
     pub timeout: Duration,
     pub max_output_bytes: u64,
+}
+
+pub(crate) struct NativeCaptureControl<'a> {
+    pub binding: NativeBinding,
+    pub tick: &'a mut dyn FnMut() -> Result<()>,
+    pub recovery_tick: &'a mut dyn FnMut() -> Result<()>,
+    pub cleanup_budget: Duration,
+    pub automation_deadline: Instant,
+    pub creation_attempted: bool,
+    pub directory: Option<PathBuf>,
+    pub settlement: Option<Settlement>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -78,6 +90,8 @@ pub struct Invocation {
 #[serde(deny_unknown_fields)]
 pub struct NativeInvocation {
     pub invocation_sha256: String,
+    pub transaction_sha256: String,
+    pub guardian_pid: u32,
     /// The selected Python stays in Invocation.executable; this is its OS wrapper.
     pub sandbox_executable: String,
     pub sandbox_profile: String,
@@ -215,6 +229,10 @@ impl CaptureRecord {
             ensure!(
                 valid_hash(&native.invocation_sha256),
                 "invalid native invocation identity"
+            );
+            ensure!(
+                valid_hash(&native.transaction_sha256) && native.guardian_pid > 1,
+                "native capture lacks guardian transaction binding"
             );
             ensure!(
                 native.sandbox_executable == SANDBOX_EXECUTABLE
@@ -749,31 +767,6 @@ pub fn inspect(run_dir: &Path) -> Result<CaptureRecord> {
         let path = directory.join(&evidence.path);
         let report: GuardReport = load_json(&path, JSON_LIMIT)?;
         report.validate()?;
-        ensure!(
-            report
-                .native
-                .as_ref()
-                .map(|native| native.config.invocation_sha256.as_str())
-                == record
-                    .invocation
-                    .native
-                    .as_ref()
-                    .map(|native| native.invocation_sha256.as_str()),
-            "native guard identity disagrees with capture invocation"
-        );
-        if let Some(native) = &report.native
-            && !native.baseline.decision.allowed
-        {
-            ensure!(
-                record.exit.is_none()
-                    && record
-                        .cleanup
-                        .as_ref()
-                        .is_none_or(|cleanup| cleanup.process_group.is_none())
-                    && record.artifact_inspection_ms.is_none(),
-                "native launch denial contradicts child execution evidence"
-            );
-        }
         if record.is_success() {
             ensure!(
                 report.initial_decision.allowed
@@ -835,7 +828,7 @@ pub fn capture(
     options: CaptureOptions,
     cancelled: Arc<AtomicBool>,
 ) -> Result<PathBuf> {
-    capture_inner(request, options, cancelled, None)
+    capture_inner(request, options, cancelled, None, None)
 }
 
 /// CPU-only guarded supervision. A lease and passing observations are not a manager grant.
@@ -851,21 +844,24 @@ pub fn capture_guarded(
         options.timeout <= Duration::from_secs(600),
         "guarded execution is limited to 600 seconds"
     );
-    capture_inner(request, options, cancelled, Some((config, lease, None)))
+    capture_inner(request, options, cancelled, Some((config, &lease)), None)
 }
 
-/// Dedicated native branch. Required production readiness is collected internally;
-/// neither caller observations nor a manager reference can bypass a missing source.
-pub fn capture_native_guarded(
+/// Called only inside the independently authorized guardian; not a public bypass.
+pub(crate) fn capture_native_guarded(
     request: Workload,
     options: CaptureOptions,
     cancelled: Arc<AtomicBool>,
     config: GuardConfig,
-    lease: Lease,
-    native: NativeGuardConfig,
+    lease: &Lease,
+    native: &mut NativeCaptureControl<'_>,
 ) -> Result<PathBuf> {
     config.validate()?;
-    native.validate()?;
+    ensure!(
+        native.binding.guardian_pid == std::process::id(),
+        "native capture must run in its bound guardian"
+    );
+    (native.tick)()?;
     ensure!(
         options.timeout <= Duration::from_secs(600),
         "native execution is limited to 600 seconds"
@@ -878,7 +874,8 @@ pub fn capture_native_guarded(
         request,
         options,
         cancelled,
-        Some((config, lease, Some(native))),
+        Some((config, lease)),
+        Some(native),
     )
 }
 
@@ -886,7 +883,8 @@ fn capture_inner(
     request: Workload,
     options: CaptureOptions,
     cancelled: Arc<AtomicBool>,
-    guarded: Option<(GuardConfig, Lease, Option<NativeGuardConfig>)>,
+    guarded: Option<(GuardConfig, &Lease)>,
+    native: Option<&mut NativeCaptureControl<'_>>,
 ) -> Result<PathBuf> {
     request.validate()?;
     ensure!(
@@ -920,11 +918,11 @@ fn capture_inner(
     }
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     {
-        unix::capture(request, options, cancelled, guarded)
+        unix::capture(request, options, cancelled, guarded, native)
     }
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     {
-        let _ = (request, options, cancelled, guarded);
+        let _ = (request, options, cancelled, guarded, native);
         bail!("process ownership supervision is supported only on macOS and Linux")
     }
 }
@@ -1138,8 +1136,11 @@ pub(crate) mod unix {
         log: &mut File,
         remaining: &mut u64,
         count: &mut u64,
+        phase_deadline: Option<Instant>,
     ) -> Result<bool> {
-        let deadline = Instant::now() + Duration::from_millis(100);
+        let deadline = phase_deadline
+            .unwrap_or(Instant::now() + Duration::from_millis(100))
+            .min(Instant::now() + Duration::from_millis(100));
         loop {
             let (overflow, drained) = drain(pipe, log, remaining, count)?;
             if overflow || drained {
@@ -1169,15 +1170,57 @@ pub(crate) mod unix {
         })
     }
 
+    enum CaptureChild {
+        Cpu(OwnedChild),
+        Native(OwnedProcess),
+    }
+    impl CaptureChild {
+        fn pid(&self) -> u32 {
+            match self {
+                Self::Cpu(child) => child.child.id(),
+                Self::Native(child) => child.pid(),
+            }
+        }
+        fn take_io(&mut self) -> Result<(File, File)> {
+            use std::os::fd::{FromRawFd, IntoRawFd};
+            match self {
+                Self::Cpu(child) => {
+                    let out = child.child.stdout.take().context("missing stdout")?;
+                    let err = child.child.stderr.take().context("missing stderr")?;
+                    Ok(unsafe {
+                        (
+                            File::from_raw_fd(out.into_raw_fd()),
+                            File::from_raw_fd(err.into_raw_fd()),
+                        )
+                    })
+                }
+                Self::Native(child) => Ok((
+                    child.stdout.take().context("missing stdout")?,
+                    child.stderr.take().context("missing stderr")?,
+                )),
+            }
+        }
+        fn exited(&mut self) -> Result<bool> {
+            match self {
+                Self::Cpu(child) => child.exited(),
+                Self::Native(child) => {
+                    child.check_membership()?;
+                    child.exited_unreaped()
+                }
+            }
+        }
+    }
+
     pub(super) fn capture(
         request: Workload,
         options: CaptureOptions,
         cancelled: Arc<AtomicBool>,
-        guarded: Option<(GuardConfig, Lease, Option<NativeGuardConfig>)>,
+        guarded: Option<(GuardConfig, &Lease)>,
+        mut native: Option<&mut NativeCaptureControl<'_>>,
     ) -> Result<PathBuf> {
         let executable = absolute(&options.executable)?;
         // Preserve the selected venv invocation, while hashing its resolved binary.
-        let native_config = guarded.as_ref().and_then(|(_, _, native)| native.as_ref());
+        let native_config = native.as_ref().map(|control| &control.binding);
         let canonical_executable = native_config
             .map(|_| fs::canonicalize(&executable))
             .transpose()?;
@@ -1190,22 +1233,21 @@ pub(crate) mod unix {
         let directory = unique_run(&options.root)?;
         let native_invocation = native_config.map(|native| NativeInvocation {
             invocation_sha256: native.invocation_sha256.clone(),
+            transaction_sha256: native.transaction_sha256.clone(),
+            guardian_pid: native.guardian_pid,
             sandbox_executable: SANDBOX_EXECUTABLE.into(),
             sandbox_profile: SANDBOX_PROFILE.into(),
         });
         let is_native = native_invocation.is_some();
+        if let Some(control) = native.as_mut() {
+            control.directory = Some(directory.clone());
+        }
         if is_native {
             use std::os::unix::fs::PermissionsExt;
             fs::set_permissions(&directory, fs::Permissions::from_mode(0o700))?;
         }
         let (mut monitor, lease) = match guarded {
-            Some((config, lease, native)) => (
-                Some(match native {
-                    Some(native) => GuardMonitor::start_native(config, &directory, native)?,
-                    None => GuardMonitor::start(config, &directory)?,
-                }),
-                Some(lease),
-            ),
+            Some((config, lease)) => (Some(GuardMonitor::start(config, &directory)?), Some(lease)),
             None => (None, None),
         };
         let mut guard_failure = monitor
@@ -1288,6 +1330,7 @@ pub(crate) mod unix {
             .mode(0o600)
             .open(directory.join("stderr.log"))?;
         let execution_start = Instant::now();
+        let mut native_cleanup_deadline = None;
         let mut command = if is_native {
             let mut command = Command::new(SANDBOX_EXECUTABLE);
             command
@@ -1330,7 +1373,7 @@ pub(crate) mod unix {
                 .env("MIL_SUPERVISOR_PID", std::process::id().to_string())
                 .envs(crate::native_guard::OFFLINE_ENVIRONMENT);
         }
-        let lease_fd = lease.as_ref().map(Lease::raw_fd);
+        let lease_fd = lease.as_ref().map(|lease| lease.raw_fd());
         unsafe {
             command.pre_exec(move || {
                 if is_native {
@@ -1348,11 +1391,59 @@ pub(crate) mod unix {
                 Ok(())
             });
         }
-        let spawned = if guard_failure.is_some() || cancelled.load(Ordering::Relaxed) {
-            None
-        } else {
-            Some(command.spawn())
-        };
+        if let Some(control) = native.as_mut()
+            && let Err(error) = (control.tick)()
+        {
+            guard_failure = Some(format!("named scope revoked before creation: {error:#}"));
+        }
+        let spawned: Option<Result<CaptureChild>> =
+            if guard_failure.is_some() || cancelled.load(Ordering::Relaxed) {
+                None
+            } else if let Some(control) = native.as_mut() {
+                control.creation_attempted = true;
+                let spec = CommandSpec {
+                    executable: PathBuf::from(command.get_program()),
+                    args: command
+                        .get_args()
+                        .map(|arg| arg.to_string_lossy().into_owned())
+                        .collect(),
+                    cwd: directory.clone(),
+                    environment: command
+                        .get_envs()
+                        .filter_map(|(key, value)| {
+                            value.map(|value| {
+                                (
+                                    key.to_string_lossy().into_owned(),
+                                    value.to_string_lossy().into_owned(),
+                                )
+                            })
+                        })
+                        .collect(),
+                };
+                Some(
+                    OwnedProcess::spawn_with_lease(
+                        &spec,
+                        (Instant::now() + options.timeout).min(control.automation_deadline),
+                        control.tick,
+                        lease_fd.context("native lease missing")?,
+                    )
+                    .map(CaptureChild::Native),
+                )
+            } else {
+                Some(
+                    command
+                        .spawn()
+                        .map(|child| {
+                            CaptureChild::Cpu(OwnedChild {
+                                child,
+                                anchored: true,
+                                group_signalled: false,
+                                group_quiescent: false,
+                            })
+                        })
+                        .map_err(Into::into),
+                )
+            };
         match spawned {
             None => {
                 record.state = CaptureState::Cancelled;
@@ -1377,31 +1468,38 @@ pub(crate) mod unix {
                     group_quiescent: false,
                     leader_reaped: false,
                 });
+                if let Some(failure) = error.downcast_ref::<crate::process_scope::SpawnFailure>() {
+                    let status = &failure.settlement;
+                    record.cleanup = Some(Cleanup {
+                        process_group: Some(failure.pid),
+                        group_signalled: status.group_signalled,
+                        group_quiescent: status.group_absent,
+                        leader_reaped: status.leader_reaped,
+                    });
+                    record.cleanup_elapsed_ms = Some(failure.cleanup_elapsed_ms);
+                    if status.leader_reaped {
+                        record.exit = Some(ChildExit {
+                            code: status.exit_code,
+                            signal: status.exit_signal,
+                        });
+                    }
+                    if let Some(control) = native.as_mut() {
+                        control.settlement = Some(status.clone());
+                    }
+                }
             }
-            Some(Ok(child)) => {
-                let mut owned = OwnedChild {
-                    child,
-                    anchored: true,
-                    group_signalled: false,
-                    group_quiescent: false,
-                };
-                let group = owned.child.id();
-                let mut stdout = owned
-                    .child
-                    .stdout
-                    .take()
-                    .context("missing child stdout pipe")?;
-                let mut stderr = owned
-                    .child
-                    .stderr
-                    .take()
-                    .context("missing child stderr pipe")?;
+            Some(Ok(mut owned)) => {
+                let group = owned.pid();
+                let (mut stdout, mut stderr) = owned.take_io()?;
                 let mut remaining = options.max_output_bytes;
                 let mut last_size_check = Instant::now();
                 let execution = (|| -> Result<()> {
                     nonblocking(&stdout)?;
                     nonblocking(&stderr)?;
                     loop {
+                        if let Some(control) = native.as_mut() {
+                            (control.tick)()?;
+                        }
                         if cancelled.load(Ordering::Relaxed) {
                             record.state = CaptureState::Cancelled;
                             record.failure = Some("cancelled by caller".into());
@@ -1462,14 +1560,47 @@ pub(crate) mod unix {
                     record.failure = Some(format!("capture monitoring failed: {error:#}"));
                 }
                 let cleanup_start = Instant::now();
-                let cleanup = owned.cleanup();
+                let cleanup = match &mut owned {
+                    CaptureChild::Cpu(child) => {
+                        let result = child.cleanup();
+                        record.cleanup = Some(Cleanup {
+                            process_group: Some(group),
+                            group_signalled: child.group_signalled,
+                            group_quiescent: child.group_quiescent,
+                            leader_reaped: result.is_ok(),
+                        });
+                        result
+                    }
+                    CaptureChild::Native(child) => {
+                        let control = native.as_mut().context("native control lost")?;
+                        let deadline = (cleanup_start + control.cleanup_budget)
+                            .min(control.automation_deadline);
+                        native_cleanup_deadline = Some(deadline);
+                        let settlement =
+                            child.settle(deadline, TERM_GRACE, control.recovery_tick)?;
+                        record.cleanup = Some(Cleanup {
+                            process_group: Some(group),
+                            group_signalled: settlement.group_signalled,
+                            group_quiescent: settlement.group_absent,
+                            leader_reaped: settlement.leader_reaped,
+                        });
+                        let result = match (settlement.exit_code, settlement.exit_signal) {
+                            (Some(code), None) => Ok(ExitStatus::from_raw(code << 8)),
+                            (None, Some(signal)) => Ok(ExitStatus::from_raw(signal)),
+                            _ => Err(anyhow::anyhow!("native leader has no reaped status")),
+                        };
+                        if !settlement.complete {
+                            record.state = CaptureState::Failed;
+                            record.failure = Some(format!(
+                                "native settlement incomplete: {:?}",
+                                settlement.failure
+                            ));
+                        }
+                        control.settlement = Some(settlement);
+                        result
+                    }
+                };
                 record.cleanup_elapsed_ms = Some(millis(cleanup_start.elapsed()));
-                record.cleanup = Some(Cleanup {
-                    process_group: Some(group),
-                    group_signalled: owned.group_signalled,
-                    group_quiescent: owned.group_quiescent,
-                    leader_reaped: cleanup.is_ok(),
-                });
                 match cleanup {
                     Ok(status) => {
                         record.exit = Some(ChildExit {
@@ -1492,12 +1623,14 @@ pub(crate) mod unix {
                         &mut stdout_log,
                         &mut remaining,
                         &mut record.logs.stdout_bytes,
+                        native_cleanup_deadline,
                     )?;
                     let err = final_drain(
                         &mut stderr,
                         &mut stderr_log,
                         &mut remaining,
                         &mut record.logs.stderr_bytes,
+                        native_cleanup_deadline,
                     )?;
                     Ok(out || err)
                 })();
@@ -1560,7 +1693,7 @@ pub(crate) mod unix {
                             &directory,
                             &result,
                             options.max_output_bytes,
-                            inspection_start + INSPECTION_LIMIT,
+                            native_cleanup_deadline.unwrap_or(inspection_start + INSPECTION_LIMIT),
                             Some(&cancelled),
                         )?;
                         Ok(result)
@@ -1587,7 +1720,7 @@ pub(crate) mod unix {
             let (digest, bytes) = hash_file(
                 &directory.join(&evidence.path),
                 JSON_LIMIT,
-                Instant::now() + INSPECTION_LIMIT,
+                native_cleanup_deadline.unwrap_or(Instant::now() + INSPECTION_LIMIT),
                 None,
             )?;
             evidence.sha256 = Some(digest);

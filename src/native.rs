@@ -1,9 +1,9 @@
 //! Native MFLUX preparation and explicit launch. CPU checks never establish readiness.
 use crate::{
-    capture::{self, CaptureOptions},
-    guards::{GuardConfig, Lease},
-    native_guard::{self, NativeGuardConfig},
-    preflight,
+    capture,
+    guards::GuardConfig,
+    maintenance::{self, Authorization, Experiment, Transaction},
+    native_guard, preflight,
     schema::{CachePolicy, MediaSettings, Precision, ProcessPolicy, Quantization, Workload},
 };
 use anyhow::{Context, Result, ensure};
@@ -17,7 +17,6 @@ use std::{
     os::unix::fs::{MetadataExt, OpenOptionsExt},
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::{Arc, atomic::AtomicBool},
     time::{Duration, Instant},
 };
 
@@ -36,46 +35,50 @@ pub struct NativeOptions {
     pub check_timeout: Duration,
     pub max_output_bytes: u64,
     pub guard_config: Option<PathBuf>,
-    pub manager_grant_reference: Option<String>,
+    pub maintenance_transaction: Option<PathBuf>,
+    pub authorization: Option<PathBuf>,
     pub execute: bool,
 }
 
-#[derive(Serialize)]
-struct FileIdentity {
-    selected_path: PathBuf,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FileIdentity {
+    pub(crate) selected_path: PathBuf,
     canonical_path: PathBuf,
     sha256: String,
     bytes: u64,
 }
 
-#[derive(Serialize)]
-struct Plan {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Plan {
     schema_version: u32,
-    kind: &'static str,
-    workload: Workload,
+    kind: String,
+    pub(crate) workload: Workload,
     workload_identity: String,
-    python: FileIdentity,
+    pub(crate) python: FileIdentity,
     source_directory: PathBuf,
     expected_source_tree_sha256: String,
     model_directory: PathBuf,
     adapter: FileIdentity,
     preflight_helper: FileIdentity,
-    output_root: PathBuf,
-    timeout_ms: u64,
-    max_output_bytes: u64,
-    guard_config: Option<GuardConfig>,
-    python_arguments: Vec<String>,
+    pub(crate) output_root: PathBuf,
+    pub(crate) timeout_ms: u64,
+    pub(crate) max_output_bytes: u64,
+    pub(crate) guard_config: Option<GuardConfig>,
+    pub(crate) python_arguments: Vec<String>,
     environment: BTreeMap<String, String>,
-    sandbox_executable: &'static str,
-    sandbox_profile: &'static str,
-    dynamic_supervisor_fields: &'static str,
+    sandbox_executable: String,
+    sandbox_profile: String,
+    dynamic_supervisor_fields: String,
 }
 
-#[derive(Serialize)]
-struct PreparedPlan {
-    sha256: String,
-    identity_method: &'static str,
-    command: Plan,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PreparedPlan {
+    pub(crate) sha256: String,
+    identity_method: String,
+    pub(crate) command: Plan,
 }
 
 fn regular_json<T: for<'de> Deserialize<'de>>(path: &Path, limit: u64) -> Result<T> {
@@ -309,8 +312,8 @@ fn prepare(options: &NativeOptions) -> Result<PreparedPlan> {
         options.max_output_bytes.to_string(),
     ];
     let command = Plan {
-        schema_version: 1,
-        kind: "native_qwen21_mflux_launch_plan",
+        schema_version: 2,
+        kind: "native_qwen21_mflux_launch_plan".into(),
         workload_identity: workload.identity()?,
         workload,
         python,
@@ -325,16 +328,122 @@ fn prepare(options: &NativeOptions) -> Result<PreparedPlan> {
         guard_config,
         python_arguments,
         environment,
-        sandbox_executable: native_guard::SANDBOX_EXECUTABLE,
-        sandbox_profile: native_guard::SANDBOX_PROFILE,
-        dynamic_supervisor_fields: "Fresh private run directory, requested/result paths, workload identity, native guarded marker and supervisor PID are supplied internally. HOME/TMPDIR/HF_HOME/XDG_CACHE_HOME point into that run. Capture uses one new process group and the persistent close-only project lease. No user environment or credential inheritance.",
+        sandbox_executable: native_guard::SANDBOX_EXECUTABLE.into(),
+        sandbox_profile: native_guard::SANDBOX_PROFILE.into(),
+        dynamic_supervisor_fields: "Guardian supplies fresh private run paths, workload identity and its own PID. Native root is a session leader; OS sandbox denies fork/network/writes outside run. Close-only lease is retained across exec; no user environment/credentials inherited.".into(),
     };
     let sha256 = format!("{:x}", Sha256::digest(serde_json::to_vec(&command)?));
     Ok(PreparedPlan {
         sha256,
-        identity_method: "SHA-256 of compact serde JSON of command in this versioned Rust field order; all typed workload/settings, selected venv invocation and observed executable hash, expected source identity, model path, adapter/helper hashes, arguments/environment, output root/bounds and resource guard config participate. Dynamic run paths, observation times, report destination and external grant reference are excluded. Source/payload/import identity is not established by this plan.",
+        identity_method: "SHA-256 of compact serde JSON of command in versioned Rust field order. Selected venv and resolved executable, workload, expected source, model, adapter/helper, arguments/environment, root/bounds and resource policy participate. Transaction authorization separately binds this plan, service identities, guardian binary and all phase deadlines.".into(),
         command,
     })
+}
+
+impl PreparedPlan {
+    pub(crate) fn validate_enrolled(&self) -> Result<()> {
+        let command = &self.command;
+        ensure!(
+            command.schema_version == 2 && command.kind == "native_qwen21_mflux_launch_plan",
+            "unsupported native launch plan"
+        );
+        ensure!(
+            self.sha256 == maintenance::digest(command)?,
+            "native launch plan identity mismatch"
+        );
+        validate_request(&command.workload, &command.model_directory)?;
+        ensure!(
+            command.workload_identity == command.workload.identity()?,
+            "native workload identity differs"
+        );
+        ensure!(
+            command.sandbox_executable == native_guard::SANDBOX_EXECUTABLE
+                && command.sandbox_profile == native_guard::SANDBOX_PROFILE,
+            "native confinement differs"
+        );
+        ensure!(
+            command.timeout_ms > 0
+                && command.timeout_ms <= 600_000
+                && command.max_output_bytes == 64 * 1024 * 1024,
+            "native bounds differ"
+        );
+        ensure!(
+            command.output_root.is_absolute()
+                && command.source_directory.is_absolute()
+                && command.model_directory.is_absolute(),
+            "native paths must be explicit absolute selections"
+        );
+        ensure!(
+            native_guard::valid_hash(&command.expected_source_tree_sha256),
+            "native source identity invalid"
+        );
+        let repository = Path::new(env!("CARGO_MANIFEST_DIR"));
+        ensure!(
+            command.adapter.selected_path == repository.join("adapters/mflux_native.py")
+                && command.preflight_helper.selected_path
+                    == repository.join("adapters/mflux_preflight.py"),
+            "native adapter/helper selection differs from reviewed implementation"
+        );
+        let args = &command.python_arguments;
+        ensure!(
+            args.len() == 16 && args[..3] == ["-I", "-S", "-B"],
+            "native Python argument shape differs"
+        );
+        ensure!(
+            args[3] == utf8(&command.adapter.selected_path)?
+                && args[4] == "--python"
+                && args[5] == utf8(&command.python.selected_path)?
+                && args[6] == "--source-dir"
+                && args[7] == utf8(&command.source_directory)?
+                && args[8] == "--model-dir"
+                && args[9] == utf8(&command.model_directory)?
+                && args[10] == "--source-sha256"
+                && args[11] == command.expected_source_tree_sha256
+                && args[12] == "--timeout-seconds"
+                && args[13].parse::<u64>()?.checked_mul(1000) == Some(command.timeout_ms)
+                && args[14] == "--max-output-bytes"
+                && args[15].parse::<u64>()? == command.max_output_bytes,
+            "native argv does not match declared workload/runtime/bounds"
+        );
+        ensure!(
+            command.environment.len() == native_guard::OFFLINE_ENVIRONMENT.len()
+                && native_guard::OFFLINE_ENVIRONMENT
+                    .iter()
+                    .all(|(key, value)| command
+                        .environment
+                        .get(*key)
+                        .is_some_and(|actual| actual == value)),
+            "native environment differs from fixed offline policy"
+        );
+        let resources = command
+            .guard_config
+            .as_ref()
+            .context("native resource policy absent")?;
+        resources.validate()?;
+        ensure!(
+            resources.min_disk_free_bytes >= 10 * 1024 * 1024 * 1024
+                && resources.max_disk_growth_bytes <= 256 * 1024 * 1024,
+            "native disk policy weakened"
+        );
+        Ok(())
+    }
+    pub(crate) fn verify_files(&self) -> Result<()> {
+        self.validate_enrolled()?;
+        for expected in [
+            &self.command.python,
+            &self.command.adapter,
+            &self.command.preflight_helper,
+        ] {
+            let actual = file_identity(&expected.selected_path, 64 * 1024 * 1024)?;
+            ensure!(
+                actual.canonical_path == expected.canonical_path
+                    && actual.sha256 == expected.sha256
+                    && actual.bytes == expected.bytes,
+                "approved native file identity changed"
+            );
+        }
+        Ok(())
+    }
 }
 
 fn check(options: &NativeOptions, plan: &PreparedPlan, diagnostics: &mut Vec<u8>) -> Result<Value> {
@@ -396,8 +505,8 @@ impl Write for ReportWriter {
     }
 }
 
-/// Every returned report is preparation/denial evidence, not proof of native import.
-/// Production native readiness is unavailable; external coordination must be separately implemented.
+/// A preparation check is not execution. Unapproved transactions deny before
+/// Python, service observation/control, lease acquisition or capture creation.
 pub fn run(options: NativeOptions) -> Result<bool> {
     let file = OpenOptions::new()
         .write(true)
@@ -408,95 +517,83 @@ pub fn run(options: NativeOptions) -> Result<bool> {
     let started = Instant::now();
     let mut diagnostics = Vec::new();
     let mut report = json!({
-        "schema_version":1, "kind":"native_mflux_attempt", "mode":if options.execute {"execute"} else {"check_only"},
+        "schema_version":2, "kind":"native_mflux_attempt", "mode":if options.execute {"execute"} else {"check_only"},
         "ok":false, "status":"not_launched", "native_execution":false, "prepared_plan":null,
-        "manager_grant_reference":options.manager_grant_reference,
-        "check":null, "readiness":null, "decision":null, "capture_directory":null, "errors":[],
+        "check":null, "authorization_decision":{"allowed":false,"reasons":["exact transaction authorization not established"]}, "capture_directory":null, "maintenance_receipt":null, "errors":[],
         "limitations":[
             "CPU validation is not native import, ABI, model allocation, inference or benchmark proof.",
-            "Authoritative aggregate live queue and unrelated-GPU readiness integrations are currently absent. Worker absence, health, per-ID lookup, files/logs and historical observations cannot substitute.",
-            "A recorded manager reference is not authentication, a readiness observation, a reservation or an override. A fresh explicit exact-command grant remains required after readiness integration is separately authorized.",
+            "Named scope is enrolled Studio/oMLX plus guardian-owned experiment, not aggregate live queue or whole-host GPU authority.",
+            "Only exact transaction authorization plus actual service/resource observations permit creation; persisted readings and references cannot grant authority.",
             "The existing venv is invoked by its selected path; resolved base interpreter identity is recorded separately, never substituted.",
             "No automatic retries, installs, network/model downloads, weight copies, live changes or uploads. Partial failures are retained. Filesystem syscalls have no forced deadline."
         ]
     });
     let outcome = (|| -> Result<bool> {
-        let plan = prepare(&options)?;
-        let gate = NativeGuardConfig {
-            invocation_sha256: plan.sha256.clone(),
-            manager_grant_reference: options.manager_grant_reference.clone(),
-        };
-        gate.validate()?;
-        let readiness = native_guard::readiness();
-        let decision = native_guard::evaluate(&gate, &readiness);
-        report["readiness"] = serde_json::to_value(&readiness)?;
-        report["decision"] = serde_json::to_value(&decision)?;
-        report["prepared_plan"] = serde_json::to_value(&plan)?;
-        if options.execute && !decision.allowed {
-            report["errors"] =
-                json!([{"stage":"native_readiness", "message":decision.reasons.join("; ")}]);
-            // No guard-check, shared lease, Python subprocess or native import on this path.
-            return Ok(false);
-        }
-        let checked = check(&options, &plan, &mut diagnostics)?;
-        let passed = checked["ok"] == true;
-        report["check"] = checked;
-        if !passed {
-            report["status"] = json!("validation_failed");
-            return Ok(false);
-        }
-        if !options.execute {
-            report["status"] = json!("checked_not_executed");
-            return Ok(true);
-        }
-        let guard = plan
-            .command
-            .guard_config
-            .context("native execution requires explicit resource guard configuration")?;
-        let home = PathBuf::from(
-            std::env::var_os("HOME").context("HOME is required for the project lease")?,
-        );
-        ensure!(home.is_absolute(), "HOME must be absolute");
-        let lease_root = home.join(".local/share/media-inference-lab");
-        // Native readiness must be genuinely implemented before this branch can be reached.
-        // Do not create a new reservation or a readiness substitute here.
-        let lease = Lease::acquire(&lease_root.join("gpu.lock"))?;
-        let cancelled = Arc::new(AtomicBool::new(false));
-        let mut signals = Vec::new();
-        for signal in [signal_hook::consts::SIGINT, signal_hook::consts::SIGTERM] {
-            signals.push(signal_hook::flag::register(signal, Arc::clone(&cancelled))?);
-        }
-        let result = capture::capture_native_guarded(
-            plan.command.workload,
-            CaptureOptions {
-                root: plan.command.output_root,
-                executable: plan.command.python.selected_path,
-                args: plan.command.python_arguments,
-                env: BTreeMap::new(),
-                timeout: options.timeout,
-                max_output_bytes: options.max_output_bytes,
-            },
-            cancelled,
-            guard,
-            lease,
-            gate,
-        );
-        for signal in signals {
-            signal_hook::low_level::unregister(signal);
-        }
-        let directory = result?;
-        let record = capture::inspect(&directory)?;
-        report["capture_directory"] = json!(directory);
-        report["process_exit_observed"] = json!(record.exit.is_some());
-        // A failing child can have imported/allocated/generated before failure.
-        // An exit status alone never establishes whether native execution occurred.
-        report["native_execution"] = if record.is_success() {
-            json!(true)
+        // This validation is deliberately before preparation: even Python file
+        // identity/guard-config reads cannot accidentally trigger the denied path.
+        let approved = if options.execute {
+            let transaction: Transaction = maintenance::read_private(
+                options
+                    .maintenance_transaction
+                    .as_deref()
+                    .context("native activation denied: maintenance transaction absent")?,
+            )?;
+            let authorization: Authorization = maintenance::read_private(
+                options
+                    .authorization
+                    .as_deref()
+                    .context("native activation denied: exact authorization absent")?,
+            )?;
+            maintenance::validate_authorization(&transaction, &authorization)?;
+            Some((transaction, authorization))
         } else {
-            Value::Null
+            None
         };
-        report["status"] = json!(record.state);
-        Ok(record.is_success())
+        let plan = prepare(&options)?;
+        report["prepared_plan"] = serde_json::to_value(&plan)?;
+        if let Some((transaction, authorization)) = approved {
+            match &transaction.experiment {
+                Experiment::Native { plan: enrolled } => ensure!(
+                    enrolled.sha256 == plan.sha256
+                        && serde_json::to_value(enrolled)? == serde_json::to_value(&plan)?,
+                    "approved native plan differs from exact CLI preparation"
+                ),
+                _ => anyhow::bail!("CPU authorization cannot execute a native workload"),
+            }
+            let receipt_path = maintenance::run_controller(transaction, authorization)?;
+            let receipt: Value = maintenance::read_private(&receipt_path)?;
+            report["maintenance_receipt"] = json!(receipt_path);
+            report["authorization_decision"] = json!({"allowed":true,"reasons":[]});
+            report["capture_directory"] = receipt["capture_directory"].clone();
+            if let Some(directory) = receipt["capture_directory"].as_str() {
+                let record = capture::inspect(Path::new(directory))?;
+                report["process_exit_observed"] = json!(record.exit.is_some());
+                report["native_execution"] = if record.is_success() {
+                    json!(true)
+                } else {
+                    Value::Null
+                };
+                report["status"] = json!(record.state);
+            } else {
+                report["native_execution"] = if receipt["creation_attempted"] == true {
+                    Value::Null
+                } else {
+                    json!(false)
+                };
+                report["status"] = json!("maintenance_failed_before_capture");
+            }
+            Ok(receipt["success"] == true)
+        } else {
+            let checked = check(&options, &plan, &mut diagnostics)?;
+            let passed = checked["ok"] == true;
+            report["check"] = checked;
+            report["status"] = json!(if passed {
+                "checked_not_executed"
+            } else {
+                "validation_failed"
+            });
+            Ok(passed)
+        }
     })();
     let passed = match outcome {
         Ok(passed) => passed,

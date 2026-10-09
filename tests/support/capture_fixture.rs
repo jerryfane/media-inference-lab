@@ -23,7 +23,7 @@ pub fn record(workload: &Workload, index: u32, seconds: f64) -> Value {
     });
     result["timings"] = json!([{"phase":"synthetic", "scope":"host", "unit":"seconds", "method":"generated fixture", "boundary":"synthetic start to synthetic end", "measurement":{"status":"available", "value":seconds}}]);
     json!({
-        "record_version":2, "sample_index":0, "state":"completed", "request":workload,
+        "record_version":3, "sample_index":0, "state":"completed", "request":workload,
         "workload_identity":workload.identity().unwrap(),
         "host":{"os":"synthetic", "architecture":"cpu", "kernel_release":"fixture", "logical_cpus":1, "observation_method":"generated fixture"},
         "invocation":{"executable":"/synthetic/cpu-fixture", "executable_sha256":"a".repeat(64), "executable_hash_unavailable":null, "args":[], "environment":{"MIL_RUN_DIR":"[redacted]", "MIL_REQUEST_PATH":"[redacted]", "MIL_RESULT_PATH":"[redacted]", "MIL_WORKLOAD_IDENTITY":"[redacted]"}},

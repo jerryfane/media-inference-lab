@@ -256,7 +256,7 @@ assert not (root / 'new').exists() and not (root / 'directory').exists()
 
 #[test]
 #[cfg(target_os = "macos")]
-fn native_cli_denies_before_python_lease_or_capture_even_with_external_reference() {
+fn native_cli_denies_unapproved_transaction_before_python_lease_or_capture() {
     python_case(
         r#"
 mil = pathlib.Path(sys.argv[3])
@@ -269,17 +269,14 @@ home = root / 'isolated-home'
 capture_root = root / 'captures'
 command = [str(mil), 'mflux-run', '--execute', '--python', str(sentinel),
     '--source-dir', str(source), '--model-dir', str(model), '--source-sha256', source_hash,
-    '--workload', str(request_path), '--root', str(capture_root), '--output', str(output),
-    '--manager-grant-reference', 'untrusted-reference-is-not-readiness']
+    '--workload', str(request_path), '--root', str(capture_root), '--output', str(output)]
 result = subprocess.run(command, capture_output=True, text=True, timeout=15, env={'HOME': str(home)})
 report = json.loads(output.read_text())
 assert result.returncode == 1, (result.returncode, result.stderr, report)
-assert report['status'] == 'not_launched' and report['native_execution'] is False
+assert report['status'] == 'preparation_failed' and report['native_execution'] is False
 assert report['check'] is None and report['capture_directory'] is None
-assert report['readiness']['live_queue']['status'] == 'unavailable'
-assert report['readiness']['unrelated_gpu']['status'] == 'unavailable'
-assert report['decision']['allowed'] is False
-assert report['manager_grant_reference'] == 'untrusted-reference-is-not-readiness'
+assert report['prepared_plan'] is None and report['maintenance_receipt'] is None
+assert report['authorization_decision']['allowed'] is False
 assert not marker.exists() and not home.exists() and not capture_root.exists()
 assert output.stat().st_mode & 0o777 == 0o600
 "#,
