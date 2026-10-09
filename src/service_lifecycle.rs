@@ -591,13 +591,17 @@ impl ServiceHandle {
                 } = &self.spec
                 {
                     verify_gui_group(gui, gui_group_members, Some(ProcessState::Running))?;
-                    process_scope::signal_bound(gui, libc::SIGSTOP, false)?;
+                    process_scope::signal_bound(gui, libc::SIGSTOP, false, &mut || {
+                        check(pause_end, tick)
+                    })?;
                     for member in gui_group_members
                         .iter()
                         .filter(|member| member.pid != gui.pid)
                     {
                         check(pause_end, tick)?;
-                        process_scope::signal_bound(member, libc::SIGSTOP, false)?;
+                        process_scope::signal_bound(member, libc::SIGSTOP, false, &mut || {
+                            check(pause_end, tick)
+                        })?;
                     }
                 }
             }
@@ -903,10 +907,14 @@ impl ServiceHandle {
                     .filter(|member| member.pid != gui.pid)
                 {
                     check(deadline, tick)?;
-                    process_scope::signal_bound(member, libc::SIGCONT, false)?;
+                    process_scope::signal_bound(member, libc::SIGCONT, false, &mut || {
+                        check(deadline, tick)
+                    })?;
                 }
                 check(deadline, tick)?;
-                process_scope::signal_bound(gui, libc::SIGCONT, false)?;
+                process_scope::signal_bound(gui, libc::SIGCONT, false, &mut || {
+                    check(deadline, tick)
+                })?;
             }
             loop {
                 check(deadline, tick)?;
@@ -1123,14 +1131,14 @@ fn terminate_bound(
     tick: &mut dyn FnMut() -> Result<()>,
 ) -> Result<()> {
     check(deadline, tick)?;
-    process_scope::signal_bound(root, libc::SIGTERM, true)?;
+    process_scope::signal_bound(root, libc::SIGTERM, true, &mut || check(deadline, tick))?;
     let term_end = cap(deadline, Duration::from_secs(60));
     while Instant::now() < term_end && !bound_absent(root)? {
         pause(term_end, tick)?;
     }
     if !bound_absent(root)? {
         check(deadline, tick)?;
-        process_scope::signal_bound(root, libc::SIGKILL, true)?;
+        process_scope::signal_bound(root, libc::SIGKILL, true, &mut || check(deadline, tick))?;
         wait_absent(
             root,
             cap(deadline, Duration::from_secs(20)),
@@ -1812,7 +1820,12 @@ fn launch_detached(
                                     "detached cleanup birth changed"
                                 );
                                 check(cleanup_end, recovery.tick)?;
-                                process_scope::signal_bound(&current, libc::SIGKILL, true)?;
+                                process_scope::signal_bound(
+                                    &current,
+                                    libc::SIGKILL,
+                                    true,
+                                    &mut || check(cleanup_end, recovery.tick),
+                                )?;
                                 signalled = true;
                             }
                             Ok(None) => {}
@@ -2025,6 +2038,7 @@ mod tests {
                         &current,
                         libc::SIGKILL,
                         current.pgid == current.pid && current.sid == current.pid as i32,
+                        &mut || check(end, &mut || Ok(())),
                     );
                 }
                 let child = entry.intermediate_pid.unwrap() as i32;

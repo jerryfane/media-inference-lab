@@ -1,0 +1,8 @@
+owned actor pid=57922 ppid=57894 pgid=57922 sid=57922
+group KILL: internal revocation denied; actor Running
+PID STOP: internal deadline expiry denied; actor Running
+PID STOP: authorized; actor Stopped
+PID CONT: internal revocation denied; actor Stopped
+PID CONT: authorized; actor Running
+group TERM: authorized; actor exited unreaped
+settlement: Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: None, exit_signal: Some(15), failure: None }

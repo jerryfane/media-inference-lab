@@ -166,7 +166,15 @@ pub fn verify_identity(expected: &ProcessIdentity) -> Result<ProcessIdentity> {
 
 /// Fresh identity and bounded membership checks reduce, but do not eliminate,
 /// external PID reuse, exec, cwd, and group-membership races before kill(2).
-pub fn signal_bound(expected: &ProcessIdentity, signal: i32, group: bool) -> Result<()> {
+/// The caller must check its existing deadline and authority in `before_effect`,
+/// which runs after the final identity observation, immediately before dispatch.
+/// This is not atomic PID/time control or hard cancellation of observation syscalls.
+pub fn signal_bound(
+    expected: &ProcessIdentity,
+    signal: i32,
+    group: bool,
+    before_effect: &mut dyn FnMut() -> Result<()>,
+) -> Result<()> {
     validate_signal(signal)?;
     let first = verify_identity(expected)?;
     ensure!(
@@ -196,14 +204,13 @@ pub fn signal_bound(expected: &ProcessIdentity, signal: i32, group: bool) -> Res
         fresh.state != ProcessState::Zombie,
         "bound process exited before signal"
     );
-    platform_signal(
-        if group {
-            -(fresh.pgid as i32)
-        } else {
-            fresh.pid as i32
-        },
-        signal,
-    )
+    let target = if group {
+        -(fresh.pgid as i32)
+    } else {
+        fresh.pid as i32
+    };
+    before_effect()?;
+    platform_signal(target, signal)
 }
 
 fn validate_pid(pid: u32) -> Result<()> {
@@ -1913,5 +1920,86 @@ mod tests {
         assert!(reuse_rejected);
         assert!(bound_absent(&identity).unwrap());
         assert_eq!(settlement.exit_signal, Some(libc::SIGTERM));
+    }
+
+    #[cfg(target_os = "macos")]
+    fn denied_bound_signal(signal: i32, group: bool, expire: bool) -> Result<()> {
+        let cleanup_end = Instant::now() + Duration::from_secs(5);
+        let spec = CommandSpec {
+            executable: "/bin/sleep".into(),
+            args: vec!["2".into()],
+            cwd: "/".into(),
+            environment: BTreeMap::new(),
+        };
+        SPAWN_PHASE.set(None);
+        let _reaper = FiniteChildReaper;
+        let (mut actor, failure) =
+            OwnedProcess::spawn_with_deadline(&spec, cleanup_end, &mut || Ok(()))?.into_parts();
+        let observation = (|| -> Result<_> {
+            ensure!(failure.is_none(), "finite actor launch failed: {failure:?}");
+            let identity = actor.identity()?;
+            let deadline = Instant::now() + Duration::from_millis(20);
+            ensure!(Instant::now() < deadline, "initial authority expired");
+            let mut reached_dispatch = false;
+            let result = signal_bound(&identity, signal, group, &mut || {
+                reached_dispatch = true;
+                if expire {
+                    std::thread::sleep(deadline.saturating_duration_since(Instant::now()));
+                    ensure!(Instant::now() < deadline, "signal authority expired");
+                    Ok(())
+                } else {
+                    bail!("signal authority revoked");
+                }
+            });
+            let current = verify_identity(&identity)?;
+            Ok((
+                result.is_err(),
+                reached_dispatch,
+                Instant::now() >= deadline,
+                current,
+            ))
+        })();
+        // Observe the finite actor's natural exit to rule out delayed delivery.
+        // Reserve the last second of the original cleanup ceiling for failure
+        // disposal; never extend it or use the denied signal's authority.
+        let natural_end = cleanup_end - Duration::from_secs(1);
+        let natural_exit = loop {
+            match actor.exited_unreaped() {
+                Ok(true) => break true,
+                Ok(false) if Instant::now() < natural_end => {
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+                _ => break false,
+            }
+        };
+        let settlement = actor.settle(cleanup_end, Duration::from_millis(100), &mut || Ok(()))?;
+        let (denied, reached_dispatch, expired, current) = observation?;
+        eprintln!(
+            "internal signal boundary: pid={} signal={signal} group={group} \
+             denied={denied} reached_dispatch={reached_dispatch} expired={expired} \
+             state={:?} cleanup={settlement:?}",
+            current.pid, current.state
+        );
+        assert!(denied && reached_dispatch);
+        if expire {
+            assert!(expired);
+        }
+        assert_eq!(current.state, ProcessState::Running);
+        assert!(settlement.complete && settlement.leader_reaped && settlement.group_absent);
+        assert!(natural_exit);
+        assert_eq!(settlement.exit_code, Some(0));
+        Ok(())
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn bound_signal_dispatch_revocation_preserves_live_group() -> Result<()> {
+        denied_bound_signal(libc::SIGKILL, true, false)
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn bound_signal_dispatch_expiry_preserves_running_process() -> Result<()> {
+        denied_bound_signal(libc::SIGSTOP, false, true)
     }
 }
