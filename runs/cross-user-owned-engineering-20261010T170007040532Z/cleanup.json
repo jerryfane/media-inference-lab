@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "archived_sources": "proof-sources.json",
+  "metadata_build_hashes": "summary.json#/metadata/build",
+  "removed": [
+    {
+      "path": "listener/main.rs",
+      "kind": "file",
+      "removed": true
+    },
+    {
+      "path": "listener/diagnostic.rs",
+      "kind": "file",
+      "removed": true
+    },
+    {
+      "path": "listener/Cargo.toml",
+      "kind": "file",
+      "removed": true
+    },
+    {
+      "path": "metadata/sdk_metadata.c",
+      "kind": "file",
+      "removed": true
+    },
+    {
+      "path": "metadata/fixture.c",
+      "kind": "file",
+      "removed": true
+    },
+    {
+      "path": "metadata/runner.rs",
+      "kind": "file",
+      "removed": true
+    },
+    {
+      "path": "metadata/prepare.py",
+      "kind": "file",
+      "removed": true
+    },
+    {
+      "path": "listener/owned-listener-proof",
+      "kind": "file",
+      "removed": true
+    },
+    {
+      "path": "listener/private-diagnostic",
+      "kind": "file",
+      "removed": true
+    },
+    {
+      "path": "metadata/build-owned-001",
+      "kind": "directory",
+      "removed": true
+    },
+    {
+      "path": "metadata/owned-run-001/release-0",
+      "kind": "file",
+      "removed": true
+    },
+    {
+      "path": "metadata/owned-run-001/release-1",
+      "kind": "file",
+      "removed": true
+    },
+    {
+      "path": "metadata/owned-run-001/release-2",
+      "kind": "file",
+      "removed": true
+    }
+  ],
+  "retained": "Original output/receipt files and private bounded diagnostics remain in private namespace; no runnable proof scripts or binaries remain. Historical evidence unchanged."
+}

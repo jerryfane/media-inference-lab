@@ -1,0 +1,2041 @@
+{
+  "schema_version": 1,
+  "commission": "https://github.com/jerryfane/media-inference-lab/issues/11#issuecomment-6099903881",
+  "scope": "source and owned CPU only; native admission remains blocked",
+  "baseline": {
+    "commission": "https://github.com/jerryfane/media-inference-lab/issues/11#issuecomment-6099903881",
+    "contract_path": "/Users/jerry/.omp/agent/sessions/-Desktop-repos/2026-09-23T20-11-14-647Z_01a0cfe4-d157-7408-95f4-9c4d760de086/local/cross-user-observer-engineering.json",
+    "contract_sha256": "d3441c5b5ee82e9512007ce0db2cd3d45d7ad12873616d523a8eac754a03a778",
+    "prior_guardian_sha256": "d10d8a65a62d14590e5c68ae4c0c97cff60de624ec0194e8ab855e6249f7385f",
+    "production_identity_source_sha256": "1cfe34874577fa6f43870744af279aec17d37eb3be23991c5799367e643f6a81",
+    "native_guard_source_sha256": "314993cd291c016f798e63f59fb45a3c5921e4ac1a7034f685d562231bcaadc8",
+    "maintenance_source_sha256": "62ca0c300dea1dbb78a9b2f99f40c6e66a9be660390f5cce3123e531dff77dfc",
+    "historical_38672_receipt": "/Users/jerry/.local/share/media-inference-lab/absence-readonly-preparation-20261010T160021285409Z/studio.json",
+    "historical_38672_receipt_sha256": "b6057e64606e1487a2194b66cd37192adaef1f6fa5337a3a4e2de4224fcad61c",
+    "prohibited": "No live global/service/8000/7860 probes, foreign PID prototype queries, elevated authority, grant, activation binding, lease, capture, scheduling or oMLX private collection. Historical uncertainty remains immutable.",
+    "build_status": "Not started; both source slices must finish first."
+  },
+  "production_changes": [
+    "src/service_lifecycle.rs only: common nonfork lsof query, strict typed parsing and private diagnostic rejection, bounded accounted capture, behavioral regressions"
+  ],
+  "unchanged_production_sources": {
+    "src/maintenance.rs": "62ca0c300dea1dbb78a9b2f99f40c6e66a9be660390f5cce3123e531dff77dfc",
+    "src/process_scope.rs": "1cfe34874577fa6f43870744af279aec17d37eb3be23991c5799367e643f6a81",
+    "src/native_guard.rs": "314993cd291c016f798e63f59fb45a3c5921e4ac1a7034f685d562231bcaadc8",
+    "src/qualification_scope.rs": "bbdf62625e99ce9b322d34ed4e85497cca08e9676fae12ca50e2e940e128729d",
+    "src/restore_qualification.rs": "ba6516d5e6e708529a2be29fba7c6b0a5f34409d39d683546df78bb2a246b273",
+    "src/qualification_profile.rs": "9fba3b1fe8b4d4f8562d98dc0f21981ba87a103719b84cb5a3c73074167ff8ee",
+    "src/lib.rs": "042b068ce58c0f792a192165a0ea0f0e7879d4718bb9e13cb6be9104d75f0e3e",
+    "src/capture.rs": "d6ba2ce91d5e1272e96f66debee3e0889d30191af00a1262e1087d128058db21",
+    "src/guards.rs": "3aba006d110d78415771034cf73cb8a6453fbea44ce51d7ad23151f0a7b83618",
+    "src/native.rs": "d0b4696a5b329e35f3424340bf5e5cebad5cbdadf58da5b8a555bc24dbf10a73",
+    "src/main.rs": "57c59ba10eb29bc1457317d9d09239fe98b22bc00012c3aaf42cc30b2e8ba14e",
+    "src/preflight.rs": "b92fb6bd5593aa531c863dffc291ed8c1247b5677c19396a67b792a1e25dd80d",
+    "src/sequence_report.rs": "b022876ab3bc25226d54b40addb9a6690cbe37f4b5492d538c68740efdd3c65c",
+    "src/frame_sequence.rs": "398aab949517feb568398a38cb8edba98eca7b37a6687010efe3073b51fb10bc",
+    "src/image_comparison.rs": "36bd109b3bcc024dae3f93bf5a06273ebe97f462ca2d2aee139db3e0f7bf83b3",
+    "src/study_report.rs": "53d38cd53e92482c0cc4b51485771b07d46eb6ee90b1f66b45ee828172d3bc2f",
+    "src/png_report.rs": "f0a214114ed6eabd33ec4a431121272d4e9f887b8f1c1d97eefb6c1bc03d297a",
+    "src/capture_archive.rs": "c81c03c4c39e9a4046d343b93d5841a24e8924b5555776b6a7f08401a5432824",
+    "src/markdown.rs": "8df585bdd93ede679d33bf56cbebe490ff82630ff5c319ca00c34b1d77a0df3a",
+    "src/comparison.rs": "bdd5c12cab100763801824825a9a75fa79a3e665e993f6e3b40a72ac107c625c",
+    "src/png_image.rs": "90e530a3c2347b63a4616f7a30bdebba7b5d077e3d74e784423a3c4a78293ca5",
+    "src/study.rs": "81b8a296b04749f7786ca94bb8c6e296e7f4afbc5f29bfad32e827b7dfbfa874",
+    "src/schema.rs": "0570810b9950b49e4fe0315041f4a6e9225178590c9f558d5beae7c1e384d6a6",
+    "Cargo.toml": "b5c681c426ab547fea9370a71497203de93e820dd76d542cfd4250fbd828977b",
+    "Cargo.lock": "58108075860c9f8c020f22a9dd16194d489f5d6de0879f59a10c8a372881330e",
+    "tests/maintenance_absence.rs": "fad485a1777688565bdeac63aab0575e1c8531e45c77f326276117a39f1b7e1a",
+    "tests/maintenance_authorization.rs": "71523a01ea668255f5ff5d554afc031230c0c8910f98ea417b2da0b0f649800b"
+  },
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "service_lifecycle::tests::",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "elapsed_ms": 9729.28,
+      "stdout": "\nrunning 17 tests\ntest service_lifecycle::tests::cpu_restore_replaces_backend_and_resumes_same_gui_once ... ok\ntest service_lifecycle::tests::deadline_after_term_never_escalates ... ok\ntest service_lifecycle::tests::deferred_helper_returns_owner_then_finishes_original_slot ... ok\ntest service_lifecycle::tests::detached_early_authority_loss_retains_cleanup_disposition ... ok\ntest service_lifecycle::tests::detached_exec_failure_preserves_and_disposes_identities ... ok\ntest service_lifecycle::tests::detached_executed_authority_loss_disposes_bound_child ... ok\ntest service_lifecycle::tests::detached_fork_uncertainty_blocks_complete_accounting ... ok\ntest service_lifecycle::tests::detached_pid_authority_loss_reaps_supervised_child ... ok\ntest service_lifecycle::tests::detached_setup_failure_preserves_and_disposes_identities ... ok\ntest service_lifecycle::tests::detached_success_preserves_session_launch_and_null_stdio ... ok\ntest service_lifecycle::tests::failed_cpu_replacement_keeps_same_gui_paused_and_blocks_retry ... ok\ntest service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition ... ok\ntest service_lifecycle::tests::helper_recovery_expiry_is_sticky_and_preserves_owner ... ok\ntest service_lifecycle::tests::listener_capture_errors_retain_safe_exact_helper_accounting ... ok\ntest service_lifecycle::tests::listener_nonfork_stalls_cancel_without_losing_ownership ... ok\ntest service_lifecycle::tests::listener_parser_rejects_ambiguous_or_diagnostic_records ... ok\ntest service_lifecycle::tests::listener_success_returns_settlement_without_growing_history ... ok\n\ntest result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 72 filtered out; finished in 6.06s\n\n",
+      "stderr": "   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.72s\n     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-a51443bb38096914)\nTERM deadline probe: result=Err(service deadline expired), exited_before_cleanup=false, cleanup=Ok(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(9), failure: None })\ndeferred helper probe: pid=89901, recovery_calls=4, accounting=[ActorDisposition { kind: \"bounded helper\", pid: 89901, identity: Some(ProcessIdentity { pid: 89901, ppid: 89821, pgid: 89901, sid: 89901, uid: 501, start_seconds: 1791652332, start_subseconds: 226389, executable: \"/bin/bash\", cwd: \"/\", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"-c\", \"echo $$ > '/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpSKilYh/pid'; exec /bin/sleep 2\"], cwd: \"/\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: None }), complete: true, known_absent: true, failure: Some(\"active experiment authority revoked; cleanup: Err(cleanup deferred until experiment cancellation is settled)\"), descendant_uncertainty: None }]\ndetached early probe: result=Err(detached pid 89902 intermediate 89902 cleanup complete=true: Ok(())\n\nCaused by:\n    execution authority revoked in early window), accounting=[ActorDisposition { kind: \"detached launch\", pid: 89902, identity: None, intermediate_pid: Some(89902), intermediate_identity: Some(ProcessIdentity { pid: 89902, ppid: 89821, pgid: 10064, sid: 10064, uid: 501, start_seconds: 1791652332, start_subseconds: 305293, executable: \"/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-a51443bb38096914\", cwd: \"/Users/jerry/Desktop/repos/media-inference-lab\", state: Running }), intermediate_reaped: true, intermediate_status: Some(0), launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"-c\", \"echo $$ > '/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpPG09zv/executed'; exec /bin/sleep 2\"], cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpPG09zv\", environment: {} }, settlement: None, complete: true, known_absent: true, failure: Some(\"execution authority revoked in early window; cleanup: Ok(()); descendant uncertainty: None\"), descendant_uncertainty: None }]\ndetached exec probe: result=Err(detached pid 89904 intermediate 89903 cleanup complete=true: Ok(())\n\nCaused by:\n    detached exec/setup failed), accounting=[ActorDisposition { kind: \"detached launch\", pid: 89904, identity: Some(ProcessIdentity { pid: 89904, ppid: 89903, pgid: 89904, sid: 89904, uid: 501, start_seconds: 1791652332, start_subseconds: 339293, executable: \"/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-a51443bb38096914\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpMnZGhq\", state: Running }), intermediate_pid: Some(89903), intermediate_identity: Some(ProcessIdentity { pid: 89903, ppid: 89821, pgid: 10064, sid: 10064, uid: 501, start_seconds: 1791652332, start_subseconds: 337588, executable: \"/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-a51443bb38096914\", cwd: \"/Users/jerry/Desktop/repos/media-inference-lab\", state: Running }), intermediate_reaped: true, intermediate_status: Some(0), launch_record: CommandSpec { executable: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpMnZGhq/missing\", args: [\"-c\", \"echo $$ > '/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpMnZGhq/executed'; exec /bin/sleep 2\"], cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpMnZGhq\", environment: {} }, settlement: None, complete: true, known_absent: true, failure: Some(\"detached exec/setup failed; cleanup: Ok(()); descendant uncertainty: None\"), descendant_uncertainty: None }]\ndetached executed probe: result=Err(detached pid 89914 intermediate 89913 cleanup complete=true: Ok(())\n\nCaused by:\n    execution authority revoked in executed window), accounting=[ActorDisposition { kind: \"detached launch\", pid: 89914, identity: Some(ProcessIdentity { pid: 89914, ppid: 89913, pgid: 89914, sid: 89914, uid: 501, start_seconds: 1791652332, start_subseconds: 504262, executable: \"/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-a51443bb38096914\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpmyzX3W\", state: Running }), intermediate_pid: Some(89913), intermediate_identity: Some(ProcessIdentity { pid: 89913, ppid: 89821, pgid: 10064, sid: 10064, uid: 501, start_seconds: 1791652332, start_subseconds: 503332, executable: \"/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-a51443bb38096914\", cwd: \"/Users/jerry/Desktop/repos/media-inference-lab\", state: Running }), intermediate_reaped: true, intermediate_status: Some(0), launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"-c\", \"echo $$ > '/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpmyzX3W/executed'; exec /bin/sleep 2\"], cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpmyzX3W\", environment: {} }, settlement: None, complete: true, known_absent: true, failure: Some(\"execution authority revoked in executed window; cleanup: Ok(()); descendant uncertainty: None\"), descendant_uncertainty: None }]\ndetached fork probe: result=Err(detached pid 89941 intermediate 89940 cleanup complete=false: Ok(())\n\nCaused by:\n    detached launcher fork observed; arbitrary escaped-descendant absence remains unqualified), accounting=[ActorDisposition { kind: \"detached launch\", pid: 89941, identity: Some(ProcessIdentity { pid: 89941, ppid: 89940, pgid: 89941, sid: 89941, uid: 501, start_seconds: 1791652332, start_subseconds: 679662, executable: \"/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-a51443bb38096914\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpXzjnCh\", state: Running }), intermediate_pid: Some(89940), intermediate_identity: Some(ProcessIdentity { pid: 89940, ppid: 89821, pgid: 10064, sid: 10064, uid: 501, start_seconds: 1791652332, start_subseconds: 678818, executable: \"/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-a51443bb38096914\", cwd: \"/Users/jerry/Desktop/repos/media-inference-lab\", state: Running }), intermediate_reaped: true, intermediate_status: Some(0), launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"-c\", \"/bin/sleep 1 & exec /bin/sleep 2\"], cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpXzjnCh\", environment: {} }, settlement: None, complete: false, known_absent: true, failure: Some(\"detached launcher fork observed; arbitrary escaped-descendant absence remains unqualified; cleanup: Ok(()); descendant uncertainty: Some(\\\"detached launcher fork observed; arbitrary escaped-descendant absence remains unqualified\\\")\"), descendant_uncertainty: Some(\"detached launcher fork observed; arbitrary escaped-descendant absence remains unqualified\") }]\ndetached pid probe: result=Err(detached pid 89947 intermediate 89946 cleanup complete=true: Ok(())\n\nCaused by:\n    execution authority revoked in pid window), accounting=[ActorDisposition { kind: \"detached launch\", pid: 89947, identity: Some(ProcessIdentity { pid: 89947, ppid: 89946, pgid: 89947, sid: 89947, uid: 501, start_seconds: 1791652332, start_subseconds: 844399, executable: \"/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-a51443bb38096914\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpsP9Ok7\", state: Running }), intermediate_pid: Some(89946), intermediate_identity: Some(ProcessIdentity { pid: 89946, ppid: 89821, pgid: 10064, sid: 10064, uid: 501, start_seconds: 1791652332, start_subseconds: 843294, executable: \"/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-a51443bb38096914\", cwd: \"/Users/jerry/Desktop/repos/media-inference-lab\", state: Running }), intermediate_reaped: true, intermediate_status: Some(0), launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"-c\", \"echo $$ > '/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpsP9Ok7/executed'; exec /bin/sleep 2\"], cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpsP9Ok7\", environment: {} }, settlement: None, complete: true, known_absent: true, failure: Some(\"execution authority revoked in pid window; cleanup: Ok(()); descendant uncertainty: None\"), descendant_uncertainty: None }]\ndetached setup probe: result=Err(detached pid 89957 intermediate 89956 cleanup complete=true: Ok(())\n\nCaused by:\n    detached exec/setup failed), accounting=[ActorDisposition { kind: \"detached launch\", pid: 89957, identity: None, intermediate_pid: Some(89956), intermediate_identity: Some(ProcessIdentity { pid: 89956, ppid: 89821, pgid: 10064, sid: 10064, uid: 501, start_seconds: 1791652332, start_subseconds: 885700, executable: \"/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-a51443bb38096914\", cwd: \"/Users/jerry/Desktop/repos/media-inference-lab\", state: Running }), intermediate_reaped: true, intermediate_status: Some(0), launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"-c\", \"echo $$ > '/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmp2fVicb/executed'; exec /bin/sleep 2\"], cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmp2fVicb/missing\", environment: {} }, settlement: None, complete: true, known_absent: true, failure: Some(\"detached exec/setup failed; cleanup: Ok(()); descendant uncertainty: None\"), descendant_uncertainty: None }]\ndetached success probe: identity=ProcessIdentity { pid: 89962, ppid: 1, pgid: 89962, sid: 89962, uid: 501, start_seconds: 1791652332, start_subseconds: 941075, executable: \"/bin/sleep\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpxP3OE0\", state: Running }, accounting=[ActorDisposition { kind: \"detached launch\", pid: 89962, identity: Some(ProcessIdentity { pid: 89962, ppid: 1, pgid: 89962, sid: 89962, uid: 501, start_seconds: 1791652332, start_subseconds: 941075, executable: \"/bin/sleep\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpxP3OE0\", state: Running }), intermediate_pid: Some(89961), intermediate_identity: Some(ProcessIdentity { pid: 89961, ppid: 89821, pgid: 10064, sid: 10064, uid: 501, start_seconds: 1791652332, start_subseconds: 939840, executable: \"/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-a51443bb38096914\", cwd: \"/Users/jerry/Desktop/repos/media-inference-lab\", state: Running }), intermediate_reaped: true, intermediate_status: Some(0), launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"-c\", \"test /dev/fd/0 -ef /dev/null && test /dev/fd/1 -ef /dev/null && test /dev/fd/2 -ef /dev/null && test \\\"$CPU_VALUE\\\" = exact && echo $$ > '/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpxP3OE0/verified'; exec /bin/sleep 2\"], cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpxP3OE0\", environment: {\"CPU_VALUE\": \"exact\"} }, settlement: None, complete: true, known_absent: false, failure: None, descendant_uncertainty: None }]\nhelper authority probe: pid=90000, marker_ticks=4, absent=true, result=Err(helper pid 90000 cleanup complete=true: Ok(())\n\nCaused by:\n    execution authority revoked), accounting=[ActorDisposition { kind: \"bounded helper\", pid: 90000, identity: Some(ProcessIdentity { pid: 90000, ppid: 89821, pgid: 90000, sid: 90000, uid: 501, start_seconds: 1791652333, start_subseconds: 693251, executable: \"/bin/sleep\", cwd: \"/\", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"-c\", \"echo $$ > '/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpHcPGoK/pid'; exec /bin/sleep 2\"], cwd: \"/\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: None }), complete: true, known_absent: true, failure: Some(\"execution authority revoked; cleanup: Ok(())\"), descendant_uncertainty: None }]\nexpired recovery probe: result=Err(helper pid 90001 cleanup complete=false: Err(cleanup incomplete for pid 90001)\n\nCaused by:\n    execution authority revoked), accounting=[ActorDisposition { kind: \"bounded helper\", pid: 90001, identity: Some(ProcessIdentity { pid: 90001, ppid: 89821, pgid: 90001, sid: 90001, uid: 501, start_seconds: 1791652333, start_subseconds: 710895, executable: \"/bin/sleep\", cwd: \"/\", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"-c\", \"echo $$ > '/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpWZJOqX/pid'; exec /bin/sleep 2\"], cwd: \"/\", environment: {} }, settlement: Some(Settlement { complete: false, leader_reaped: false, group_absent: false, group_signalled: false, exit_code: None, exit_signal: None, failure: Some(\"settlement control denied: guardian process deadline reached\") }), complete: false, known_absent: false, failure: Some(\"execution authority revoked; cleanup: Err(cleanup incomplete for pid 90001)\"), descendant_uncertainty: None }]\nlistener helper case=0 elapsed=9.543292ms error=helper pid 90062 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted) accounting=[ActorDisposition { kind: \"bounded helper\", pid: 90062, identity: None, intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpI5tI1I/helper-0.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpI5tI1I\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"listener helper emitted diagnostics (output omitted); cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener helper case=1 elapsed=9.323875ms error=helper pid 90063 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted) accounting=[ActorDisposition { kind: \"bounded helper\", pid: 90063, identity: None, intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpI5tI1I/helper-1.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpI5tI1I\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"listener helper emitted diagnostics (output omitted); cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener helper case=2 elapsed=9.185166ms error=helper pid 90064 cleanup complete=true: Ok(()): unrecognized listener field (output omitted) accounting=[ActorDisposition { kind: \"bounded helper\", pid: 90064, identity: None, intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpI5tI1I/helper-2.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpI5tI1I\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"unrecognized listener field (output omitted); cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener helper case=3 elapsed=9.034667ms error=helper pid 90065 cleanup complete=true: Ok(()): invalid listener exit/output combination (output omitted) accounting=[ActorDisposition { kind: \"bounded helper\", pid: 90065, identity: None, intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpI5tI1I/helper-3.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpI5tI1I\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(1), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"invalid listener exit/output combination (output omitted); cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener helper case=4 elapsed=22.291125ms error=helper pid 90066 cleanup complete=true: Ok(()): bounded command output exceeds bound accounting=[ActorDisposition { kind: \"bounded helper\", pid: 90066, identity: Some(ProcessIdentity { pid: 90066, ppid: 89821, pgid: 90066, sid: 90066, uid: 501, start_seconds: 1791652335, start_subseconds: 787401, executable: \"/bin/bash\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpI5tI1I\", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpI5tI1I/helper-4.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpI5tI1I\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: Some(0), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"bounded command output exceeds bound; cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener nonfork resist_term=false elapsed=518.3375ms accounting=[ActorDisposition { kind: \"bounded helper\", pid: 90067, identity: Some(ProcessIdentity { pid: 90067, ppid: 89821, pgid: 90067, sid: 90067, uid: 501, start_seconds: 1791652335, start_subseconds: 810312, executable: \"/bin/sleep\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpCG4Iwj\", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpCG4Iwj/finite.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpCG4Iwj\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: None }), complete: true, known_absent: true, failure: Some(\"service deadline expired; cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener nonfork resist_term=true elapsed=611.001208ms accounting=[ActorDisposition { kind: \"bounded helper\", pid: 90074, identity: Some(ProcessIdentity { pid: 90074, ppid: 89821, pgid: 90074, sid: 90074, uid: 501, start_seconds: 1791652336, start_subseconds: 329516, executable: \"/bin/bash\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpCG4Iwj\", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpCG4Iwj/finite.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpCG4Iwj\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(9), failure: None }), complete: true, known_absent: true, failure: Some(\"service deadline expired; cleanup: Ok(())\"), descendant_uncertainty: None }]\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "process_scope::tests::reaped_fork_still_disqualifies_otherwise_complete_known_group_cleanup",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "elapsed_ms": 71.323,
+      "stdout": "\nrunning 1 test\ntest process_scope::tests::reaped_fork_still_disqualifies_otherwise_complete_known_group_cleanup ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 88 filtered out; finished in 0.02s\n\n",
+      "stderr": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s\n     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-a51443bb38096914)\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--lib",
+        "--bin",
+        "mil"
+      ],
+      "exit_code": 0,
+      "elapsed_ms": 3074.469,
+      "stdout": "",
+      "stderr": "   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.05s\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_ms": 2097.933,
+      "stdout": "",
+      "stderr": "    Checking media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.04s\n"
+    }
+  ],
+  "proof_builds": [
+    {
+      "command": [
+        "rustc",
+        "--edition=2024",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/main.rs",
+        "-L",
+        "dependency=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps",
+        "--extern",
+        "media_inference_lab=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib",
+        "--extern",
+        "anyhow=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libanyhow-db1f6a292fd18298.rlib",
+        "--extern",
+        "serde_json=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libserde_json-62172c0c324f471a.rlib",
+        "--extern",
+        "libc=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/liblibc-111badef97908fec.rlib",
+        "-o",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof"
+      ],
+      "exit_code": 0,
+      "elapsed_ms": 185.266,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "python3",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/prepare.py",
+        "--library",
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib",
+        "--dependencies",
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps",
+        "--output",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001"
+      ],
+      "exit_code": 0,
+      "elapsed_ms": 488.021,
+      "stdout": "Built only; parent must separately authorize and run:\n/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/metadata-runner /Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001 /Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/owned-run-001\n",
+      "stderr": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/inside/fixture: replacing existing signature\n/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/outside/fixture: replacing existing signature\n/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/inside-sibling/fixture: replacing existing signature\n"
+    },
+    {
+      "command": [
+        "rustc",
+        "--edition=2024",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/diagnostic.rs",
+        "-L",
+        "dependency=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps",
+        "--extern",
+        "media_inference_lab=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib",
+        "--extern",
+        "anyhow=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libanyhow-db1f6a292fd18298.rlib",
+        "--extern",
+        "serde_json=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libserde_json-62172c0c324f471a.rlib",
+        "--extern",
+        "libc=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/liblibc-111badef97908fec.rlib",
+        "-o",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/private-diagnostic"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "rustc",
+        "--edition=2024",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/main.rs",
+        "-L",
+        "dependency=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps",
+        "--extern",
+        "media_inference_lab=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib",
+        "--extern",
+        "anyhow=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libanyhow-db1f6a292fd18298.rlib",
+        "--extern",
+        "serde_json=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libserde_json-62172c0c324f471a.rlib",
+        "--extern",
+        "libc=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/liblibc-111badef97908fec.rlib",
+        "-o",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof"
+      ],
+      "purpose": "remaining independent cases with retained denials and post-observation noninterference",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "rustc",
+        "--edition=2024",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/main.rs",
+        "-L",
+        "dependency=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps",
+        "--extern",
+        "media_inference_lab=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib",
+        "--extern",
+        "anyhow=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libanyhow-db1f6a292fd18298.rlib",
+        "--extern",
+        "serde_json=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libserde_json-62172c0c324f471a.rlib",
+        "--extern",
+        "libc=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/liblibc-111badef97908fec.rlib",
+        "-o",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof"
+      ],
+      "purpose": "distinct IPv4/IPv6 owner fixture after unconfigured IPv4 alias errno49",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "smoke_runs": [
+    {
+      "slice": "listener",
+      "command": [
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof"
+      ],
+      "driver_pid": 93602,
+      "driver_reaped": true,
+      "exit_code": 1,
+      "started_at": "2026-10-10T17:13:38.276400+00:00",
+      "elapsed_ms": 632.644,
+      "stdout": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/smoke-001.stdout",
+      "stderr": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/smoke-001.stderr"
+    },
+    {
+      "slice": "metadata",
+      "command": [
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/metadata-runner",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/owned-run-001"
+      ],
+      "driver_pid": 93637,
+      "driver_reaped": true,
+      "exit_code": 0,
+      "started_at": "2026-10-10T17:13:38.911481+00:00",
+      "elapsed_ms": 1051.664,
+      "stdout": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/smoke-001.stdout",
+      "stderr": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/smoke-001.stderr"
+    },
+    {
+      "command": [
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof"
+      ],
+      "driver_pid": 4359,
+      "driver_reaped": true,
+      "exit_code": 1,
+      "elapsed_ms": 1779.436,
+      "stdout": "listener/smoke-002.stdout",
+      "stderr": "listener/smoke-002.stderr",
+      "purpose": "remaining independent matrix; denial remains failure, not retry-to-pass"
+    },
+    {
+      "command": [
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+        "multiple-families"
+      ],
+      "driver_pid": 6428,
+      "driver_reaped": true,
+      "exit_code": 1,
+      "elapsed_ms": 653.77,
+      "stdout": "listener/smoke-003.stdout",
+      "stderr": "listener/smoke-003.stderr"
+    }
+  ],
+  "listener": {
+    "result": "14 unavailable observations; no positive-selection/state-exclusion qualification claim",
+    "observation_count": 14,
+    "elapsed_micros_min": 60071,
+    "elapsed_micros_max": 95292,
+    "helpers_strictly_complete": 14,
+    "fixtures_strictly_complete": 12,
+    "noninterference_postchecks": 13,
+    "first_attempt_limit": "Initial denial returned before post-observation noninterference check; fixture was strictly settled. Later independent cases check after denial too. First failure was not retried to obtain a pass.",
+    "selection_limit": "Diagnostics invalidate all observations, including exclusions and empty ports; fixture setup and strict denial/accounting were exercised, not successful selector classification.",
+    "multiple_owner_limit": "127.0.0.2 unavailable errno49; independent IPv4 127.0.0.1 plus IPv6 ::1 same-port fixture succeeded in binding, observation denied for diagnostics.",
+    "attempts": {
+      "smoke-001.stdout": [
+        {
+          "limits": [
+            "owned same-user observations only; no cross-user completeness certificate",
+            "no native service/prefix/name query and no production ports",
+            "500ms observation cap unchanged",
+            "helper syscall cancellation not guaranteed; historical helper38672 remains incomplete",
+            "IPv6/address reuse unsupported outcomes are not proof",
+            "no lsof-specific fork exemption"
+          ]
+        },
+        {
+          "fixture_enrolled": 93635,
+          "identity": {
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 93635,
+            "pid": 93635,
+            "ppid": 93602,
+            "sid": 93635,
+            "start_seconds": 1791652418,
+            "start_subseconds": 736776,
+            "state": "running",
+            "uid": 501
+          },
+          "mode": "listen"
+        },
+        {
+          "case": "127.0.0.1",
+          "elapsed_micros": 95292,
+          "error": "helper pid 93636 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 93636,
+                "pid": 93636,
+                "ppid": 93602,
+                "sid": 93636,
+                "start_seconds": 1791652418,
+                "start_subseconds": 753224,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:63738",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 93636,
+              "settlement": {
+                "complete": true,
+                "exit_code": 0,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 63738,
+          "recovery_complete": true
+        },
+        {
+          "error": null,
+          "fixture_cleanup": 93635,
+          "identity": {
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 93635,
+            "pid": 93635,
+            "ppid": 93602,
+            "sid": 93635,
+            "start_seconds": 1791652418,
+            "start_subseconds": 736776,
+            "state": "running",
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          }
+        },
+        {
+          "error": "helper pid 93636 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "global_visibility_certified": false,
+          "owned_listener_smoke": "failed"
+        }
+      ],
+      "smoke-002.stdout": [
+        {
+          "limits": [
+            "owned same-user observations only; no cross-user completeness certificate",
+            "no native service/prefix/name query and no production ports",
+            "500ms observation cap unchanged",
+            "helper syscall cancellation not guaranteed; historical helper38672 remains incomplete",
+            "IPv6/address reuse unsupported outcomes are not proof",
+            "no lsof-specific fork exemption"
+          ]
+        },
+        {
+          "fixture_enrolled": 4399,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4399,
+            "pid": 4399,
+            "ppid": 4359,
+            "sid": 4399,
+            "start_seconds": 1791652649,
+            "start_subseconds": 690050,
+            "state": "running",
+            "uid": 501
+          },
+          "mode": "listen"
+        },
+        {
+          "case": "0.0.0.0",
+          "elapsed_micros": 77391,
+          "error": "helper pid 4400 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 4400,
+                "pid": 4400,
+                "ppid": 4359,
+                "sid": 4400,
+                "start_seconds": 1791652649,
+                "start_subseconds": 704459,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:64013",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 4400,
+              "settlement": {
+                "complete": true,
+                "exit_code": 0,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 64013,
+          "recovery_complete": true
+        },
+        {
+          "case": "0.0.0.0",
+          "non_interference": true,
+          "owned_pids": [
+            4399
+          ]
+        },
+        {
+          "error": null,
+          "fixture_cleanup": 4399,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4399,
+            "pid": 4399,
+            "ppid": 4359,
+            "sid": 4399,
+            "start_seconds": 1791652649,
+            "start_subseconds": 690050,
+            "state": "running",
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          }
+        },
+        {
+          "case": "closed_owned_port",
+          "elapsed_micros": 69280,
+          "error": "helper pid 4401 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 4401,
+                "pid": 4401,
+                "ppid": 4359,
+                "sid": 4401,
+                "start_seconds": 1791652649,
+                "start_subseconds": 789674,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:64013",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 4401,
+              "settlement": {
+                "complete": true,
+                "exit_code": 1,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 64013,
+          "recovery_complete": true
+        },
+        {
+          "case": "closed_owned_port",
+          "non_interference": true,
+          "owned_pids": []
+        },
+        {
+          "fixture_enrolled": 4402,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4402,
+            "pid": 4402,
+            "ppid": 4359,
+            "sid": 4402,
+            "start_seconds": 1791652649,
+            "start_subseconds": 859079,
+            "state": "running",
+            "uid": 501
+          },
+          "mode": "listen"
+        },
+        {
+          "case": "::1",
+          "elapsed_micros": 60947,
+          "error": "helper pid 4403 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 4403,
+                "pid": 4403,
+                "ppid": 4359,
+                "sid": 4403,
+                "start_seconds": 1791652649,
+                "start_subseconds": 867860,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:64014",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 4403,
+              "settlement": {
+                "complete": true,
+                "exit_code": 0,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 64014,
+          "recovery_complete": true
+        },
+        {
+          "case": "::1",
+          "non_interference": true,
+          "owned_pids": [
+            4402
+          ]
+        },
+        {
+          "error": null,
+          "fixture_cleanup": 4402,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4402,
+            "pid": 4402,
+            "ppid": 4359,
+            "sid": 4402,
+            "start_seconds": 1791652649,
+            "start_subseconds": 859079,
+            "state": "running",
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          }
+        },
+        {
+          "case": "closed_owned_port",
+          "elapsed_micros": 69277,
+          "error": "helper pid 4404 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 4404,
+                "pid": 4404,
+                "ppid": 4359,
+                "sid": 4404,
+                "start_seconds": 1791652649,
+                "start_subseconds": 936812,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:64014",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 4404,
+              "settlement": {
+                "complete": true,
+                "exit_code": 1,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 64014,
+          "recovery_complete": true
+        },
+        {
+          "case": "closed_owned_port",
+          "non_interference": true,
+          "owned_pids": []
+        },
+        {
+          "fixture_enrolled": 4405,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4405,
+            "pid": 4405,
+            "ppid": 4359,
+            "sid": 4405,
+            "start_seconds": 1791652650,
+            "start_subseconds": 6207,
+            "state": "running",
+            "uid": 501
+          },
+          "mode": "listen"
+        },
+        {
+          "case": "::",
+          "elapsed_micros": 68293,
+          "error": "helper pid 4406 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 4406,
+                "pid": 4406,
+                "ppid": 4359,
+                "sid": 4406,
+                "start_seconds": 1791652650,
+                "start_subseconds": 14902,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:64015",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 4406,
+              "settlement": {
+                "complete": true,
+                "exit_code": 0,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 64015,
+          "recovery_complete": true
+        },
+        {
+          "case": "::",
+          "non_interference": true,
+          "owned_pids": [
+            4405
+          ]
+        },
+        {
+          "error": null,
+          "fixture_cleanup": 4405,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4405,
+            "pid": 4405,
+            "ppid": 4359,
+            "sid": 4405,
+            "start_seconds": 1791652650,
+            "start_subseconds": 6207,
+            "state": "running",
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          }
+        },
+        {
+          "case": "closed_owned_port",
+          "elapsed_micros": 76846,
+          "error": "helper pid 4407 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 4407,
+                "pid": 4407,
+                "ppid": 4359,
+                "sid": 4407,
+                "start_seconds": 1791652650,
+                "start_subseconds": 91230,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:64015",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 4407,
+              "settlement": {
+                "complete": true,
+                "exit_code": 1,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 64015,
+          "recovery_complete": true
+        },
+        {
+          "case": "closed_owned_port",
+          "non_interference": true,
+          "owned_pids": []
+        },
+        {
+          "fixture_enrolled": 4408,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4408,
+            "pid": 4408,
+            "ppid": 4359,
+            "sid": 4408,
+            "start_seconds": 1791652650,
+            "start_subseconds": 168190,
+            "state": "running",
+            "uid": 501
+          },
+          "mode": "listen"
+        },
+        {
+          "case": "original",
+          "elapsed_micros": 68890,
+          "error": "helper pid 4409 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 4409,
+                "pid": 4409,
+                "ppid": 4359,
+                "sid": 4409,
+                "start_seconds": 1791652650,
+                "start_subseconds": 177002,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:64016",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 4409,
+              "settlement": {
+                "complete": true,
+                "exit_code": 0,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 64016,
+          "recovery_complete": true
+        },
+        {
+          "case": "original",
+          "non_interference": true,
+          "owned_pids": [
+            4408
+          ]
+        },
+        {
+          "error": null,
+          "fixture_cleanup": 4408,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4408,
+            "pid": 4408,
+            "ppid": 4359,
+            "sid": 4408,
+            "start_seconds": 1791652650,
+            "start_subseconds": 168190,
+            "state": "running",
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          }
+        },
+        {
+          "fixture_enrolled": 4410,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4410,
+            "pid": 4410,
+            "ppid": 4359,
+            "sid": 4410,
+            "start_seconds": 1791652650,
+            "start_subseconds": 252186,
+            "state": "running",
+            "uid": 501
+          },
+          "mode": "listen"
+        },
+        {
+          "case": "replacement",
+          "elapsed_micros": 66734,
+          "error": "helper pid 4414 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 4414,
+                "pid": 4414,
+                "ppid": 4359,
+                "sid": 4414,
+                "start_seconds": 1791652650,
+                "start_subseconds": 260291,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:64016",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 4414,
+              "settlement": {
+                "complete": true,
+                "exit_code": 0,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 64016,
+          "recovery_complete": true
+        },
+        {
+          "case": "replacement",
+          "non_interference": true,
+          "owned_pids": [
+            4410
+          ]
+        },
+        {
+          "fixture_enrolled": 4415,
+          "identity": null,
+          "mode": "listen"
+        },
+        {
+          "errno": 49,
+          "unsupported_distinct_address": true
+        },
+        {
+          "error": null,
+          "fixture_cleanup": 4415,
+          "identity": null,
+          "settlement": {
+            "complete": true,
+            "exit_code": 0,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        {
+          "error": null,
+          "fixture_cleanup": 4410,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4410,
+            "pid": 4410,
+            "ppid": 4359,
+            "sid": 4410,
+            "start_seconds": 1791652650,
+            "start_subseconds": 252186,
+            "state": "running",
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          }
+        },
+        {
+          "case": "replacement_closed",
+          "elapsed_micros": 66160,
+          "error": "helper pid 4416 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 4416,
+                "pid": 4416,
+                "ppid": 4359,
+                "sid": 4416,
+                "start_seconds": 1791652650,
+                "start_subseconds": 343967,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:64016",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 4416,
+              "settlement": {
+                "complete": true,
+                "exit_code": 1,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 64016,
+          "recovery_complete": true
+        },
+        {
+          "case": "replacement_closed",
+          "non_interference": true,
+          "owned_pids": []
+        },
+        {
+          "fixture_enrolled": 4425,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4425,
+            "pid": 4425,
+            "ppid": 4359,
+            "sid": 4425,
+            "start_seconds": 1791652650,
+            "start_subseconds": 410266,
+            "state": "running",
+            "uid": 501
+          },
+          "mode": "bound"
+        },
+        {
+          "case": "bound",
+          "elapsed_micros": 76762,
+          "error": "helper pid 4427 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 4427,
+                "pid": 4427,
+                "ppid": 4359,
+                "sid": 4427,
+                "start_seconds": 1791652650,
+                "start_subseconds": 427031,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:64017",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 4427,
+              "settlement": {
+                "complete": true,
+                "exit_code": 1,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 64017,
+          "recovery_complete": true
+        },
+        {
+          "case": "bound",
+          "non_interference": true,
+          "owned_pids": [
+            4425
+          ]
+        },
+        {
+          "error": null,
+          "fixture_cleanup": 4425,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4425,
+            "pid": 4425,
+            "ppid": 4359,
+            "sid": 4425,
+            "start_seconds": 1791652650,
+            "start_subseconds": 410266,
+            "state": "running",
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          }
+        },
+        {
+          "fixture_enrolled": 4434,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4434,
+            "pid": 4434,
+            "ppid": 4359,
+            "sid": 4434,
+            "start_seconds": 1791652650,
+            "start_subseconds": 511657,
+            "state": "running",
+            "uid": 501
+          },
+          "mode": "established"
+        },
+        {
+          "case": "established",
+          "elapsed_micros": 60071,
+          "error": "helper pid 4436 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 4436,
+                "pid": 4436,
+                "ppid": 4359,
+                "sid": 4436,
+                "start_seconds": 1791652650,
+                "start_subseconds": 519257,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:64018",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 4436,
+              "settlement": {
+                "complete": true,
+                "exit_code": 1,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 64018,
+          "recovery_complete": true
+        },
+        {
+          "case": "established",
+          "non_interference": true,
+          "owned_pids": [
+            4434
+          ]
+        },
+        {
+          "error": null,
+          "fixture_cleanup": 4434,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4434,
+            "pid": 4434,
+            "ppid": 4359,
+            "sid": 4434,
+            "start_seconds": 1791652650,
+            "start_subseconds": 511657,
+            "state": "running",
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          }
+        },
+        {
+          "fixture_enrolled": 4454,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4454,
+            "pid": 4454,
+            "ppid": 4359,
+            "sid": 4454,
+            "start_seconds": 1791652650,
+            "start_subseconds": 587335,
+            "state": "running",
+            "uid": 501
+          },
+          "mode": "udp"
+        },
+        {
+          "case": "udp",
+          "elapsed_micros": 76076,
+          "error": "helper pid 4455 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 4455,
+                "pid": 4455,
+                "ppid": 4359,
+                "sid": 4455,
+                "start_seconds": 1791652650,
+                "start_subseconds": 596121,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:56213",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 4455,
+              "settlement": {
+                "complete": true,
+                "exit_code": 1,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 56213,
+          "recovery_complete": true
+        },
+        {
+          "case": "udp",
+          "non_interference": true,
+          "owned_pids": [
+            4454
+          ]
+        },
+        {
+          "error": null,
+          "fixture_cleanup": 4454,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 4454,
+            "pid": 4454,
+            "ppid": 4359,
+            "sid": 4454,
+            "start_seconds": 1791652650,
+            "start_subseconds": 587335,
+            "state": "running",
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          }
+        },
+        {
+          "global_visibility_certified": false,
+          "owned_listener_smoke": "completed_with_denied_observations"
+        },
+        {
+          "error": "owned observation matrix completed with retained denials; no listener qualification claim",
+          "global_visibility_certified": false,
+          "owned_listener_smoke": "failed"
+        }
+      ],
+      "smoke-003.stdout": [
+        {
+          "fixture_enrolled": 6466,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 6466,
+            "pid": 6466,
+            "ppid": 6428,
+            "sid": 6466,
+            "start_seconds": 1791652699,
+            "start_subseconds": 761799,
+            "state": "running",
+            "uid": 501
+          },
+          "mode": "listen"
+        },
+        {
+          "fixture_enrolled": 6467,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 6467,
+            "pid": 6467,
+            "ppid": 6428,
+            "sid": 6467,
+            "start_seconds": 1791652699,
+            "start_subseconds": 776511,
+            "state": "running",
+            "uid": 501
+          },
+          "mode": "listen"
+        },
+        {
+          "case": "multiple_ipv4_ipv6_owners",
+          "elapsed_micros": 77861,
+          "error": "helper pid 6468 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted)",
+          "failed_helpers": [
+            {
+              "complete": true,
+              "descendant_uncertainty": null,
+              "failure": "listener helper emitted diagnostics (output omitted); cleanup: Ok(())",
+              "identity": {
+                "cwd": "/",
+                "executable": "/usr/sbin/lsof",
+                "pgid": 6468,
+                "pid": 6468,
+                "ppid": 6428,
+                "sid": 6468,
+                "start_seconds": 1791652699,
+                "start_subseconds": 784897,
+                "state": "running",
+                "uid": 501
+              },
+              "intermediate_identity": null,
+              "intermediate_pid": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "kind": "bounded helper",
+              "known_absent": true,
+              "launch_record": {
+                "args": [
+                  "-O",
+                  "-nP",
+                  "+c",
+                  "0",
+                  "-iTCP:64082",
+                  "-sTCP:LISTEN",
+                  "-Fpcn"
+                ],
+                "cwd": "/",
+                "environment": {},
+                "executable": "/usr/sbin/lsof"
+              },
+              "pid": 6468,
+              "settlement": {
+                "complete": true,
+                "exit_code": 0,
+                "exit_signal": null,
+                "failure": null,
+                "group_absent": true,
+                "group_signalled": false,
+                "leader_reaped": true
+              }
+            }
+          ],
+          "global_visibility_certified": false,
+          "observation": null,
+          "port": 64082,
+          "recovery_complete": true
+        },
+        {
+          "case": "multiple_ipv4_ipv6_owners",
+          "non_interference": true,
+          "owned_pids": [
+            6466,
+            6467
+          ]
+        },
+        {
+          "error": null,
+          "fixture_cleanup": 6467,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 6467,
+            "pid": 6467,
+            "ppid": 6428,
+            "sid": 6467,
+            "start_seconds": 1791652699,
+            "start_subseconds": 776511,
+            "state": "running",
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          }
+        },
+        {
+          "error": null,
+          "fixture_cleanup": 6466,
+          "identity": {
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 6466,
+            "pid": 6466,
+            "ppid": 6428,
+            "sid": 6466,
+            "start_seconds": 1791652699,
+            "start_subseconds": 761799,
+            "state": "running",
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          }
+        },
+        {
+          "error": "multiple-family observation denied; no listener qualification claim",
+          "global_visibility_certified": false,
+          "owned_listener_smoke": "failed"
+        }
+      ]
+    },
+    "diagnostic_only": {
+      "classification": {
+        "driver_pid": 1343,
+        "driver_reaped": true,
+        "exit_code": 0,
+        "stderr_bytes": 197,
+        "stderr_sha256": "24f4a2446a35f3c3f2bcb73c0fcc07e5bb725466cd2337e74d1904284ece558f",
+        "private_only": true,
+        "contains_mount_stat_warning": true,
+        "contains_incomplete_warning": true,
+        "contains_permission_denial": false,
+        "contains_version_warning": false,
+        "contains_lsof_usage": false,
+        "diagnostic_line_count": 3
+      },
+      "accounting": [
+        {
+          "pid": 1358,
+          "settlement": {
+            "complete": true,
+            "exit_code": 0,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        {
+          "capture_error": null,
+          "elapsed_us": 50399,
+          "kind": "private_diagnostic_only_not_admission_proof",
+          "owner": {
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener",
+            "executable": "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/listener/owned-listener-proof",
+            "pgid": 1354,
+            "pid": 1354,
+            "ppid": 1343,
+            "sid": 1354,
+            "start_seconds": 1791652584,
+            "start_subseconds": 402992,
+            "state": "running",
+            "uid": 501
+          },
+          "port": 63908,
+          "stderr_bytes": 197,
+          "stdout_bytes": 40,
+          "unchanged": true
+        },
+        {
+          "pid": 1354,
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          }
+        }
+      ],
+      "attribution_limit": "Separate owned wildcard fixture capture, not attribution of discarded bytes from the first failed observation. Identified mount-stat and incomplete-output warnings. No allowlist, suppression or host mount changes. Raw stdout/stderr excluded from public artifacts."
+    },
+    "historical_helper_38672": "Still incomplete; historical receipt hash unchanged. No post-reap controls or retrospective clearance."
+  },
+  "metadata": {
+    "result": "Passed owned-only prototype, not integrated",
+    "build": {
+      "status": "built_not_run",
+      "commands": [
+        [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-O2",
+          "-isysroot",
+          "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+          "-c",
+          "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/sdk_metadata.c",
+          "-o",
+          "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/sdk_metadata.o"
+        ],
+        [
+          "/usr/bin/clang",
+          "-std=c11",
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-O2",
+          "-isysroot",
+          "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+          "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/fixture.c",
+          "-o",
+          "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/fixture-template"
+        ],
+        [
+          "/usr/bin/codesign",
+          "--force",
+          "--sign",
+          "-",
+          "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/inside/fixture"
+        ],
+        [
+          "/usr/bin/codesign",
+          "--force",
+          "--sign",
+          "-",
+          "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/outside/fixture"
+        ],
+        [
+          "/usr/bin/codesign",
+          "--force",
+          "--sign",
+          "-",
+          "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/inside-sibling/fixture"
+        ],
+        [
+          "rustc",
+          "--edition=2024",
+          "-C",
+          "panic=unwind",
+          "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/runner.rs",
+          "--extern",
+          "media_inference_lab=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib",
+          "-L",
+          "dependency=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps",
+          "-C",
+          "link-arg=/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/sdk_metadata.o",
+          "-l",
+          "proc",
+          "-o",
+          "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/metadata-runner"
+        ]
+      ],
+      "sha256": {
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/sdk_metadata.c": "3f0ebf66771b6f6d7c013acc5cd64ec4e9215c8232bbbb2fc9a8b118e69a6f7b",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/fixture.c": "10ccab6effe22fb33ea4306e85ba5db4b320d311c8f234f603c064ea4551e492",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/runner.rs": "875c5738372d9e121d0633ed029e5227c4313cfad74ff479cf772be1165e7128",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/prepare.py": "e8f0996812c3913235ada901d61d2c165de6b04131a1ad85e33bb4793ab6bab3",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/source-review.json": "6a94b616c1fcc098c22fb99a07f0634b3ebd05cb0e35c3c7ff80eca769f85273",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/sysctl.h": "d6d627d3353607f4078079051e09ea0e9a3b32a6771934be1ac5d89fbe93b1c7",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/proc.h": "593af71b2740ba6248995691280bcb15f8900d46b1d9868f7345084aa0692949",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/proc_info.h": "e427fa96b348537b21552b9de71e01039410bcad2cedee5584c5e5fddafd70fc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/libproc.h": "246d87709fc6b9157ce5cf3c475656ac48e0e1ae8bbdc46cf45acd34294448cd",
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib": "a775053dcc2ef97e14b8bae788ae275c7fa92f6f523ec4dc8a518bc8ee7c32c2",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/inside/fixture": "c077715acaa8687c4eb273d2bf31f2e83caa1cf932d714a0292dc5b01c259f28",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/outside/fixture": "c077715acaa8687c4eb273d2bf31f2e83caa1cf932d714a0292dc5b01c259f28",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/inside-sibling/fixture": "c077715acaa8687c4eb273d2bf31f2e83caa1cf932d714a0292dc5b01c259f28",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/sdk_metadata.o": "4965e2f9cb2b987d52f589bbb7f7784834f264a11cc937d9affb8f6db2080d5c",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/fixture-template": "fa2da21b946d24b9304278f33c933fd5f31d108601bfc3ba365d3ea411fdbe60",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/metadata-runner": "b99d6db8e1de655fb4a2357851a26b79466cecccce7d2529f52abe2aef69054e"
+      },
+      "sdk": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+      "library": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib",
+      "dependencies": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps",
+      "proof_executed": false
+    },
+    "receipt": "source_only_candidate=true cross_user_visibility=unproved deployed_policy=unproved production_changes=none\nspawn index=0 pid=93647 failure=None cleanup_cap_ms=8000\nowned_identity index=0 ProcessIdentity { pid: 93647, ppid: 93637, pgid: 93647, sid: 93647, uid: 501, start_seconds: 1791652419, start_subseconds: 227318, executable: \"/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/inside/fixture\", cwd: \"/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/owned-run-001\", state: Running }\nobserved phase=live_birth_bracket index=0 elapsed_us=493 outcome=Present before=[0, 0, 648, 648, 93647, 1791652419, 227318, 2] after=[0, 0, 648, 648, 93647, 1791652419, 227318, 2] path_result=[137, 0] short=[64, 0, 64, 93647, 2, 1]\nnon_interference index=0 same_process=true live=true\nsynthetic name=after_birth_reuse outcome=Unavailable(\"birth_mismatch\") wanted=Unavailable(\"birth_mismatch\") no_query=true no_control=true\nsynthetic name=short_size outcome=Unavailable(\"metadata_size\") wanted=Unavailable(\"metadata_size\") no_query=true no_control=true\nsynthetic name=wrong_pid outcome=Unavailable(\"metadata_pid\") wanted=Unavailable(\"metadata_pid\") no_query=true no_control=true\nsynthetic name=invalid_usec outcome=Unavailable(\"metadata_starttime\") wanted=Unavailable(\"metadata_starttime\") no_query=true no_control=true\nsynthetic name=zero_metadata_live outcome=Unavailable(\"empty_metadata_not_absence\") wanted=Unavailable(\"empty_metadata_not_absence\") no_query=true no_control=true\nsynthetic name=path_esrch_live outcome=Unavailable(\"path_esrch_with_existing_pid\") wanted=Unavailable(\"path_esrch_with_existing_pid\") no_query=true no_control=true\nsynthetic name=path_esrch_zombie outcome=Unavailable(\"zombie_not_absence\") wanted=Unavailable(\"zombie_not_absence\") no_query=true no_control=true\nsynthetic name=relative_path outcome=Unavailable(\"path_not_absolute_or_ambiguous\") wanted=Unavailable(\"path_not_absolute_or_ambiguous\") no_query=true no_control=true\nsynthetic name=truncated_path outcome=Unavailable(\"path_truncated_or_ambiguous\") wanted=Unavailable(\"path_truncated_or_ambiguous\") no_query=true no_control=true\nsynthetic name=sysctl_denied_then_missing outcome=Unavailable(\"denied_read_sticky\") wanted=Unavailable(\"denied_read_sticky\") no_query=true no_control=true\nsynthetic name=path_denied_then_missing outcome=Unavailable(\"denied_read_sticky\") wanted=Unavailable(\"denied_read_sticky\") no_query=true no_control=true\nsynthetic name=short_denied outcome=Unavailable(\"denied_read_sticky\") wanted=Unavailable(\"denied_read_sticky\") no_query=true no_control=true\nsynthetic name=short_arg_zero outcome=Unavailable(\"short_lookup_not_live_and_zombie\") wanted=Unavailable(\"short_lookup_not_live_and_zombie\") no_query=true no_control=true\nsynthetic name=zero_metadata_missing_live_and_zombie outcome=AbsentAtShortLookup wanted=AbsentAtShortLookup no_query=true no_control=true\nsynthetic name=synthetic_expected_birth_no_control outcome=Unavailable(\"birth_mismatch\") wanted=Unavailable(\"birth_mismatch\") no_query=true no_control=true\nsynthetic ambiguous_batch outcome=Unavailable(\"duplicate_or_ambiguous_pid\") no_query=true no_control=true\nsynthetic ambiguous_batch outcome=Unavailable(\"duplicate_or_ambiguous_pid\") no_query=true no_control=true\nobserved phase=owned_unreaped_zombie index=0 elapsed_us=240 outcome=Unavailable(\"zombie_not_absence\") before=[0, 0, 648, 648, 93647, 1791652419, 227318, 5] after=[0, 0, 648, 648, 93647, 1791652419, 227318, 5] path_result=[0, 3] short=[64, 0, 64, 93647, 5, 1]\nreal_zombie_kinfo before_exact=true after_exact=true birth_equal=true\nsettlement index=0 elapsed_us=462 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }\nobserved phase=owned_post_reap_read_only index=0 elapsed_us=231 outcome=AbsentAtShortLookup before=[0, 0, 0, 648, 0, 0, 0, 0] after=[0, 0, 0, 648, 0, 0, 0, 0] path_result=[0, 3] short=[0, 3, 64, 0, 0, 1]\nsettlement index=0 elapsed_us=0 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }\npost_reap_cleanup index=0 cached_noop=true no_post_reap_control=true\nspawn index=1 pid=93655 failure=None cleanup_cap_ms=8000\nowned_identity index=1 ProcessIdentity { pid: 93655, ppid: 93637, pgid: 93655, sid: 93655, uid: 501, start_seconds: 1791652419, start_subseconds: 506183, executable: \"/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/outside/fixture\", cwd: \"/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/owned-run-001\", state: Running }\nobserved phase=live_birth_bracket index=1 elapsed_us=319 outcome=Nonmatch before=[0, 0, 648, 648, 93655, 1791652419, 506183, 2] after=[0, 0, 648, 648, 93655, 1791652419, 506183, 2] path_result=[138, 0] short=[64, 0, 64, 93655, 2, 1]\nnon_interference index=1 same_process=true live=true\nobserved phase=owned_unreaped_zombie index=1 elapsed_us=412 outcome=Unavailable(\"zombie_not_absence\") before=[0, 0, 648, 648, 93655, 1791652419, 506183, 5] after=[0, 0, 648, 648, 93655, 1791652419, 506183, 5] path_result=[0, 3] short=[64, 0, 64, 93655, 5, 1]\nreal_zombie_kinfo before_exact=true after_exact=true birth_equal=true\nsettlement index=1 elapsed_us=574 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }\nobserved phase=owned_post_reap_read_only index=1 elapsed_us=297 outcome=AbsentAtShortLookup before=[0, 0, 0, 648, 0, 0, 0, 0] after=[0, 0, 0, 648, 0, 0, 0, 0] path_result=[0, 3] short=[0, 3, 64, 0, 0, 1]\nsettlement index=1 elapsed_us=0 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }\npost_reap_cleanup index=1 cached_noop=true no_post_reap_control=true\nspawn index=2 pid=93676 failure=None cleanup_cap_ms=8000\nowned_identity index=2 ProcessIdentity { pid: 93676, ppid: 93637, pgid: 93676, sid: 93676, uid: 501, start_seconds: 1791652419, start_subseconds: 690254, executable: \"/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/inside-sibling/fixture\", cwd: \"/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/owned-run-001\", state: Running }\nobserved phase=live_birth_bracket index=2 elapsed_us=427 outcome=Nonmatch before=[0, 0, 648, 648, 93676, 1791652419, 690254, 2] after=[0, 0, 648, 648, 93676, 1791652419, 690254, 2] path_result=[145, 0] short=[64, 0, 64, 93676, 2, 1]\nnon_interference index=2 same_process=true live=true\nobserved phase=owned_unreaped_zombie index=2 elapsed_us=336 outcome=Unavailable(\"zombie_not_absence\") before=[0, 0, 648, 648, 93676, 1791652419, 690254, 5] after=[0, 0, 648, 648, 93676, 1791652419, 690254, 5] path_result=[0, 3] short=[64, 0, 64, 93676, 5, 1]\nreal_zombie_kinfo before_exact=true after_exact=true birth_equal=true\nsettlement index=2 elapsed_us=441 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }\nobserved phase=owned_post_reap_read_only index=2 elapsed_us=208 outcome=AbsentAtShortLookup before=[0, 0, 0, 648, 0, 0, 0, 0] after=[0, 0, 0, 648, 0, 0, 0, 0] path_result=[0, 3] short=[0, 3, 64, 0, 0, 1]\nsettlement index=2 elapsed_us=0 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }\npost_reap_cleanup index=2 cached_noop=true no_post_reap_control=true\nspawn index=3 pid=93679 failure=None cleanup_cap_ms=8000\nowned_identity index=3 ProcessIdentity { pid: 93679, ppid: 93637, pgid: 93679, sid: 93679, uid: 501, start_seconds: 1791652419, start_subseconds: 860812, executable: \"/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/outside/fixture\", cwd: \"/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/owned-run-001\", state: Running }\nsettlement index=3 elapsed_us=6279 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: None }\nfailure_cleanup index=3 panic=false known_identity_retained=true complete=true\nspawn index=4 pid=93680 failure=None cleanup_cap_ms=8000\nowned_identity index=4 ProcessIdentity { pid: 93680, ppid: 93637, pgid: 93680, sid: 93680, uid: 501, start_seconds: 1791652419, start_subseconds: 882232, executable: \"/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/outside/fixture\", cwd: \"/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/owned-run-001\", state: Running }\nsettlement index=4 elapsed_us=8108 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: None }\nfailure_cleanup index=4 panic=true known_identity_retained=true complete=true\nspawn index=5 pid=93681 failure=Some(\"execve failed: No such file or directory (os error 2)\") cleanup_cap_ms=8000\nsettlement index=5 elapsed_us=736 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(127), exit_signal: None, failure: None }\nfailed_spawn_cleanup index=5 qualified_complete=true retained_failure=None\nsettlement index=0 elapsed_us=3 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }\nsettlement index=1 elapsed_us=0 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }\nsettlement index=2 elapsed_us=0 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }\nsettlement index=3 elapsed_us=0 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: None }\nsettlement index=4 elapsed_us=0 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: None }\nsettlement index=5 elapsed_us=0 Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(127), exit_signal: None, failure: None }\nfinal behavior_pass=true all_settlements_qualified_complete=true retained_actors=6\n",
+    "expected_caught_unwind_stderr": "\nthread 'main' (1461438) panicked at /Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/runner.rs:268:29:\nintentional owned fixture unwind\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n",
+    "source_review": {
+      "status": "source_review_and_ready_to_run_prototype_only_not_compiled_or_executed",
+      "authority": {
+        "retained_file_read_in_full_including_untruncated_reports": "/Users/jerry/.omp/agent/sessions/-Desktop-repos/2026-09-23T20-11-14-647Z_01a0cfe4-d157-7408-95f4-9c4d760de086/local/cross-user-observer-engineering.json",
+        "decision": "https://github.com/jerryfane/media-inference-lab/issues/11#issuecomment-6099903881",
+        "decision_fetch": "Direct public URL returned HTTP 404; authority is the supplied full retained engineering file and explicit owned-only assignment, not a claim to have fetched private issue content.",
+        "production_changes": "none",
+        "execution_owner": "Main; no compilation, formatter, tests, fixture execution or process/listener query performed by this slice"
+      },
+      "installed_declarations": {
+        "sdk": "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        "sys/sysctl.h:433-499": "KERN_PROC_PID selector and native struct kinfo_proc containing SDK struct extern_proc; no guessed kernel layout or Rust kinfo_proc reconstruction.",
+        "sys/proc.h:90-152": "extern_proc.p_starttime is the SDK timeval union member; p_pid and p_stat and SIDL/SRUN/SSLEEP/SSTOP/SZOMB are declared here.",
+        "sys/proc_info.h:59-99,723-755": "proc_bsdinfo has pbi_start_tvsec/usec; proc_bsdshortinfo has PID/status but NO birth fields. SHORTBSD flavor and exact SDK sizeof are used, never as birth equality.",
+        "libproc.h:96-103": "Installed declarations of proc_pidinfo and proc_pidpath.",
+        "linkage": "Installed SDK usr/lib/libproc.tbd was located; C uses SDK declarations and Rust links -l proc.",
+        "binding": "prepare.py records SHA-256 of these four header files, all prototype sources, the selected repository rlib, bridge object, private fixture copies and runner when Main runs it. These are planned bindings, not already-produced build receipts."
+      },
+      "pinned_source": [
+        {
+          "url": "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/kern_sysctl.c#L723-L1008",
+          "finding": "KERN_PROC_PID selects sysdoproc_filt_KERN_PROC_PID; uidcheck/ruidcheck remain zero for this selector. sysdoproc_callback zeroes and fills the selected structure. proc_iterate includes PROC_ALLPROCLIST and PROC_ZOMBPROCLIST. A data-buffer query with no selected record returns zero consumed length, not an identity. This is a targeted API even though the kernel's internal implementation walks lists; the prototype does not request or receive a global enumeration."
+        },
+        {
+          "url": "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/kern_sysctl.c#L1195-L1265",
+          "finding": "fill_user64_externproc assigns p_starttime.tv_sec/usec directly from p->p_start before other fields, and assigns p_stat and PID. No full-BSD per-target UID gate surrounds these birth assignments in this published handler. fill_user64_proc invokes that function."
+        },
+        {
+          "url": "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/proc_info.c#L685-L705",
+          "finding": "Full BSD pbi_start_tvsec/usec are assigned from the same p->p_start source. This supports testing equality to the repository's unchanged OwnedProcess.identity start_seconds/start_subseconds; it does not imply cross-user full-BSD permission."
+        },
+        {
+          "url": "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/kern_sysctl.c#L947-L965",
+          "finding": "Source explicitly calls these well-known kern.proc sysctls SPI, not intended for non-system user applications, while preserving binary compatibility. Public SDK declarations are NOT a supported stable application-ABI promise."
+        },
+        {
+          "url": "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/kern_newsysctl.c#L1918-L1934",
+          "finding": "Global sysctl dispatch calls mac_system_check_sysctlbyname for user requests and propagates its error. Absence of the full-BSD UID gate does not establish unrestricted deployed access."
+        },
+        {
+          "url": "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/proc_info.c#L2184-L2229",
+          "finding": "Nonzero arg for SHORTBSD requests zombie lookup after proc_find misses. Normal non-extended proc_pidinfo uses no extended birth/version comparison. If live and zombie lookup both miss, ESRCH is returned. SHORTBSD and PATHINFO select NO_CHECK_SAME_USER, but still run proc_security_policy. Exact size/PID checks remain essential."
+        },
+        {
+          "url": "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/proc_info.c#L3173-L3214",
+          "finding": "proc_security_policy calls MAC before optional credential-UID checks. A same-owner positive/negative fixture cannot establish every policy module's behavior or all foreign-owner access."
+        },
+        {
+          "url": "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/proc_info.c#L1402-L1509",
+          "finding": "PATHINFO ESRCH also covers absent/recycled text vnode and unmount conditions, not only absent PID. PATHINFO does not itself request zombie lookup. It is never sufficient for prototype absence."
+        },
+        {
+          "url": "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/libsyscall/wrappers/libproc/libproc.c#L264-L286",
+          "finding": "proc_pidpath returns strlen(buffer) on syscall success and zero with errno on failure. Bridge captures errno immediately, before the second sysctl query."
+        }
+      ],
+      "design": {
+        "queries": "Exactly CTL_KERN/KERN_PROC/KERN_PROC_PID for an owned spawned PID; proc_pidpath of that retained PID; second identical metadata read; exact PROC_PIDT_SHORTBSDINFO(arg=1). No KERN_PROCARGS, argv/env, global enumeration, UID narrowing, or foreign-PID CLI input.",
+        "kernel_layout": "All kernel layout and sizeof operations are in sdk_metadata.c using installed SDK struct kinfo_proc and struct proc_bsdshortinfo. The Rust repr(C) arrays are only our own transfer record, with a size handshake before collection and SDK compile-time assertions for its path capacity, errno constants and state values.",
+        "positive_reads": "Validate sysctl status, exact returned sizeof, PID, 0 < start_seconds <= current wall-clock seconds, 0 <= microseconds < 1000000, state range, before/after birth equality and equality to existing OwnedProcess.identity. Require complete absolute non-parent-component path and component-wise Path.starts_with. No path-only or UID-only match.",
+        "absence": "Zero/filtered metadata is not absence. PATHINFO zero/ESRCH is not absence. Only a later exact non-extended SHORTBSD(arg=1) missing-live-and-zombie result permits AbsentAtShortLookup after rejecting denied, malformed and mismatched-birth reads. This label is a bounded source-conditional observation, not cross-user native admission authority. A found live/zombie with absent path remains unavailable. Global/deployed-policy uncertainty remains even for source-backed error interpretations.",
+        "sticky_errors": "Any observed EPERM/EACCES from either metadata read, PATHINFO or SHORTBSD remains Unavailable, even if a later read says missing. Other sysctl errors, sizes/PIDs/starttimes/state failures, malformed path and mismatched expected/before/after birth are also unavailable and are not healed by later absence.",
+        "no_new_control": "Prototype classification is pure and owns no signal API. Fixture controls are exclusively the unchanged production OwnedProcess returned by spawn_with_deadline. Synthetic modified birth records are passed only to pure classify, never to observe/signal/settle.",
+        "observed_and_synthetic": "receipt.txt prefixes real ABI cases with observed/real_zombie_kinfo and synthetic decisions with synthetic. Synthetic metadata/error/race tests do not claim the kernel produced those errors or a real PID reuse occurred."
+      },
+      "proof_cases_prepared_not_run": [
+        "Three private finite nonforking CPU child executables under inside, outside and inside-sibling directories; compare every real live before/after birth to OwnedProcess.identity and assert inside/component-prefix behavior.",
+        "Read-only observation non-interference: unchanged OwnedProcess.same_process identity and successful membership check before fixture-owner release.",
+        "Release by creation of a private empty regular file; waitid WNOWAIT through unchanged OwnedProcess.exited_unreaped; exact SHORTBSD zombie result prevents absence. Validate available zombie metadata birth/state and explicitly report empty zombie metadata rather than inventing it.",
+        "Owner settlement and leader reap; one immediate read-only observation of the retained owned numeric PID for bounded missing-live-and-zombie behavior; no retry if reuse/denial occurs and absolutely no post-reap signals. Repeat settle only to exercise its existing cached no-op path.",
+        "Synthetic mismatched before/after and expected births, short metadata size, wrong PID, invalid microseconds, zero metadata with live short result, PATHINFO ESRCH with live/zombie, relative/truncated paths, denied reads surviving later missing, SHORTBSD denial, arg=0 rejection, missing-live-and-zombie exit classification, duplicate/conflicting PID rows and invalid PID rows.",
+        "Deliberate normal Result error and unwind while a genuine owned live actor remains retained; bounded cleanup is mandatory in both cases. Separate missing-executable spawn preserves SpawnAttempt.process and cleanup receipt even though enrollment/exec failed."
+      ],
+      "cleanup_plan": {
+        "fixture_finiteness": "Each C fixture exits after at most 5 seconds of its monotonic loop or its owner's release file; it never forks or opens sockets. This is not a hard deadline for a kernel-stalled syscall.",
+        "spawn_bound": "2 seconds, fixture-only, not a production observation budget change.",
+        "observation_bound": "500 milliseconds measured around the four direct read calls; overrun is unavailable. No helper, retry, budget extension or cancellation guarantee is introduced.",
+        "owner_cleanup_bound": "8 seconds absolute deadline enrolled before each fixture spawn, never reset; 100 ms TERM grace inside existing OwnedProcess.settle. This is separate fixture-owner cleanup authority, not native/service authority.",
+        "retention": "Each returned OwnedProcess is pushed into the harness before identity queries, receipt writing or assertions. Known ProcessIdentity is retained before assertions. Catch-unwind wraps the real scenario; cleanup_all runs regardless of returned error or unwind. Settlements, including failure, remain stored and are written privately. Unexpected receipt/cleanup errors fail the run.",
+        "strictness": "Completion requires the unchanged OwnedProcess Settlement.complete, not only leader_reaped/group_absent. Any NOTE_FORK or sticky ownership failure remains incomplete. Program success additionally requires all final settlements to be complete. It never clears historical helper 38672 uncertainty or sends post-reap controls.",
+        "no_op": "Repeated settle after a successful settlement invokes the existing cached result branch in process_scope.rs:1238-1239. The runner compares retained/cached settlement receipts; this is not renewed cleanup authority.",
+        "limits": "SIGKILL, abort, machine failure or a permanently blocked kernel call can prevent in-process exception cleanup. Do not erase incomplete receipts or infer descendant absence from known-group disappearance. Parent retains artifacts for diagnosis and does not extend expired authority."
+      },
+      "exact_parent_commands": [
+        "After BOTH source slices are ready and parent explicitly schedules final integration: cargo build --offline --lib --manifest-path /Users/jerry/Desktop/repos/media-inference-lab/Cargo.toml",
+        "python3 /Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/prepare.py --library /Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib --dependencies /Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps --output /Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001",
+        "/Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001/metadata-runner /Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/build-owned-001 /Users/jerry/.local/share/media-inference-lab/cross-user-owned-engineering-20261010T170007040532Z/metadata/owned-run-001"
+      ],
+      "command_notes": [
+        "Use the parent's actual already-built library/deps paths if its approved final build uses CARGO_TARGET_DIR; no second repository build is needed solely for the runner. prepare.py refuses an existing output directory and writes only under metadata/.",
+        "prepare.py lists exact clang/rustc/codesign argument vectors in build-receipt.json. The fixture copies alone are ad-hoc signed; no source executable or runtime originals are changed. No network dependency fetch is needed for the C/Rust standalone compilation; repository build is --offline.",
+        "Runner requires a new private receipt directory and writes receipt.txt mode 0600 under a mode-0700 directory. Parent must bind/archive these receipts and binaries before removing throwaways. No permanent test or documentation file is created by this slice.",
+        "Do not rerun a failed real process observation to force a PASS. A behavioral or cleanup failure is evidence; correct source only if justified and let parent schedule the affected check."
+      ],
+      "unresolved_limits": [
+        "Pinned public XNU tag is not demonstrated to match installed Darwin 27 or loaded MAC policies. Installed declarations prove layout availability only; runtime ABI remains unobserved until Main runs the fixture.",
+        "Same-user owned success does not establish cross-user visibility, complete negative global listener observation, or deployed-policy qualification. This candidate is not integrated into production basic(), observe(), control, native admission or service lifecycle.",
+        "Legacy SPI/ABI risk remains even if present installed SDK/owned tests pass. A future ABI, structure, size, permission or policy difference must deny rather than fall back.",
+        "PID/time bracketing is not an atomic process handle, does not freeze exec or path rename, and does not close global scan/start races. The immediate post-reap read uses only the previously owned numeric PID; reuse is possible and must fail closed if detected. No process can be signalled using that post-reap PID.",
+        "Equal SHORTBSD records have no birth token and are never substituted for before/after kinfo birth equality. Source-backed SHORTBSD missing semantics are not certification of every deployed policy's error behavior.",
+        "All direct kernel/path/ownership queries can block beyond wall-clock caps. This prototype adds no cancellation claim or production budget change.",
+        "No live global/service/8000/7860 query, elevation, grants/bindings/leases/capture/scheduling, model/runtime work, downloads, or oMLX private collection was performed. Historical incomplete helper 38672 remains incomplete."
+      ]
+    },
+    "limits": [
+      "Actual SDK ABI 648-byte kinfo_proc, 64-byte short BSD; kern.proc remains legacy SPI.",
+      "Only retained newly owned PIDs queried. No foreign PID or deployed cross-user policy proof.",
+      "Exact birth brackets and component-aware path checks; zero metadata/path ESRCH alone not absence.",
+      "Found zombie stays unavailable; post-reap missing uses source-backed SHORTBSD arg1 semantics.",
+      "No production metadata/basic/observe/control/admission cutover."
+    ]
+  },
+  "complete_negative_listener_blocker": {
+    "cross_user_source": "https://github.com/jerryfane/media-inference-lab/issues/11#issuecomment-6099903881",
+    "nettop_parent_finding": "https://github.com/jerryfane/media-inference-lab/issues/11#issuecomment-6100086184",
+    "pinned_xnu": "12377.121.6",
+    "rejected_certificate": "Entitlement and same-owner positive canary do not establish complete-negative visibility.",
+    "source_gaps": [
+      "TCP-locus allocation can fail, so PCB may never register.",
+      "Add-all watcher ignores per-source add errors; caller can emit SUCCESS.",
+      "Polling has fragments/continuations, skipped errors and filtered sources."
+    ],
+    "source_links": [
+      "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/net/ntstat.c#L1847-L1897",
+      "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/net/ntstat.c#L2131-L2196",
+      "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/net/ntstat.c#L6846-L7011",
+      "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/net/ntstat.c#L7330-L7497",
+      "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/net/ntstat.h#L929-L954"
+    ],
+    "execution": "Neither nettop nor netstat executed; no fallback, retries or metadata integration. Existing native empty-lsof admission semantics were not cut over in this limited slice and are not certified safe for live use."
+  },
+  "authority_limits": [
+    "No live global/service/8000/7860 probe or foreign-PID prototype query.",
+    "No elevated authority, grant, activation binding, shared lease, benchmark capture, scheduling or private oMLX collection.",
+    "No historical receipt mutation or uncertainty clearance.",
+    "No runtime/model recovery rerun or native import."
+  ],
+  "proof_sources": "proof-sources.json",
+  "artifact_binding": {
+    "guardian_sha256": "b75edb1a089315482fbf7dc3d30cb4496b14e78091c8e3eb295f6ba4f647a0e7",
+    "rlib_sha256": "a775053dcc2ef97e14b8bae788ae275c7fa92f6f523ec4dc8a518bc8ee7c32c2",
+    "final_listener_driver_sha256": "31f269e78efc2c8b1cf13b82c03bd03a684a4945db079fed89bf607831604ae8",
+    "final_listener_source_sha256": "da2c5dca134f255705b9849826cd58bcd768638be08a99de91cf6f03faccd7c8",
+    "diagnostic_driver_sha256": "d7a0478c3d7e78fd004987f51b3aa9b98f5e8d91979b26c86d257a6d859c8a5a",
+    "source_sha256": {
+      "src/maintenance.rs": "62ca0c300dea1dbb78a9b2f99f40c6e66a9be660390f5cce3123e531dff77dfc",
+      "src/service_lifecycle.rs": "f40c6132d61e2fd6616fdc87114baac93abde28bf5720027ca9a815a978f1651",
+      "src/process_scope.rs": "1cfe34874577fa6f43870744af279aec17d37eb3be23991c5799367e643f6a81",
+      "src/native_guard.rs": "314993cd291c016f798e63f59fb45a3c5921e4ac1a7034f685d562231bcaadc8",
+      "src/qualification_scope.rs": "bbdf62625e99ce9b322d34ed4e85497cca08e9676fae12ca50e2e940e128729d",
+      "src/restore_qualification.rs": "ba6516d5e6e708529a2be29fba7c6b0a5f34409d39d683546df78bb2a246b273",
+      "src/qualification_profile.rs": "9fba3b1fe8b4d4f8562d98dc0f21981ba87a103719b84cb5a3c73074167ff8ee",
+      "src/lib.rs": "042b068ce58c0f792a192165a0ea0f0e7879d4718bb9e13cb6be9104d75f0e3e",
+      "src/capture.rs": "d6ba2ce91d5e1272e96f66debee3e0889d30191af00a1262e1087d128058db21",
+      "src/guards.rs": "3aba006d110d78415771034cf73cb8a6453fbea44ce51d7ad23151f0a7b83618",
+      "src/native.rs": "d0b4696a5b329e35f3424340bf5e5cebad5cbdadf58da5b8a555bc24dbf10a73",
+      "src/main.rs": "57c59ba10eb29bc1457317d9d09239fe98b22bc00012c3aaf42cc30b2e8ba14e",
+      "src/preflight.rs": "b92fb6bd5593aa531c863dffc291ed8c1247b5677c19396a67b792a1e25dd80d",
+      "src/sequence_report.rs": "b022876ab3bc25226d54b40addb9a6690cbe37f4b5492d538c68740efdd3c65c",
+      "src/frame_sequence.rs": "398aab949517feb568398a38cb8edba98eca7b37a6687010efe3073b51fb10bc",
+      "src/image_comparison.rs": "36bd109b3bcc024dae3f93bf5a06273ebe97f462ca2d2aee139db3e0f7bf83b3",
+      "src/study_report.rs": "53d38cd53e92482c0cc4b51485771b07d46eb6ee90b1f66b45ee828172d3bc2f",
+      "src/png_report.rs": "f0a214114ed6eabd33ec4a431121272d4e9f887b8f1c1d97eefb6c1bc03d297a",
+      "src/capture_archive.rs": "c81c03c4c39e9a4046d343b93d5841a24e8924b5555776b6a7f08401a5432824",
+      "src/markdown.rs": "8df585bdd93ede679d33bf56cbebe490ff82630ff5c319ca00c34b1d77a0df3a",
+      "src/comparison.rs": "bdd5c12cab100763801824825a9a75fa79a3e665e993f6e3b40a72ac107c625c",
+      "src/png_image.rs": "90e530a3c2347b63a4616f7a30bdebba7b5d077e3d74e784423a3c4a78293ca5",
+      "src/study.rs": "81b8a296b04749f7786ca94bb8c6e296e7f4afbc5f29bfad32e827b7dfbfa874",
+      "src/schema.rs": "0570810b9950b49e4fe0315041f4a6e9225178590c9f558d5beae7c1e384d6a6",
+      "Cargo.toml": "b5c681c426ab547fea9370a71497203de93e820dd76d542cfd4250fbd828977b",
+      "Cargo.lock": "58108075860c9f8c020f22a9dd16194d489f5d6de0879f59a10c8a372881330e",
+      "tests/maintenance_absence.rs": "fad485a1777688565bdeac63aab0575e1c8531e45c77f326276117a39f1b7e1a",
+      "tests/maintenance_authorization.rs": "71523a01ea668255f5ff5d554afc031230c0c8910f98ea417b2da0b0f649800b"
+    }
+  }
+}

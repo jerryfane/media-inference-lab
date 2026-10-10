@@ -462,12 +462,14 @@ impl ServiceHandle {
                         check(deadline, tick)?;
                         return Ok(names);
                     }
-                    let (status, output) = bounded_command_status(
-                        "/usr/sbin/lsof",
-                        &["-nP", "-iTCP:8000", "-sTCP:LISTEN", "-Fp"].map(String::from),
-                        deadline, tick, recovery,
+                    let observation = listener_query(
+                        8000, ListenerFields::Pids, false, deadline, tick, recovery,
                     )?;
-                    absence_probe_state(status, &output)
+                    if observation.listeners.is_empty() {
+                        AbsenceState::Absent
+                    } else {
+                        AbsenceState::Present
+                    }
                 }
                 AbsenceBinding::Cpu { probe, .. } => {
                     let (status, output) = bounded_spec_status(probe, deadline, tick, recovery)?;
@@ -1395,12 +1397,33 @@ fn bounded_command_status(
     bounded_spec_status(&spec, deadline, tick, recovery)
 }
 
+#[derive(Clone, Copy)]
+enum CapturePolicy {
+    Merged,
+    StdoutOnly,
+}
+
 fn bounded_spec_status(
     spec: &CommandSpec,
     deadline: Instant,
     tick: &mut dyn FnMut() -> Result<()>,
     recovery: &mut RecoveryControl<'_>,
 ) -> Result<(i32, String)> {
+    bounded_spec_read(spec, deadline, tick, recovery, CapturePolicy::Merged, |status, output| {
+        Ok((status, output))
+    }).map(|(value, _)| value)
+}
+
+// Decode before discarding successful accounting, so malformed observations retain
+// the exact helper disposition just like execution/cancellation failures.
+fn bounded_spec_read<T>(
+    spec: &CommandSpec,
+    deadline: Instant,
+    tick: &mut dyn FnMut() -> Result<()>,
+    recovery: &mut RecoveryControl<'_>,
+    policy: CapturePolicy,
+    decode: impl FnOnce(i32, String) -> Result<T>,
+) -> Result<(T, ActorDisposition)> {
     let attempt = OwnedProcess::spawn_with_deadline(spec, deadline, tick)?;
     let mut actor = attempt.process;
     let index = recovery.enroll_actor(&actor, spec, "bounded helper");
@@ -1409,19 +1432,28 @@ fn bounded_spec_status(
             anyhow::bail!(failure);
         }
         let mut output = Vec::new();
+        let mut diagnostic = false;
+        let mut captured = 0usize;
         loop {
             check(deadline, tick)?;
             // Drain after observing exit so late stderr cannot be mistaken for
             // the empty-output "no listeners" result.
             let exited = actor.exited_unreaped()?;
-            for stream in [&mut actor.stdout, &mut actor.stderr].into_iter().flatten() {
+            for (is_stderr, stream) in [(false, &mut actor.stdout), (true, &mut actor.stderr)] {
+                let Some(stream) = stream else { continue };
                 loop {
                     let mut bytes = [0u8; 4096];
                     match stream.read(&mut bytes) {
                         Ok(0) => break,
                         Ok(n) => {
-                            ensure!(output.len() + n <= 65536, "launchctl output exceeds bound");
-                            output.extend_from_slice(&bytes[..n]);
+                            captured += n;
+                            ensure!(captured <= 65536, "bounded command output exceeds bound");
+                            if is_stderr && matches!(policy, CapturePolicy::StdoutOnly) {
+                                // Raw diagnostics never leave this bounded private capture.
+                                diagnostic = true;
+                            } else {
+                                output.extend_from_slice(&bytes[..n]);
+                            }
                         }
                         Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
                         Err(e) => return Err(e.into()),
@@ -1442,19 +1474,20 @@ fn bounded_spec_status(
             budget.actors[index].settlement = Some(settlement.clone());
         }
         ensure!(settlement.complete, "bounded command settlement failed");
-        Ok((
-            settlement
-                .exit_code
-                .context("bounded command exited by signal")?,
-            String::from_utf8(output).context("bounded command output is not UTF-8")?,
-        ))
+        ensure!(!diagnostic, "listener helper emitted diagnostics (output omitted)");
+        let status = settlement.exit_code.context("bounded command exited by signal")?;
+        let output = String::from_utf8(output)
+            .map_err(|_| anyhow::anyhow!("bounded command output is not UTF-8"))?;
+        let value = decode(status, output)?;
+        check(deadline, tick)?;
+        Ok(value)
     })();
     match result {
         Ok(value) => {
             // Read-only polling may run repeatedly: settled successes have no
             // residual ownership and must not grow the shared receipt history.
-            recovery.budget.borrow_mut().actors.remove(index);
-            Ok(value)
+            let receipt = recovery.budget.borrow_mut().actors.remove(index);
+            Ok((value, receipt))
         }
         Err(error) => {
             let cleanup = if recovery.budget.borrow().actors[index].complete {
@@ -1471,6 +1504,144 @@ fn bounded_spec_status(
             ))
         }
     }
+}
+
+/// A syntactically complete process record returned by the selected-port query.
+#[derive(Debug, Serialize)]
+pub struct ListenerRecord {
+    pub pid: u32,
+    pub command: Option<String>,
+    pub endpoints: Vec<String>,
+}
+
+/// A bounded tool observation, NOT a certificate of complete global visibility.
+/// In particular, an empty list cannot establish cross-user listener absence.
+#[derive(Debug, Serialize)]
+pub struct ListenerObservation {
+    pub listeners: Vec<ListenerRecord>,
+    pub helper: ActorDisposition,
+    pub elapsed_micros: u128,
+}
+
+#[derive(Clone, Copy)]
+enum ListenerFields {
+    Pids,
+    Records,
+}
+
+/// Read-only all-PID/all-address/all-family TCP LISTEN observation of one port.
+/// Uses the same execution, parser and settlement path as service qualification.
+/// Caller supplies existing execution/recovery authority; this grants no control
+/// over any discovered listener. The observation remains capped at 500 ms.
+pub fn observe_tcp_listeners(
+    port: u16,
+    deadline: Instant,
+    tick: &mut dyn FnMut() -> Result<()>,
+    recovery: &mut RecoveryControl<'_>,
+) -> Result<ListenerObservation> {
+    listener_query(port, ListenerFields::Records, true,
+        cap(deadline, Duration::from_millis(500)), tick, recovery)
+}
+
+fn listener_query(
+    port: u16,
+    fields: ListenerFields,
+    full_command: bool,
+    deadline: Instant,
+    tick: &mut dyn FnMut() -> Result<()>,
+    recovery: &mut RecoveryControl<'_>,
+) -> Result<ListenerObservation> {
+    ensure!(port != 0, "listener observation requires a port");
+    let started = Instant::now();
+    // -O disables lsof's potentially blocking-operation children, not the
+    // guardian's strict NOTE_FORK, cancellation or settlement requirements.
+    let mut args = vec!["-O".into(), "-nP".into()];
+    if full_command {
+        args.extend(["+c".into(), "0".into()]);
+    }
+    args.extend([
+        format!("-iTCP:{port}"), "-sTCP:LISTEN".into(),
+        match fields { ListenerFields::Pids => "-Fp", ListenerFields::Records => "-Fpcn" }.into(),
+    ]);
+    let spec = CommandSpec {
+        executable: "/usr/sbin/lsof".into(),
+        args,
+        cwd: "/".into(),
+        environment: BTreeMap::new(),
+    };
+    let (listeners, helper) = bounded_spec_read(
+        &spec, deadline, tick, recovery, CapturePolicy::StdoutOnly,
+        |status, output| parse_listener_output(status, &output, fields, port),
+    )?;
+    Ok(ListenerObservation { listeners, helper, elapsed_micros: started.elapsed().as_micros() })
+}
+
+fn parse_listener_output(
+    status: i32,
+    output: &str,
+    fields: ListenerFields,
+    port: u16,
+) -> Result<Vec<ListenerRecord>> {
+    if status == 1 && output.is_empty() {
+        return Ok(Vec::new());
+    }
+    ensure!(status == 0 && !output.is_empty() && output.ends_with('\n'),
+        "invalid listener exit/output combination (output omitted)");
+    let mut records: Vec<ListenerRecord> = Vec::new();
+    let mut pids = std::collections::BTreeSet::new();
+    for line in output.split_terminator('\n') {
+        ensure!(!line.is_empty() && !line.chars().any(char::is_control),
+            "malformed listener record (output omitted)");
+        if let Some(pid) = line.strip_prefix('p') {
+            if let Some(previous) = records.last() {
+                validate_listener_record(previous, fields)?;
+            }
+            ensure!(!pid.is_empty() && pid.bytes().all(|b| b.is_ascii_digit()) && !pid.starts_with('0'),
+                "malformed listener PID (output omitted)");
+            let pid = pid.parse::<u32>()
+                .map_err(|_| anyhow::anyhow!("invalid listener PID (output omitted)"))?;
+            ensure!(pid > 1 && pid <= i32::MAX as u32 && pids.insert(pid),
+                "invalid or duplicate listener PID (output omitted)");
+            records.push(ListenerRecord { pid, command: None, endpoints: Vec::new() });
+            continue;
+        }
+        ensure!(matches!(fields, ListenerFields::Records),
+            "unexpected listener field (output omitted)");
+        let record = records.last_mut().context("listener field precedes PID (output omitted)")?;
+        if let Some(command) = line.strip_prefix('c') {
+            ensure!(!command.is_empty() && record.command.is_none() && record.endpoints.is_empty(),
+                "invalid or duplicate listener command (output omitted)");
+            record.command = Some(command.into());
+        } else if let Some(endpoint) = line.strip_prefix('n') {
+            ensure!(record.command.is_some() && listener_endpoint(endpoint, port)
+                && !record.endpoints.iter().any(|old| old == endpoint),
+                "invalid or duplicate listener endpoint (output omitted)");
+            record.endpoints.push(endpoint.into());
+        } else {
+            anyhow::bail!("unrecognized listener field (output omitted)");
+        }
+    }
+    validate_listener_record(records.last().context("missing listener record")?, fields)?;
+    Ok(records)
+}
+
+fn validate_listener_record(record: &ListenerRecord, fields: ListenerFields) -> Result<()> {
+    ensure!(matches!(fields, ListenerFields::Pids)
+        || (record.command.is_some() && !record.endpoints.is_empty()),
+        "incomplete listener record (output omitted)");
+    Ok(())
+}
+
+fn listener_endpoint(endpoint: &str, port: u16) -> bool {
+    let Some((address, number)) = endpoint.rsplit_once(':') else { return false };
+    if !number.bytes().all(|byte| byte.is_ascii_digit())
+        || number.starts_with('0') || number.parse::<u16>().ok() != Some(port) {
+        return false;
+    }
+    address == "*"
+        || address.parse::<std::net::Ipv4Addr>().is_ok()
+        || address.strip_prefix('[').and_then(|s| s.strip_suffix(']'))
+            .is_some_and(|s| s.parse::<std::net::Ipv6Addr>().is_ok())
 }
 
 fn launchctl_absent(
@@ -1509,11 +1680,10 @@ fn listener_absent(
     );
     // The port-restricted query also rejects wildcard/IPv6 listeners on that port:
     // it cannot miss a replacement by filtering only the old backend PID.
-    let args = ["-nP", "-iTCP:8000", "-sTCP:LISTEN", "-Fpcn"].map(String::from);
-    let (status, output) =
-        bounded_command_status("/usr/sbin/lsof", &args, deadline, tick, recovery)?;
+    let observation =
+        listener_query(address.port(), ListenerFields::Records, false, deadline, tick, recovery)?;
     ensure!(
-        status == 1 && output.trim().is_empty(),
+        observation.listeners.is_empty(),
         "enrolled backend listener absence is not established"
     );
     Ok(())
@@ -1616,32 +1786,17 @@ fn verify_backend_listener(
     recovery: &mut RecoveryControl<'_>,
 ) -> Result<()> {
     process_scope::verify_identity(expected)?;
-    let args = ["-nP", "+c", "0", "-iTCP:8000", "-sTCP:LISTEN", "-Fpcn"].map(String::from);
     // This callback cannot borrow the qualification tick twice; each bounded observation
     // is surrounded by the qualification owner's freshness callbacks.
-    let output = bounded_command(
-        "/usr/sbin/lsof",
-        &args,
-        cap(deadline, Duration::from_millis(500)),
-        &mut || Ok(()),
-        recovery,
+    let observation = listener_query(
+        8000, ListenerFields::Records, true,
+        cap(deadline, Duration::from_millis(500)), &mut || Ok(()), recovery,
     )?;
-    let pids: Vec<_> = output
-        .lines()
-        .filter_map(|line| line.strip_prefix('p'))
-        .collect();
-    let names: Vec<_> = output
-        .lines()
-        .filter_map(|line| line.strip_prefix('n'))
-        .collect();
-    let commands: Vec<_> = output
-        .lines()
-        .filter_map(|line| line.strip_prefix('c'))
-        .collect();
     ensure!(
-        pids == [expected.pid.to_string().as_str()]
-            && commands == ["omlx-server"]
-            && names == ["127.0.0.1:8000"],
+        observation.listeners.len() == 1
+            && observation.listeners[0].pid == expected.pid
+            && observation.listeners[0].command.as_deref() == Some("omlx-server")
+            && observation.listeners[0].endpoints == ["127.0.0.1:8000"],
         "backend is not the sole exact loopback listener with qualified title"
     );
     process_scope::verify_identity(expected)?;
@@ -2309,6 +2464,133 @@ mod tests {
         fn deref_mut(&mut self) -> &mut Self::Target {
             &mut self.0
         }
+    }
+
+    #[test]
+    fn listener_parser_rejects_ambiguous_or_diagnostic_records() -> Result<()> {
+        let records = parse_listener_output(0,
+            "p42\ncserver\nn127.0.0.1:49152\nn[::1]:49152\np43\ncother\nn*:49152\n",
+            ListenerFields::Records, 49152)?;
+        ensure!(records.iter().map(|r| r.pid).collect::<Vec<_>>() == [42, 43]
+            && records[0].endpoints == ["127.0.0.1:49152", "[::1]:49152"]
+            && records[1].endpoints == ["*:49152"], "listener owners/addresses lost");
+        ensure!(parse_listener_output(1, "", ListenerFields::Records, 49152)?.is_empty(),
+            "empty selected-port observation rejected");
+        for output in [
+            "", "\n", "p42", "42\n", "p+42\n", "p042\n", "p1\n", "p2147483648\n",
+            "p4294967296\n", "p42\np42\n", "p42\ncserver\n", "cserver\np42\nn*:49152\n",
+            "p42\nn*:49152\ncserver\n", "p42\ncserver\ncserver\nn*:49152\n",
+            "p42\ncserver\nn*:49152\nn*:49152\n", "p42\ncserver\nn*:49152\np42\ncother\nn*:49152\n",
+            "p42\ncserver\nn*:49152\nwarning private\n", "p42\ncserver\nn*:49152\nf9\n",
+            "p42\ncserver\nn*:49153\n", "p42\ncserver\nn127.0.0.1:49152->127.0.0.1:80\n",
+            "p42\ncserver\nn127.0.0.1:+49152\n",
+            "p42\ncserver\nn*:49152\n\n", "p42\r\ncserver\nn*:49152\n",
+        ] {
+            ensure!(parse_listener_output(0, output, ListenerFields::Records, 49152).is_err(),
+                "ambiguous listener output admitted");
+        }
+        for status in [-1, 1, 2] {
+            ensure!(parse_listener_output(status, "p42\ncserver\nn*:49152\n",
+                ListenerFields::Records, 49152).is_err(), "invalid exit admitted");
+        }
+        ensure!(parse_listener_output(0, "p42\np43\n", ListenerFields::Pids, 49152)?
+            .iter().map(|r| r.pid).collect::<Vec<_>>() == [42, 43], "PID selection lost");
+        for output in ["42\n", "p42\np42\n", "p42\ncserver\n", "p42\nwarning\n"] {
+            ensure!(parse_listener_output(0, output, ListenerFields::Pids, 49152).is_err(),
+                "invalid PID-only observation admitted");
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn listener_capture_errors_retain_safe_exact_helper_accounting() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        // Secrets originate inside a private fixture file, never the public argv receipt.
+        let scripts = [
+            "printf 'p42\\ncserver\\nn*:49152\\n'; printf 'p42\\ncprivate-secret\\nn*:49152\\n' >&2",
+            "trap \"printf 'warning private-secret\\n' >&2\" EXIT; printf 'p42\\ncserver\\nn*:49152\\n'",
+            "printf 'p42\\ncserver\\nn*:49152\\nwarning private-secret\\n'",
+            "printf 'p42\\ncserver\\nn*:49152\\n'; exit 1",
+            "i=0; while [ \"$i\" -lt 70 ]; do printf '%1024s' x; i=$((i+1)); done",
+        ];
+        for (case, script) in scripts.iter().enumerate() {
+            let path = dir.path().join(format!("helper-{case}.sh"));
+            std::fs::write(&path, script)?;
+            let spec = command("/bin/sh", &[path.to_str().context("fixture path")?], dir.path());
+            let scope = TestScope::new();
+            let mut recovery_tick = || Ok(());
+            let mut recovery = scope.control(&mut recovery_tick);
+            let started = Instant::now();
+            let result = bounded_spec_read(&spec, started + Duration::from_millis(500),
+                &mut || Ok(()), &mut recovery, CapturePolicy::StdoutOnly,
+                |status, output| parse_listener_output(status, &output, ListenerFields::Records, 49152));
+            let error = result.expect_err("invalid observation admitted");
+            let entries = recovery.observations();
+            ensure!(!format!("{error:#}").contains("private-secret")
+                && entries.len() == 1 && entries[0].complete
+                && entries[0].settlement.as_ref().is_some_and(|s|
+                    s.complete && s.leader_reaped && s.group_absent),
+                "unsafe error or missing helper accounting");
+            ensure!(!entries[0].failure.as_deref().unwrap_or("").contains("private-secret"),
+                "raw diagnostics entered public failure");
+            if case == 4 {
+                ensure!(format!("{error:#}").contains("output exceeds bound"),
+                    "overflow fixture did not reach capture byte bound");
+            }
+            eprintln!("listener helper case={case} elapsed={:?} error={error:#} accounting={entries:?}",
+                started.elapsed());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn listener_nonfork_stalls_cancel_without_losing_ownership() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        for resist_term in [false, true] {
+            let path = dir.path().join("finite.sh");
+            std::fs::write(&path, if resist_term {
+                "trap '' TERM; exec /bin/sleep 2"
+            } else { "exec /bin/sleep 2" })?;
+            let spec = command("/bin/sh", &[path.to_str().context("fixture path")?], dir.path());
+            let scope = TestScope::new();
+            let mut recovery_tick = || Ok(());
+            let mut recovery = scope.control(&mut recovery_tick);
+            let started = Instant::now();
+            let result = bounded_spec_read(&spec, started + Duration::from_millis(500),
+                &mut || Ok(()), &mut recovery, CapturePolicy::StdoutOnly,
+                |status, output| parse_listener_output(status, &output, ListenerFields::Records, 49152));
+            let entries = recovery.observations();
+            ensure!(result.is_err() && entries.len() == 1 && entries[0].complete,
+                "stalled helper escaped denied observation or complete accounting");
+            let settlement = entries[0].settlement.as_ref().context("missing settlement")?;
+            ensure!(settlement.complete && settlement.leader_reaped && settlement.group_absent,
+                "stalled helper cleanup incomplete");
+            eprintln!("listener nonfork resist_term={resist_term} elapsed={:?} accounting={entries:?}",
+                started.elapsed());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn listener_success_returns_settlement_without_growing_history() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("empty.sh");
+        std::fs::write(&path, "exit 1")?;
+        let spec = command("/bin/sh", &[path.to_str().context("fixture path")?], dir.path());
+        let scope = TestScope::new();
+        let mut recovery_tick = || Ok(());
+        let mut recovery = scope.control(&mut recovery_tick);
+        for _ in 0..3 {
+            let (records, receipt) = bounded_spec_read(&spec,
+                Instant::now() + Duration::from_millis(500), &mut || Ok(()),
+                &mut recovery, CapturePolicy::StdoutOnly,
+                |status, output| parse_listener_output(status, &output, ListenerFields::Records, 49152))?;
+            ensure!(records.is_empty() && receipt.complete
+                && receipt.settlement.as_ref().is_some_and(|s|
+                    s.complete && s.leader_reaped && s.group_absent && s.exit_code == Some(1))
+                && recovery.observations().is_empty(), "success receipt lost or history grew");
+        }
+        Ok(())
     }
 
     #[test]
