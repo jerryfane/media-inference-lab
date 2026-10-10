@@ -3376,23 +3376,10 @@ mod tests {
         std::os::unix::fs::symlink("data", root.join("directory-link")).unwrap();
         let (first, total) = timing_manifest(&root, &QualificationLimits::default()).unwrap();
         let expected_paths: BTreeSet<_> = [
-            "",
-            "data",
-            "data/blob",
-            "data/empty",
-            "hard-link",
-            "file-link",
-            "directory-link",
-            "directory-link/blob",
-            "directory-link/empty",
-        ]
-        .into_iter()
-        .map(PathBuf::from)
-        .collect();
-        assert_eq!(
-            first.keys().cloned().collect::<BTreeSet<_>>(),
-            expected_paths
-        );
+            "", "data", "data/blob", "data/empty", "hard-link", "file-link",
+            "directory-link", "directory-link/blob", "directory-link/empty",
+        ].into_iter().map(PathBuf::from).collect();
+        assert_eq!(first.keys().cloned().collect::<BTreeSet<_>>(), expected_paths);
         assert_eq!(total, 4 * bytes.len() as u64);
         for path in ["data/blob", "hard-link", "file-link", "directory-link/blob"] {
             assert_eq!(
@@ -3404,14 +3391,8 @@ mod tests {
             first[Path::new("directory-link/empty")].sha256.as_deref(),
             Some("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
         );
-        assert_eq!(
-            first[Path::new("file-link")].symlink_target,
-            Some("data/blob".into())
-        );
-        assert_eq!(
-            first[Path::new("directory-link")].symlink_target,
-            Some("data".into())
-        );
+        assert_eq!(first[Path::new("file-link")].symlink_target, Some("data/blob".into()));
+        assert_eq!(first[Path::new("directory-link")].symlink_target, Some("data".into()));
         *bytes.last_mut().unwrap() ^= 1;
         fs::write(root.join("data/blob"), &bytes).unwrap();
         let (second, total) = timing_manifest(&root, &QualificationLimits::default()).unwrap();
@@ -3443,18 +3424,10 @@ mod tests {
         let mut bytes = Vec::new();
         opened.read_to_end(&mut bytes).unwrap();
         assert_eq!(bytes, b"original code");
-        assert!(
-            hash_regular_from(
-                &path,
-                &expected,
-                &QualificationLimits::default(),
-                &mut 0,
-                Instant::now() + Duration::from_secs(5),
-                &mut || Ok(()),
-                Some(&parent),
-            )
-            .is_err()
-        );
+        assert!(hash_regular_from(
+            &path, &expected, &QualificationLimits::default(), &mut 0,
+            Instant::now() + Duration::from_secs(5), &mut || Ok(()), Some(&parent),
+        ).is_err());
         assert!(open_regular(&path).is_err());
     }
 
@@ -3471,24 +3444,13 @@ mod tests {
         fs::write(root.join("data/code"), b"same bytes").unwrap();
         let limits = QualificationLimits::default();
         let mut walker = ManifestWalker {
-            root: root.clone(),
-            limits: &limits,
-            entries: BTreeMap::new(),
-            total_bytes: 0,
-            active_dirs: BTreeSet::new(),
+            root: root.clone(), limits: &limits, entries: BTreeMap::new(),
+            total_bytes: 0, active_dirs: BTreeSet::new(),
         };
-        assert!(
-            walker
-                .walk_from(
-                    &root.join("data"),
-                    Path::new("data"),
-                    1,
-                    Instant::now() + Duration::from_secs(5),
-                    &mut || Ok(()),
-                    Some(&parent),
-                )
-                .is_err()
-        );
+        assert!(walker.walk_from(
+            &root.join("data"), Path::new("data"), 1,
+            Instant::now() + Duration::from_secs(5), &mut || Ok(()), Some(&parent),
+        ).is_err());
         assert_eq!(walker.total_bytes, 0);
     }
 
@@ -3499,9 +3461,7 @@ mod tests {
         fs::write(root.join("code"), b"abcd").unwrap();
         std::os::unix::fs::symlink("code", root.join("alias")).unwrap();
         let mut limits = QualificationLimits {
-            max_file_bytes: 4,
-            max_total_bytes: 8,
-            max_files: 3,
+            max_file_bytes: 4, max_total_bytes: 8, max_files: 3,
             ..QualificationLimits::default()
         };
         assert_eq!(timing_manifest(&root, &limits).unwrap().1, 8);
@@ -3535,39 +3495,20 @@ mod tests {
                         fs::rename(&path, root.join("old-code"))?;
                         fs::write(&path, vec![7_u8; 131073])?;
                     } else {
-                        fs::OpenOptions::new()
-                            .append(true)
-                            .open(&path)?
-                            .write_all(b"x")?;
+                        fs::OpenOptions::new().append(true).open(&path)?.write_all(b"x")?;
                     }
                 }
                 Ok(())
             };
-            assert!(
-                hash_regular_from(
-                    &path,
-                    &expected,
-                    &QualificationLimits::default(),
-                    &mut 0,
-                    Instant::now() + Duration::from_secs(5),
-                    &mut tick,
-                    Some(&parent),
-                )
-                .is_err()
-            );
+            assert!(hash_regular_from(
+                &path, &expected, &QualificationLimits::default(), &mut 0,
+                Instant::now() + Duration::from_secs(5), &mut tick, Some(&parent),
+            ).is_err());
             let current = reference_metadata(&path).unwrap();
-            assert!(
-                hash_regular_from(
-                    &path,
-                    &current,
-                    &QualificationLimits::default(),
-                    &mut 0,
-                    Instant::now(),
-                    &mut || Ok(()),
-                    Some(&parent),
-                )
-                .is_err()
-            );
+            assert!(hash_regular_from(
+                &path, &current, &QualificationLimits::default(), &mut 0,
+                Instant::now(), &mut || Ok(()), Some(&parent),
+            ).is_err());
         }
     }
 
@@ -3584,8 +3525,7 @@ mod tests {
             let entry = root.join("entry");
             match case {
                 "fifo" => {
-                    let name =
-                        std::ffi::CString::new(entry.as_os_str().as_encoded_bytes()).unwrap();
+                    let name = std::ffi::CString::new(entry.as_os_str().as_encoded_bytes()).unwrap();
                     assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0);
                 }
                 "cycle" => std::os::unix::fs::symlink(".", &entry).unwrap(),
@@ -3603,18 +3543,10 @@ mod tests {
         let parent = open_path(&root, true).unwrap();
         fs::remove_file(&path).unwrap();
         fs::create_dir(&path).unwrap();
-        assert!(
-            hash_regular_from(
-                &path,
-                &expected,
-                &QualificationLimits::default(),
-                &mut 0,
-                Instant::now() + Duration::from_secs(5),
-                &mut || Ok(()),
-                Some(&parent),
-            )
-            .is_err()
-        );
+        assert!(hash_regular_from(
+            &path, &expected, &QualificationLimits::default(), &mut 0,
+            Instant::now() + Duration::from_secs(5), &mut || Ok(()), Some(&parent),
+        ).is_err());
     }
 
     #[test]
@@ -3635,18 +3567,12 @@ mod tests {
         let pinned = open_path(&root, true).unwrap();
         fs::rename(&root, &saved).unwrap();
         fs::rename(&replacement, &root).unwrap();
-        let mut path_names: Vec<_> = fs::read_dir(&root)
-            .unwrap()
-            .map(|entry| entry.unwrap().file_name())
-            .collect();
+        let mut path_names: Vec<_> = fs::read_dir(&root).unwrap()
+            .map(|entry| entry.unwrap().file_name()).collect();
         path_names.sort();
         let pinned_names = directory_names(
-            &pinned,
-            2,
-            Instant::now() + Duration::from_secs(5),
-            &mut || Ok(()),
-        )
-        .unwrap();
+            &pinned, 2, Instant::now() + Duration::from_secs(5), &mut || Ok(()),
+        ).unwrap();
         fs::rename(&root, &replacement).unwrap();
         fs::rename(&saved, &root).unwrap();
         let names = |values: [&str; 2]| values.map(std::ffi::OsString::from).to_vec();
@@ -3659,53 +3585,29 @@ mod tests {
     fn manifest_timing_pinned_listing_enforces_bounds_deadline_and_directory_type() {
         let temp = tempfile::tempdir().unwrap();
         let root = fs::canonicalize(temp.path()).unwrap();
-        assert!(
-            directory_names(
-                &open_path(&root, true).unwrap(),
-                0,
-                Instant::now() + Duration::from_secs(5),
-                &mut || Ok(()),
-            )
-            .unwrap()
-            .is_empty()
-        );
+        assert!(directory_names(
+            &open_path(&root, true).unwrap(), 0,
+            Instant::now() + Duration::from_secs(5), &mut || Ok(()),
+        ).unwrap().is_empty());
         fs::write(root.join("b"), b"code").unwrap();
         fs::write(root.join("a"), b"code").unwrap();
         let names = directory_names(
-            &open_path(&root, true).unwrap(),
-            2,
-            Instant::now() + Duration::from_secs(5),
-            &mut || Ok(()),
-        )
-        .unwrap();
+            &open_path(&root, true).unwrap(), 2,
+            Instant::now() + Duration::from_secs(5), &mut || Ok(()),
+        ).unwrap();
         assert_eq!(names, ["a", "b"].map(std::ffi::OsString::from));
-        assert!(
-            directory_names(
-                &open_path(&root, true).unwrap(),
-                1,
-                Instant::now() + Duration::from_secs(5),
-                &mut || Ok(()),
-            )
-            .is_err()
-        );
-        assert!(
-            directory_names(
-                &open_path(&root, true).unwrap(),
-                2,
-                Instant::now(),
-                &mut || Ok(()),
-            )
-            .is_err()
-        );
-        assert!(
-            directory_names(
-                &open_path(&root, true).unwrap(),
-                2,
-                Instant::now() + Duration::from_secs(5),
-                &mut || bail!("fixture authority revoked"),
-            )
-            .is_err()
-        );
+        assert!(directory_names(
+            &open_path(&root, true).unwrap(), 1,
+            Instant::now() + Duration::from_secs(5), &mut || Ok(()),
+        ).is_err());
+        assert!(directory_names(
+            &open_path(&root, true).unwrap(), 2, Instant::now(), &mut || Ok(()),
+        ).is_err());
+        assert!(directory_names(
+            &open_path(&root, true).unwrap(), 2,
+            Instant::now() + Duration::from_secs(5),
+            &mut || bail!("fixture authority revoked"),
+        ).is_err());
         let mut file = File::open(root.join("a")).unwrap();
         assert!(qualification_scope::DirectoryStream::open(&file).is_err());
         let mut content = String::new();
