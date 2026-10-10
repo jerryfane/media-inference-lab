@@ -3,6 +3,7 @@ use crate::{
     native_guard::{NativeBinding, SANDBOX_EXECUTABLE, SANDBOX_PROFILE},
     process_scope::{CommandSpec, OwnedProcess, Settlement},
     schema::{AdapterResult, ProcessPolicy, Workload},
+    service_lifecycle::UnmanagedAcknowledgement,
 };
 use anyhow::{Context, Result, bail, ensure};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -115,6 +116,9 @@ pub struct NativeInvocation {
     pub invocation_sha256: String,
     pub transaction_sha256: String,
     pub guardian_pid: u32,
+    /// Explicit accepted unverified/excluded oMLX policy, never GPU exclusivity.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub omlx_unmanaged: Option<UnmanagedAcknowledgement>,
     /// The selected Python stays in Invocation.executable; this is its OS wrapper.
     pub sandbox_executable: String,
     pub sandbox_profile: String,
@@ -1266,6 +1270,7 @@ pub(crate) mod unix {
             invocation_sha256: control.binding.invocation_sha256.clone(),
             transaction_sha256: control.binding.transaction_sha256.clone(),
             guardian_pid: control.binding.guardian_pid,
+            omlx_unmanaged: control.binding.omlx_unmanaged,
             sandbox_executable: SANDBOX_EXECUTABLE.into(),
             sandbox_profile: SANDBOX_PROFILE.into(),
         });
@@ -1816,6 +1821,7 @@ mod deadline_review_tests {
                 invocation_sha256: "0".repeat(64),
                 transaction_sha256: "0".repeat(64),
                 guardian_pid: std::process::id(),
+                omlx_unmanaged: None,
             },
             tick: &mut tick,
             recovery_tick: &mut recovery,

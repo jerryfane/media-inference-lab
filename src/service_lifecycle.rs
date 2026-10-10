@@ -47,6 +47,22 @@ pub struct AbsenceObservation {
     pub scope: &'static str,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UnmanagedAcknowledgement {
+    AcceptUnverifiedOmlx,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct UnmanagedObservation {
+    pub state: &'static str,
+    pub policy: &'static str,
+    pub scope: &'static str,
+    pub acknowledgement: UnmanagedAcknowledgement,
+    pub purpose: ScopePurpose,
+    pub private_qualification: &'static str,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ServiceSpec {
@@ -72,18 +88,25 @@ pub enum ServiceSpec {
     OmlxAbsent {
         binding: AbsenceBinding,
     },
+    OmlxUnmanaged {
+        purpose: ScopePurpose,
+        acknowledgement: UnmanagedAcknowledgement,
+    },
 }
 impl ServiceSpec {
     pub fn role(&self) -> ServiceRole {
         match self {
             Self::OwnedCpu { role, .. } => *role,
             Self::StudioLaunchd { .. } => ServiceRole::Studio,
-            Self::Omlx { .. } | Self::OmlxAbsent { .. } => ServiceRole::Omlx,
+            Self::Omlx { .. } | Self::OmlxAbsent { .. } | Self::OmlxUnmanaged { .. } => ServiceRole::Omlx,
         }
     }
     /// Pure validation: never opens a path, probes a PID, or reads the environment.
     pub fn validate(&self, purpose: ScopePurpose) -> Result<()> {
         match self {
+            Self::OmlxUnmanaged { purpose: bound, .. } => {
+                ensure!(*bound == purpose, "unmanaged oMLX purpose mismatch");
+            }
             Self::OmlxAbsent { binding } => match binding {
                 AbsenceBinding::Native => ensure!(
                     purpose == ScopePurpose::Native,
@@ -200,6 +223,19 @@ impl ServiceSpec {
             }
         }
         Ok(())
+    }
+    fn unmanaged_observation(&self) -> Option<UnmanagedObservation> {
+        match self {
+            Self::OmlxUnmanaged { purpose, acknowledgement } => Some(UnmanagedObservation {
+                state: "unverified",
+                policy: "unmanaged",
+                scope: "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+                acknowledgement: *acknowledgement,
+                purpose: *purpose,
+                private_qualification: "not_applicable",
+            }),
+            _ => None,
+        }
     }
 }
 
@@ -392,6 +428,7 @@ pub struct ServiceObservation {
     pub launch_record: Option<CommandSpec>,
     pub actors: Vec<ActorDisposition>,
     pub absence: Option<AbsenceObservation>,
+    pub unmanaged: Option<UnmanagedObservation>,
 }
 
 pub struct ServiceHandle {
@@ -415,6 +452,14 @@ pub struct ServiceHandle {
 impl ServiceHandle {
     pub(crate) fn is_absent_scope(&self) -> bool {
         matches!(self.spec, ServiceSpec::OmlxAbsent { .. })
+    }
+
+    pub(crate) fn is_unmanaged_scope(&self) -> bool {
+        matches!(self.spec, ServiceSpec::OmlxUnmanaged { .. })
+    }
+
+    pub(crate) fn is_no_control_scope(&self) -> bool {
+        self.is_absent_scope() || self.is_unmanaged_scope()
     }
 
     /// Observation only, including after revocation. A fresh final absence never
@@ -533,7 +578,7 @@ impl ServiceHandle {
                 ServiceSpec::Omlx { backend, gui, .. } => {
                     (Some(backend.clone()), Some(gui.clone()))
                 }
-                ServiceSpec::OmlxAbsent { .. } => (None, None),
+                ServiceSpec::OmlxAbsent { .. } | ServiceSpec::OmlxUnmanaged { .. } => (None, None),
             };
             ServiceEnrollmentFailure {
                 observation: ServiceObservation {
@@ -544,8 +589,16 @@ impl ServiceHandle {
                     restored: false,
                     failure: Some(format!("{error:#}")),
                     evidence: Vec::new(),
-                    launch_record: current.last().map(|actor| actor.launch_record.clone()),
-                    actors,
+                    launch_record: if matches!(spec, ServiceSpec::OmlxUnmanaged { .. }) {
+                        None
+                    } else {
+                        current.last().map(|actor| actor.launch_record.clone())
+                    },
+                    actors: if matches!(spec, ServiceSpec::OmlxUnmanaged { .. }) {
+                        Vec::new()
+                    } else {
+                        actors
+                    },
                     absence: matches!(spec, ServiceSpec::OmlxAbsent { .. }).then_some(
                         AbsenceObservation {
                             state: AbsenceState::Unavailable,
@@ -553,6 +606,7 @@ impl ServiceHandle {
                             scope: "bounded named absence only; non-atomic, not whole-host idle",
                         },
                     ),
+                    unmanaged: spec.unmanaged_observation(),
                 },
             }
             .into()
@@ -567,6 +621,9 @@ impl ServiceHandle {
         recovery: &mut RecoveryControl<'_>,
     ) -> Result<Self> {
         spec.validate(purpose)?;
+        if matches!(spec, ServiceSpec::OmlxUnmanaged { .. }) {
+            ensure!(permissions.is_none(), "unmanaged oMLX cannot carry private permissions");
+        }
         if let ServiceSpec::Omlx { qualification, backend, .. } = spec {
             permissions
                 .context("native enrollment denied before probes: missing reviewed X2/X3 authority")?
@@ -576,7 +633,7 @@ impl ServiceHandle {
         let mut cpu = None;
         let mut cpu_gui = None;
         let mut qualification = None;
-        if matches!(spec, ServiceSpec::OmlxAbsent { .. }) {
+        if matches!(spec, ServiceSpec::OmlxAbsent { .. } | ServiceSpec::OmlxUnmanaged { .. }) {
             let mut handle = Self {
                 spec: spec.clone(),
                 cpu: None,
@@ -595,7 +652,7 @@ impl ServiceHandle {
                 actors: Vec::new(),
                 absence: None,
             };
-            if handle.observe_absence(deadline, tick, recovery).is_err() {
+            if handle.is_absent_scope() && handle.observe_absence(deadline, tick, recovery).is_err() {
                 return Err(ServiceEnrollmentFailure { observation: handle.last_observation() }.into());
             }
             return Ok(handle);
@@ -698,7 +755,7 @@ impl ServiceHandle {
                 );
                 (root, Some(gui))
             }
-            ServiceSpec::OmlxAbsent { .. } => unreachable!(),
+            ServiceSpec::OmlxAbsent { .. } | ServiceSpec::OmlxUnmanaged { .. } => unreachable!(),
         };
         Ok(Self {
             spec: spec.clone(),
@@ -740,7 +797,7 @@ impl ServiceHandle {
         tick: &mut dyn FnMut() -> Result<()>,
         recovery: &mut RecoveryControl<'_>,
     ) -> Result<ServiceObservation> {
-        ensure!(!self.is_absent_scope(), "absent service has no stop callback");
+        ensure!(!self.is_no_control_scope(), "no-control service has no stop callback");
         let deadline = cap(deadline, Duration::from_secs(120));
         ensure!(
             !self.stop_attempted && self.failure.is_none(),
@@ -856,6 +913,12 @@ impl ServiceHandle {
         recovery: &mut RecoveryControl<'_>,
     ) -> Result<ServiceObservation> {
         let deadline = cap(deadline, Duration::from_millis(500));
+        if self.is_unmanaged_scope() {
+            let result = check(deadline, tick);
+            self.record_result(result)?;
+            ensure!(self.failure.is_none(), "unmanaged admission was revoked");
+            return Ok(self.observation(false));
+        }
         if self.is_absent_scope() {
             self.observe_absence(deadline, tick, recovery)?;
             ensure!(self.failure.is_none(), "absence admission was revoked");
@@ -892,7 +955,7 @@ impl ServiceHandle {
                     listener_absent(*health_address, deadline, tick, recovery)?;
                     verify_gui_group(gui, gui_group_members, Some(ProcessState::Stopped))?;
                 }
-                ServiceSpec::OmlxAbsent { .. } => unreachable!(),
+                ServiceSpec::OmlxAbsent { .. } | ServiceSpec::OmlxUnmanaged { .. } => unreachable!(),
             }
             ensure!(
                 Instant::now() < deadline,
@@ -907,7 +970,7 @@ impl ServiceHandle {
             ServiceSpec::OwnedCpu { .. } => {}
             ServiceSpec::StudioLaunchd { .. } => observation.evidence.push("fresh exact launchd registration absence plus original PID/group absence; polling is non-atomic and does not prove continuous absence".into()),
             ServiceSpec::Omlx { .. } => observation.evidence.push("fresh enrolled-port listener absence and exact reviewed GUI group still stopped plus original PID/group absence; polling is non-atomic and does not attest arbitrary escaped descendants".into()),
-            ServiceSpec::OmlxAbsent { .. } => unreachable!(),
+            ServiceSpec::OmlxAbsent { .. } | ServiceSpec::OmlxUnmanaged { .. } => unreachable!(),
         }
         Ok(observation)
     }
@@ -917,7 +980,7 @@ impl ServiceHandle {
         tick: &mut dyn FnMut() -> Result<()>,
         recovery: &mut RecoveryControl<'_>,
     ) -> Result<ServiceObservation> {
-        ensure!(!self.is_absent_scope(), "absent service has no restore callback");
+        ensure!(!self.is_no_control_scope(), "no-control service has no restore callback");
         let deadline = cap(deadline, Duration::from_secs(120));
         ensure!(
             self.stopped && !self.restore_attempted && self.failure.is_none(),
@@ -1061,7 +1124,7 @@ impl ServiceHandle {
                 );
                 self.evidence.push("guardian recorded exact launcher argv/cwd/environment; detached PPID1 PGID=SID=PID observed".into());
             }
-            ServiceSpec::OmlxAbsent { .. } => unreachable!(),
+            ServiceSpec::OmlxAbsent { .. } | ServiceSpec::OmlxUnmanaged { .. } => unreachable!(),
         }
         if let Some(gui) = &self.gui {
             ensure!(
@@ -1174,6 +1237,7 @@ impl ServiceHandle {
             launch_record: self.launch_record.clone(),
             actors: self.actors.clone(),
             absence: self.absence.clone(),
+            unmanaged: self.spec.unmanaged_observation(),
         }
     }
     pub fn last_observation(&self) -> ServiceObservation {
@@ -1181,7 +1245,7 @@ impl ServiceHandle {
     }
     /// Disposes only this handle's owned CPU actors; never controls a restored production process.
     pub fn finish_owned_cpu(&mut self, recovery: &mut RecoveryControl<'_>) -> Result<()> {
-        if self.is_absent_scope() {
+        if self.is_no_control_scope() {
             return Ok(());
         }
         let ServiceSpec::OwnedCpu {
@@ -2340,6 +2404,45 @@ mod tests {
             RecoveryControl::new(self.0.clone(), tick)
         }
     }
+    #[test]
+    fn unmanaged_callbacks_cannot_control_and_observation_failure_is_sticky() {
+        let scope = TestScope::new();
+        let mut recovery_tick = || Ok(());
+        let mut recovery = scope.control(&mut recovery_tick);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut service = ServiceHandle::enroll(
+            &ServiceSpec::OmlxUnmanaged {
+                purpose: ScopePurpose::Cpu,
+                acknowledgement: UnmanagedAcknowledgement::AcceptUnverifiedOmlx,
+            },
+            ScopePurpose::Cpu,
+            None,
+            deadline,
+            &mut || Ok(()),
+            &mut recovery,
+        ).unwrap();
+        assert!(!service.is_absent_scope());
+        assert!(service.stop(deadline, &mut || Ok(()), &mut recovery).is_err());
+        assert!(service.restore(deadline, &mut || Ok(()), &mut recovery).is_err());
+        let observation = service.observe_inhibited(
+            deadline, &mut || Ok(()), &mut recovery,
+        ).unwrap();
+        assert!(!observation.inhibited && !observation.restored);
+        assert!(observation.absence.is_none());
+        assert!(observation.root.is_none() && observation.gui.is_none());
+        assert!(observation.launch_record.is_none() && observation.actors.is_empty());
+        assert!(observation.unmanaged.is_some());
+        assert!(service.observe_inhibited(
+            deadline, &mut || anyhow::bail!("controller lost"), &mut recovery,
+        ).is_err());
+        assert!(service.observe_inhibited(
+            deadline, &mut || Ok(()), &mut recovery,
+        ).is_err());
+        assert_eq!(service.last_observation().failure.as_deref(), Some("controller lost"));
+        service.finish_owned_cpu(&mut recovery).unwrap();
+        assert!(scope.0.borrow().actors.is_empty());
+        assert!(!service.last_observation().restored);
+    }
     fn reap_finite_child(pid: u32, end: Instant) {
         while Instant::now() < end {
             let mut status = 0;
@@ -2526,6 +2629,8 @@ mod tests {
                 |status, output| parse_listener_output(status, &output, ListenerFields::Records, 49152));
             let error = result.expect_err("invalid observation admitted");
             let entries = recovery.observations();
+            eprintln!("listener helper case={case} elapsed={:?} error={error:#} accounting={entries:?}",
+                started.elapsed());
             ensure!(!format!("{error:#}").contains("private-secret")
                 && entries.len() == 1 && entries[0].complete
                 && entries[0].settlement.as_ref().is_some_and(|s|
@@ -2537,8 +2642,6 @@ mod tests {
                 ensure!(format!("{error:#}").contains("output exceeds bound"),
                     "overflow fixture did not reach capture byte bound");
             }
-            eprintln!("listener helper case={case} elapsed={:?} error={error:#} accounting={entries:?}",
-                started.elapsed());
         }
         Ok(())
     }

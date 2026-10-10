@@ -1,4 +1,4 @@
-//! Named-scope exclusion is observed by the independent guardian, not supplied as readiness JSON.
+//! Named-scope admission is observed by the guardian; explicitly unmanaged oMLX remains unverified.
 use crate::{
     guards::GuardDecision,
     service_lifecycle::{
@@ -38,6 +38,7 @@ pub struct NativeBinding {
     pub invocation_sha256: String,
     pub transaction_sha256: String,
     pub guardian_pid: u32,
+    pub omlx_unmanaged: Option<crate::service_lifecycle::UnmanagedAcknowledgement>,
 }
 
 /// This clock is created and consumed only inside one guardian. Child timestamps
@@ -155,7 +156,7 @@ pub struct NamedScopeReading {
 }
 
 /// No Deserialize or public constructor. Only the transaction owner can mint this
-/// after authorization and live inhibition. Persisted readings cannot grant it.
+/// after authorization and applicable live inhibition. Persisted readings cannot grant it.
 pub(crate) struct ScopeAuthority {
     transaction_sha256: String,
     revoked: Option<String>,
@@ -187,7 +188,10 @@ impl ScopeAuthority {
             reasons.push(reason.clone());
         }
         let mut observations = Vec::with_capacity(services.len());
+        let mut unmanaged_omlx = false;
         for service in services {
+            let explicit_unmanaged = service.is_unmanaged_scope();
+            unmanaged_omlx |= explicit_unmanaged;
             let deadline = clock.borrow().phase_deadline(Duration::from_millis(500));
             let mut active = || {
                 ensure!(
@@ -210,7 +214,19 @@ impl ScopeAuthority {
                     let admitted_absence = observation.absence.as_ref().is_some_and(|absence| {
                         matches!(absence.state, crate::service_lifecycle::AbsenceState::Absent)
                     });
-                    if (!observation.inhibited && !admitted_absence) || observation.failure.is_some() {
+                    let admitted_unmanaged = explicit_unmanaged
+                        && observation.role == ServiceRole::Omlx
+                        && observation.unmanaged.is_some()
+                        && observation.root.is_none()
+                        && observation.gui.is_none()
+                        && observation.launch_record.is_none()
+                        && observation.actors.is_empty()
+                        && observation.absence.is_none()
+                        && !observation.inhibited
+                        && !observation.restored;
+                    if (!observation.inhibited && !admitted_absence && !admitted_unmanaged)
+                        || observation.failure.is_some()
+                    {
                         reasons.push(format!("{:?} scope admission is unqualified", observation.role));
                     }
                     observations.push(observation);
@@ -238,7 +254,11 @@ impl ScopeAuthority {
         NamedScopeReading {
             guardian_elapsed_ms: clock.borrow().elapsed_ms(), transaction_sha256: self.transaction_sha256.clone(), services: observations,
             decision: GuardDecision { allowed: reasons.is_empty(), reasons },
-            authority_scope: "Only enrolled Studio/oMLX admissions and the guardian-owned experiment; not whole-host GPU exclusion or arbitrary descendants".into(),
+            authority_scope: if unmanaged_omlx {
+                "Enrolled Studio inhibition and guardian-owned experiment only; oMLX explicitly unmanaged and excluded from lifecycle authority, its state and GPU exclusivity unverified"
+            } else {
+                "Only enrolled Studio/oMLX admissions and the guardian-owned experiment; not whole-host GPU exclusion or arbitrary descendants"
+            }.into(),
         }
     }
 }

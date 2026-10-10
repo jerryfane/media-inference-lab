@@ -3,7 +3,7 @@ use media_inference_lab::{
     maintenance::{self, Authorization, Budgets, Experiment, Transaction},
     native_guard::{self, ScopePurpose},
     process_scope::CommandSpec,
-    service_lifecycle::{AbsenceBinding, ServiceRole, ServiceSpec},
+    service_lifecycle::{AbsenceBinding, ServiceRole, ServiceSpec, UnmanagedAcknowledgement},
 };
 use std::{collections::BTreeMap, fs};
 
@@ -163,4 +163,131 @@ fn absent_validation_never_opens_fixture_paths() {
     };
     transaction.validate().unwrap();
     assert!(!root.join("missing-directory").exists());
+}
+
+fn unmanaged(purpose: ScopePurpose) -> ServiceSpec {
+    ServiceSpec::OmlxUnmanaged {
+        purpose,
+        acknowledgement: UnmanagedAcknowledgement::AcceptUnverifiedOmlx,
+    }
+}
+
+#[test]
+fn unmanaged_policy_requires_explicit_well_formed_acknowledgement_and_purpose() {
+    let temporary = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(temporary.path()).unwrap();
+    let (mut transaction, _) = fixture(&root);
+    transaction.services[1] = unmanaged(ScopePurpose::Cpu);
+    let bound = serde_json::to_value(&transaction).unwrap();
+    let decoded: Transaction = serde_json::from_value(bound.clone()).unwrap();
+    decoded.validate().unwrap();
+    for field in ["acknowledgement", "purpose"] {
+        let mut omitted = bound.clone();
+        omitted["services"][1].as_object_mut().unwrap().remove(field);
+        assert!(serde_json::from_value::<Transaction>(omitted).is_err());
+    }
+    for malformed in [
+        serde_json::Value::Null,
+        serde_json::json!(true),
+        serde_json::json!(""),
+        serde_json::json!("accept_unverified"),
+        serde_json::json!("absent"),
+        serde_json::json!({"accept_unverified_omlx": true}),
+    ] {
+        let mut value = bound.clone();
+        value["services"][1]["acknowledgement"] = malformed;
+        assert!(serde_json::from_value::<Transaction>(value).is_err());
+    }
+    for purpose in [serde_json::Value::Null, serde_json::json!("unknown"), serde_json::json!(true)] {
+        let mut value = bound.clone();
+        value["services"][1]["purpose"] = purpose;
+        assert!(serde_json::from_value::<Transaction>(value).is_err());
+    }
+    let mut missing_kind = bound;
+    missing_kind["services"][1].as_object_mut().unwrap().remove("kind");
+    assert!(serde_json::from_value::<Transaction>(missing_kind).is_err());
+    assert!(!transaction.evidence_root.exists() && !transaction.lease_path.exists());
+}
+
+#[test]
+fn unmanaged_policy_mutation_requires_new_exact_authorization_before_effects() {
+    let temporary = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(temporary.path()).unwrap();
+    let (mut transaction, original_authorization) = fixture(&root);
+    let original_service = transaction.services[1].clone();
+    transaction.services[1] = unmanaged(ScopePurpose::Cpu);
+    transaction.validate().unwrap();
+    assert!(maintenance::run_controller(transaction.clone(), original_authorization.clone()).is_err());
+    let authorization = Authorization {
+        transaction_sha256: maintenance::digest(&transaction).unwrap(),
+        ..original_authorization
+    };
+    maintenance::validate_authorization(&transaction, &authorization).unwrap();
+    transaction.services[1] = original_service;
+    assert!(maintenance::run_controller(transaction.clone(), authorization).is_err());
+    assert!(!transaction.evidence_root.exists() && !transaction.lease_path.exists());
+}
+
+#[test]
+fn unmanaged_cpu_policy_and_grant_cannot_authorize_native_purpose() {
+    let temporary = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(temporary.path()).unwrap();
+    let (mut transaction, mut authorization) = fixture(&root);
+    transaction.services[1] = unmanaged(ScopePurpose::Cpu);
+    authorization.transaction_sha256 = maintenance::digest(&transaction).unwrap();
+    maintenance::validate_authorization(&transaction, &authorization).unwrap();
+    assert!(transaction.services[1].validate(ScopePurpose::Native).is_err());
+    let native = unmanaged(ScopePurpose::Native);
+    native.validate(ScopePurpose::Native).unwrap();
+    assert!(native.validate(ScopePurpose::Cpu).is_err());
+    transaction.services[1] = native;
+    authorization.transaction_sha256 = maintenance::digest(&transaction).unwrap();
+    assert!(maintenance::run_controller(transaction.clone(), authorization.clone()).is_err());
+    transaction.services[1] = unmanaged(ScopePurpose::Cpu);
+    authorization.transaction_sha256 = maintenance::digest(&transaction).unwrap();
+    authorization.purpose = ScopePurpose::Native;
+    assert!(maintenance::run_controller(transaction.clone(), authorization.clone()).is_err());
+    transaction.purpose = ScopePurpose::Native;
+    authorization.transaction_sha256 = maintenance::digest(&transaction).unwrap();
+    assert!(maintenance::run_controller(transaction.clone(), authorization).is_err());
+    assert!(!transaction.evidence_root.exists() && !transaction.lease_path.exists());
+}
+
+#[test]
+fn unmanaged_policy_rejects_private_permissions_even_with_exact_grant() {
+    use media_inference_lab::{
+        process_scope::{ProcessIdentity, ProcessState},
+        qualification_scope::ReviewedLaunchScope,
+        restore_qualification::ReviewedPermissionInput,
+    };
+    let temporary = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(temporary.path()).unwrap();
+    let (mut transaction, mut authorization) = fixture(&root);
+    transaction.services[1] = unmanaged(ScopePurpose::Cpu);
+    authorization.transaction_sha256 = maintenance::digest(&transaction).unwrap();
+    maintenance::validate_authorization(&transaction, &authorization).unwrap();
+    transaction.reviewed_permissions = Some(ReviewedPermissionInput {
+        review_reference: "synthetic-private-review".into(),
+        plan_sha256: "0".repeat(64),
+        old_identity: ProcessIdentity {
+            pid: 200, ppid: 1, pgid: 200, sid: 200, uid: unsafe { libc::geteuid() },
+            start_seconds: 1, start_subseconds: 2,
+            executable: root.join("not-opened"), cwd: root.clone(), state: ProcessState::Running,
+        },
+        x2_launcher_private_comparison: true,
+        existing_log_observation_review_reference: "synthetic-log-review".into(),
+        x3: None,
+        launch_scope: ReviewedLaunchScope {
+            review_reference: "synthetic-scope".into(),
+            source_review_reference: "synthetic-source".into(),
+            allow_metadata_name_observation: true,
+            restore_home: root.clone(), runtime_directory: root.join("not-opened"),
+            manifest_prefix: "launch-".into(), manifest_suffix: ".json".into(), max_entries: 4096,
+        },
+        residuals_review_reference: "synthetic-residuals".into(),
+    });
+    authorization.transaction_sha256 = maintenance::digest(&transaction).unwrap();
+    assert!(maintenance::run_controller(transaction.clone(), authorization).is_err());
+    assert!(!root.join("not-opened").exists());
+    assert!(!transaction.evidence_root.exists() && !transaction.lease_path.exists());
 }

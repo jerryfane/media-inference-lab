@@ -240,6 +240,12 @@ impl Transaction {
         for service in &self.services {
             service.validate(self.purpose)?;
         }
+        if matches!(self.services[1], ServiceSpec::OmlxUnmanaged { .. }) {
+            ensure!(
+                self.reviewed_permissions.is_none(),
+                "unmanaged oMLX excludes private running-service permissions"
+            );
+        }
         match (&self.experiment, self.purpose) {
             (Experiment::Cpu { command }, ScopePurpose::Cpu) => {
                 command.validate()?;
@@ -274,7 +280,7 @@ impl Transaction {
                             probe.args == ["maintenance-participant", "--mode", "absence-probe", "--duration-ms", "1"],
                             "CPU absence requires the bounded metadata fixture probe"
                         );
-                    } else {
+                    } else if !matches!(service, ServiceSpec::OmlxUnmanaged { purpose: ScopePurpose::Cpu, .. }) {
                         bail!("CPU transaction contains a live service");
                     }
                 }
@@ -293,12 +299,14 @@ impl Transaction {
                     qualification.validate_reviewed_permissions(Some(reviewed))?;
                 } else {
                     ensure!(
-                        matches!(self.services[1], ServiceSpec::OmlxAbsent { binding: AbsenceBinding::Native }),
-                        "native transaction requires explicit running or absent oMLX scope"
+                        matches!(self.services[1],
+                            ServiceSpec::OmlxAbsent { binding: AbsenceBinding::Native }
+                            | ServiceSpec::OmlxUnmanaged { purpose: ScopePurpose::Native, .. }),
+                        "native transaction requires explicit running, absent or acknowledged unmanaged oMLX scope"
                     );
                     ensure!(
                         self.reviewed_permissions.is_none(),
-                        "absent oMLX cannot carry private running-service permissions"
+                        "absent or unmanaged oMLX cannot carry private running-service permissions"
                     );
                 }
             }
@@ -374,6 +382,7 @@ fn guardian_environment(transaction: &Transaction) -> Result<BTreeMap<String, St
                     if let Some(gui) = gui_command { check(gui)?; }
                 }
                 ServiceSpec::OmlxAbsent { binding: AbsenceBinding::Cpu { probe, .. } } => check(probe)?,
+                ServiceSpec::OmlxUnmanaged { purpose: ScopePurpose::Cpu, .. } => {}
                 _ => bail!("CPU service binding mismatch"),
             }
         }
@@ -752,9 +761,14 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
             &mut recovery,
         )?;
         runtime.borrow_mut().services.push(omlx);
-        if runtime.borrow().services[0].is_absent_scope() {
+        if runtime.borrow().services[0].is_no_control_scope() {
             let observation = runtime.borrow().services[0].last_observation();
-            runtime.borrow_mut().event("omlx_absence_admission", observation)?;
+            let label = if observation.unmanaged.is_some() {
+                "omlx_unmanaged_admission"
+            } else {
+                "omlx_absence_admission"
+            };
+            runtime.borrow_mut().event(label, observation)?;
         }
         let studio = ServiceHandle::enroll(
             &transaction.services[0],
@@ -780,7 +794,7 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                         .check_named_scope_absence(deadline, &mut || runtime.borrow_mut().tick())?;
                     service.observe_absent_scope(deadline, &mut || runtime.borrow_mut().tick(), &mut recovery)?;
                 }
-                if services[index].is_absent_scope() {
+                if services[index].is_no_control_scope() {
                     Ok(services[index].last_observation())
                 } else {
                     services[index].stop(deadline, &mut || runtime.borrow_mut().tick(), &mut recovery)
@@ -788,7 +802,11 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
             })();
             runtime.borrow_mut().services = services;
             let observation = result?;
-            let label = if observation.absence.is_some() { "omlx_absence_prelaunch" } else { label };
+            let label = if observation.unmanaged.is_some() {
+                "omlx_unmanaged_prelaunch_no_control"
+            } else if observation.absence.is_some() {
+                "omlx_absence_prelaunch"
+            } else { label };
             runtime.borrow_mut().event(label, observation)?;
         }
         let prelaunch = runtime
@@ -897,6 +915,10 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                         invocation_sha256: plan.sha256.clone(),
                         transaction_sha256: identity.clone(),
                         guardian_pid: std::process::id(),
+                        omlx_unmanaged: match &transaction.services[1] {
+                            ServiceSpec::OmlxUnmanaged { acknowledgement, .. } => Some(*acknowledgement),
+                            _ => None,
+                        },
                     },
                     tick: &mut tick,
                     recovery_tick: &mut recovery_tick,
@@ -971,11 +993,11 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                 let result = (|| {
                     // Absence failures revoke experiment authority, never the
                     // separately authorized recovery of our interrupted Studio.
-                    if services[index].is_absent_scope() {
+                    if services[index].is_no_control_scope() {
                         return Ok(services[index].last_observation());
                     }
                     for service in &mut services {
-                        if !service.is_absent_scope() {
+                        if !service.is_no_control_scope() {
                             service.check_named_scope_absence(deadline, &mut || {
                                 runtime.borrow_mut().recovery_tick()
                             })?;
@@ -990,10 +1012,15 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                 runtime.borrow_mut().services = services;
                 let observation = result?;
                 ensure!(
-                    observation.absence.is_some() || (observation.restored && observation.failure.is_none()),
+                    observation.absence.is_some() || observation.unmanaged.is_some()
+                        || (observation.restored && observation.failure.is_none()),
                     "restore unqualified; no next callback"
                 );
-                let label = if observation.absence.is_some() { "omlx_absence_recovery_no_control" } else { label };
+                let label = if observation.unmanaged.is_some() {
+                    "omlx_unmanaged_recovery_no_control"
+                } else if observation.absence.is_some() {
+                    "omlx_absence_recovery_no_control"
+                } else { label };
                 runtime.borrow_mut().event(label, observation)?;
             }
             Ok(())
@@ -1057,11 +1084,18 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
         "creation_attempted":creation_attempted,"settlement":settlement,"restored":restored,
         "recovery_failure":recovery_failure,"capture_directory":capture_directory,
         "final_absence_failure":final_absence_failure,
+        "omlx_unmanaged":service_outcomes.iter()
+            .find(|observation| observation.role == ServiceRole::Omlx)
+            .and_then(|observation| observation.unmanaged.as_ref()),
         "service_enrollment_failure":enrollment_failure,
         "service_process_dispositions":recovery.observations(),
         "service_accounting_complete":recovery.complete(),
         "elapsed_ms":runtime.borrow().clock.elapsed_ms(),"lease_path":transaction.lease_path,
-        "scope":"Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee",
+        "scope":if matches!(transaction.services[1], ServiceSpec::OmlxUnmanaged { .. }) {
+            "Studio lifecycle and direct guardian experiment only; oMLX unverified and excluded from control; not an isolated or verified-exclusive GPU baseline"
+        } else {
+            "Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee"
+        },
         "automation_ceiling_note":"Bounds automation, not a failed outage; GUI may remain paused for manual recovery"
     });
     private_json(&transaction.evidence_root.join("receipt.json"), &receipt)?;
@@ -1195,6 +1229,9 @@ pub fn run_cpu(root: &Path, scenario: &str) -> Result<PathBuf> {
                 | "absence-probe-error"
                 | "absence-reused"
                 | "absence-controller-loss"
+                | "unmanaged-normal"
+                | "unmanaged-failure"
+                | "unmanaged-controller-loss"
         ),
         "unknown CPU lifecycle scenario"
     );
@@ -1221,12 +1258,13 @@ pub fn run_cpu(root: &Path, scenario: &str) -> Result<PathBuf> {
     };
     let id = format!("cpu-{}-{}", native_guard::unix_ms()?, std::process::id());
     let (mode, duration, experiment_ms, cleanup_ms) = match scenario {
-        "controller-loss" | "stale" | "absence-controller-loss" => ("hold", 5000, 6000, 2000),
+        "controller-loss" | "stale" | "absence-controller-loss" | "unmanaged-controller-loss" => ("hold", 5000, 6000, 2000),
         "absence-late" => ("absence-appear", 5000, 6000, 2000),
         "retained" => ("retained", 1500, 3000, 2000),
         "escaped" => ("escaped", 1500, 3000, 2000),
         "deadline" => ("hold", 2000, 100, 2000),
         "cleanup-deadline" => ("ignore-term", 2000, 200, 1),
+        "unmanaged-failure" => ("fail", 1, 3000, 2000),
         _ => ("compute", 200, 3000, 2000),
     };
     let service = command("service", 30_000);
@@ -1289,6 +1327,12 @@ pub fn run_cpu(root: &Path, scenario: &str) -> Result<PathBuf> {
             },
         };
     }
+    if scenario.starts_with("unmanaged-") {
+        transaction.services[1] = ServiceSpec::OmlxUnmanaged {
+            purpose: ScopePurpose::Cpu,
+            acknowledgement: crate::service_lifecycle::UnmanagedAcknowledgement::AcceptUnverifiedOmlx,
+        };
+    }
     let now = native_guard::unix_ms()?;
     let authorization = Authorization {
         schema_version: 1,
@@ -1312,12 +1356,89 @@ pub fn run_cpu(root: &Path, scenario: &str) -> Result<PathBuf> {
         }
         None
     };
+    // Controller-loss deliberately has no controller-owned foreign actor. Its
+    // independent smoke/test harness must own and settle that fixture instead.
+    let unmanaged_fixture = if matches!(scenario, "unmanaged-normal" | "unmanaged-failure") {
+        Some(CpuUnmanagedActor::spawn(&root, &command("service", 30_000))?)
+    } else {
+        None
+    };
     let result = run_controller(transaction, authorization);
     stop.store(true, Ordering::Relaxed);
     if let Some(fixture) = fixture {
         fixture.finish()?;
     }
+    if let Some(fixture) = unmanaged_fixture {
+        fixture.finish()?;
+    }
     result
+}
+
+/// Never serialized into the transaction or handed to the guardian. The CLI
+/// harness retains ownership before any fallible identity/evidence work.
+struct CpuUnmanagedActor {
+    actor: OwnedProcess,
+    root: PathBuf,
+    before: Option<ProcessIdentity>,
+    finished: bool,
+}
+impl CpuUnmanagedActor {
+    fn spawn(root: &Path, command: &CommandSpec) -> Result<Self> {
+        let attempt = OwnedProcess::spawn_with_deadline(
+            command, Instant::now() + Duration::from_secs(3), &mut || Ok(()),
+        )?;
+        let mut fixture = Self {
+            actor: attempt.process, root: root.to_owned(), before: None, finished: false,
+        };
+        if let Some(failure) = attempt.failure {
+            bail!(failure);
+        }
+        let before = fixture.actor.identity()?;
+        ensure!(before.state == process_scope::ProcessState::Running, "foreign fixture not running");
+        fixture.before = Some(before);
+        private_json(&root.join("unmanaged-fixture-before.json"), &fixture.before)?;
+        Ok(fixture)
+    }
+
+    fn finish(mut self) -> Result<()> {
+        self.settle(false)
+    }
+
+    fn settle(&mut self, unwinding: bool) -> Result<()> {
+        let after = (|| -> Result<ProcessIdentity> {
+            let before = self.before.as_ref().context("foreign fixture enrollment incomplete")?;
+            let after = process_scope::verify_identity(before)?;
+            ensure!(
+                after == *before && after.state == process_scope::ProcessState::Running,
+                "guardian interfered with non-owned fixture"
+            );
+            Ok(after)
+        })();
+        let settlement = self.actor.settle(
+            Instant::now() + Duration::from_secs(2),
+            Duration::from_millis(100), &mut || Ok(()),
+        );
+        // Settlement is single-shot even if persistence subsequently fails.
+        self.finished = true;
+        private_json(&self.root.join("unmanaged-fixture-settlement.json"), &serde_json::json!({
+            "created":true, "pid":self.actor.pid(), "owner":"cpu_cli_harness",
+            "before":self.before, "after":after.as_ref().ok(),
+            "uncontrolled_by_guardian":after.is_ok(), "unwinding":unwinding,
+            "settlement":settlement.as_ref().ok(),
+            "failure":after.as_ref().err().map(|error|format!("{error:#}")),
+            "settlement_failure":settlement.as_ref().err().map(|error|format!("{error:#}")),
+        }))?;
+        after?;
+        ensure!(settlement?.complete, "foreign fixture settlement incomplete");
+        Ok(())
+    }
+}
+impl Drop for CpuUnmanagedActor {
+    fn drop(&mut self) {
+        if !self.finished {
+            let _ = self.settle(true);
+        }
+    }
 }
 
 struct CpuAbsenceActor {
