@@ -1,0 +1,759 @@
+[
+  {
+    "padding": 0,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "synthetic": true
+  },
+  {
+    "additional_override": false,
+    "allocation": 1048576,
+    "case": "normal",
+    "child_reaped_absent": true,
+    "empty_arg0": false,
+    "identity_verified": true,
+    "length_accepted": true,
+    "nul_runs": [
+      8,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      108,
+      19,
+      43,
+      1,
+      1,
+      1,
+      1,
+      6,
+      1
+    ],
+    "padding": 0,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "returned_length": 884,
+    "sysctl_result": 0
+  },
+  {
+    "padding": 1,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "synthetic": true
+  },
+  {
+    "additional_override": false,
+    "allocation": 1048576,
+    "case": "normal",
+    "child_reaped_absent": true,
+    "empty_arg0": false,
+    "identity_verified": true,
+    "length_accepted": true,
+    "nul_runs": [
+      8,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      107,
+      19,
+      43,
+      1,
+      1,
+      1,
+      1,
+      6,
+      1
+    ],
+    "padding": 1,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "returned_length": 884,
+    "sysctl_result": 0
+  },
+  {
+    "padding": 2,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "synthetic": true
+  },
+  {
+    "additional_override": false,
+    "allocation": 1048576,
+    "case": "normal",
+    "child_reaped_absent": true,
+    "empty_arg0": false,
+    "identity_verified": true,
+    "length_accepted": true,
+    "nul_runs": [
+      8,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      106,
+      19,
+      43,
+      1,
+      1,
+      1,
+      1,
+      6,
+      1
+    ],
+    "padding": 2,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "returned_length": 884,
+    "sysctl_result": 0
+  },
+  {
+    "padding": 3,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "synthetic": true
+  },
+  {
+    "additional_override": false,
+    "allocation": 1048576,
+    "case": "normal",
+    "child_reaped_absent": true,
+    "empty_arg0": false,
+    "identity_verified": true,
+    "length_accepted": true,
+    "nul_runs": [
+      8,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      105,
+      19,
+      43,
+      1,
+      1,
+      1,
+      1,
+      6,
+      1
+    ],
+    "padding": 3,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "returned_length": 884,
+    "sysctl_result": 0
+  },
+  {
+    "padding": 4,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "synthetic": true
+  },
+  {
+    "additional_override": false,
+    "allocation": 1048576,
+    "case": "normal",
+    "child_reaped_absent": true,
+    "empty_arg0": false,
+    "identity_verified": true,
+    "length_accepted": true,
+    "nul_runs": [
+      8,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      104,
+      19,
+      43,
+      1,
+      1,
+      1,
+      1,
+      6,
+      1
+    ],
+    "padding": 4,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "returned_length": 884,
+    "sysctl_result": 0
+  },
+  {
+    "padding": 5,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "synthetic": true
+  },
+  {
+    "additional_override": false,
+    "allocation": 1048576,
+    "case": "normal",
+    "child_reaped_absent": true,
+    "empty_arg0": false,
+    "identity_verified": true,
+    "length_accepted": true,
+    "nul_runs": [
+      8,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      103,
+      19,
+      43,
+      1,
+      1,
+      1,
+      1,
+      6,
+      1
+    ],
+    "padding": 5,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "returned_length": 884,
+    "sysctl_result": 0
+  },
+  {
+    "padding": 6,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "synthetic": true
+  },
+  {
+    "additional_override": false,
+    "allocation": 1048576,
+    "case": "normal",
+    "child_reaped_absent": true,
+    "empty_arg0": false,
+    "identity_verified": true,
+    "length_accepted": true,
+    "nul_runs": [
+      8,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      102,
+      19,
+      43,
+      1,
+      1,
+      1,
+      1,
+      6,
+      1
+    ],
+    "padding": 6,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "returned_length": 884,
+    "sysctl_result": 0
+  },
+  {
+    "padding": 7,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "synthetic": true
+  },
+  {
+    "additional_override": false,
+    "allocation": 1048576,
+    "case": "normal",
+    "child_reaped_absent": true,
+    "empty_arg0": false,
+    "identity_verified": true,
+    "length_accepted": true,
+    "nul_runs": [
+      8,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      101,
+      19,
+      43,
+      1,
+      1,
+      1,
+      1,
+      6,
+      1
+    ],
+    "padding": 7,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "returned_length": 884,
+    "sysctl_result": 0
+  },
+  {
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "synthetic_empty_arg0": true
+  },
+  {
+    "result": {
+      "comparison": {
+        "additional_profile_names": true,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "OMLX_CPU_OVERRIDE",
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": false
+    },
+    "synthetic_late_additional": true
+  },
+  {
+    "result": {
+      "error": "X2 duplicate profile environment name",
+      "qualified": false
+    },
+    "synthetic_late_duplicate": true
+  },
+  {
+    "additional_override": false,
+    "allocation": 1048576,
+    "case": "normal",
+    "child_reaped_absent": true,
+    "empty_arg0": true,
+    "identity_verified": true,
+    "length_accepted": true,
+    "nul_runs": [
+      9,
+      1,
+      1,
+      1,
+      1,
+      1,
+      107,
+      19,
+      43,
+      1,
+      1,
+      1,
+      1,
+      6,
+      2
+    ],
+    "padding": 0,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "returned_length": 804,
+    "sysctl_result": 0
+  },
+  {
+    "additional_override": true,
+    "allocation": 1048576,
+    "case": "normal",
+    "child_reaped_absent": true,
+    "empty_arg0": false,
+    "identity_verified": true,
+    "length_accepted": true,
+    "nul_runs": [
+      8,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      104,
+      19,
+      43,
+      1,
+      1,
+      1,
+      1,
+      6,
+      1
+    ],
+    "padding": 0,
+    "result": {
+      "comparison": {
+        "additional_profile_names": true,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "OMLX_CPU_OVERRIDE",
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": false
+    },
+    "returned_length": 908,
+    "sysctl_result": 0
+  },
+  {
+    "additional_override": false,
+    "allocation": 1048576,
+    "case": "clobber-all",
+    "child_reaped_absent": true,
+    "empty_arg0": false,
+    "identity_verified": true,
+    "length_accepted": true,
+    "nul_runs": [
+      8,
+      461,
+      19,
+      43,
+      1,
+      1,
+      1,
+      1,
+      6,
+      1
+    ],
+    "padding": 0,
+    "result": {
+      "error": "X2 launcher environment unavailable or incomplete",
+      "qualified": false
+    },
+    "returned_length": 884,
+    "sysctl_result": 0
+  },
+  {
+    "additional_override": false,
+    "allocation": 1048576,
+    "case": "clobber-argv",
+    "child_reaped_absent": true,
+    "empty_arg0": false,
+    "identity_verified": true,
+    "length_accepted": true,
+    "nul_runs": [
+      8,
+      98,
+      1,
+      1,
+      1,
+      1,
+      106,
+      19,
+      43,
+      1,
+      1,
+      1,
+      1,
+      6,
+      1
+    ],
+    "padding": 0,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    },
+    "returned_length": 900,
+    "sysctl_result": 0
+  },
+  {
+    "additional_override": false,
+    "allocation": 64,
+    "case": "normal",
+    "child_reaped_absent": true,
+    "empty_arg0": false,
+    "identity_verified": true,
+    "length_accepted": false,
+    "nul_runs": [],
+    "padding": 0,
+    "result": {
+      "error": "X2 unavailable or truncated",
+      "qualified": false
+    },
+    "returned_length": 64,
+    "sysctl_result": 0
+  }
+]

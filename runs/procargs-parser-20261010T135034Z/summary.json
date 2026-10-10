@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "commission": "https://github.com/jerryfane/media-inference-lab/issues/11#issuecomment-6098146672",
+  "base_commit": "80d7529b6aeed5ffc3d52408d8e6761a5b6ea592",
+  "scope": "Bounded CPU/source correction only; no renewed service/runtime authority",
+  "accounting_first": {
+    "actual_invocation_outcome_issue": "https://github.com/jerryfane/media-inference-lab/issues/11#issuecomment-6098137164",
+    "complete_before_diagnosis": true,
+    "handed_to_parent_for_hold_release": true,
+    "hold_release_owner": "mac-studio",
+    "live_invocation_count_during_correction": 0
+  },
+  "established_defects": [
+    "First empty post-argv string incorrectly required every remaining byte zero; valid alignment and userspace-scrubbed apple strings have later nonempty data.",
+    "Unbounded skipping after executable path consumed empty argv strings; exact original parser falsely qualified both an additional and a duplicate first environment override in controlled synthetic empty-argv[0] cases."
+  ],
+  "correction": [
+    "Bound total parser input below existing 1 MiB cap; preserve argc 1..65536.",
+    "Validate only 64-bit executable-path alignment padding; consume exactly argc strings, including empty argv[0].",
+    "Inspect every nonempty string across the entire bounded post-argv range; no NUL-run cap, apple whitelist, env terminator assumption or suffix discard.",
+    "Retain complete literal launcher-value comparison, all profile prefixes, malformed/duplicate/additional profile denial.",
+    "Missing any required launcher export is explicit unavailable/incomplete denial.",
+    "Retain one-shot permission, one KERN_PROCARGS2 call, before/after identity verification and volatile-wiped private buffer; no size query."
+  ],
+  "public_source_reviews": {
+    "/Users/jerry/Desktop/repos/local-llm-performance-lab/runs/20261010T-omlx-x3-coverage/x2-procargs2-review.json": "0bc21d10d8f29c73e40f12b9f3a3d96799168661e7919c850a32ac095824ee35",
+    "/Users/jerry/Desktop/repos/local-llm-performance-lab/runs/20261010T-omlx-x3-coverage/x2-apple-scrubbing-sources.json": "603a3615a1a6d172cc233008835a1a4afe7b488d085a38faf7afc5e098d19ed4",
+    "/Users/jerry/Desktop/repos/local-llm-performance-lab/runs/20261010T-omlx-x3-coverage/x2-procargs2-review-supplement.json": "a13ee3c70d8dee57e6faa1b8d7ce6498cd9606895a4f11d654b772f280931c4c"
+  },
+  "source_review_corrections": "Use a13ee3c7 supplement, not obsolete <=7 post-argv/trailing NUL constraints or size-query wording;603a3615 documents whole-string as well as value scrubbing, including libmalloc.",
+  "source_version_limit": "Latest public tagged XNU/libSystem/py-setproctitle sources; this host macOS27.0/Darwin27.0.0 kernel source is unpublished.",
+  "public_sources": {
+    "exec_path_padding": {
+      "rule": "after the executable path NUL, skip only NUL bytes up to the next pointer (8-byte) boundary of the string area; this is the ONLY alignment-bounded run",
+      "source": "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/kern_exec.c#L6738"
+    },
+    "post_argv_zero_runs": {
+      "rule": "no length cap on NUL runs after argv; scan the complete bounded post-argv range and evaluate every non-empty string; no environment/apple whitelist and no suffix discard",
+      "why": "userspace zeroes apple strings in place at startup: whole pfz/stack_guard/malloc_entropy strings and the values of ptr_munge/main_stack/th_port, producing runs of ~100+ bytes directly after the environment",
+      "sources": [
+        "https://github.com/apple-oss-distributions/libpthread/blob/libpthread-539.100.4/src/pthread.c#L1991-L2068",
+        "https://github.com/apple-oss-distributions/libplatform/blob/libplatform-375.120.2/src/atomics/init.c#L41-L73",
+        "https://github.com/apple-oss-distributions/Libc/blob/Libc-1752.120.2/sys/OpenBSD/stack_protector.c#L82-L94",
+        "https://github.com/apple-oss-distributions/libmalloc/blob/libmalloc-812.100.31/src/malloc.c#L507-L511",
+        "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/kern_exec.c#L6907",
+        "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/kern_exec.c#L7373"
+      ]
+    },
+    "no_terminator": "the first empty string after argv is never an end-of-environment marker; envc is not returned and the env/apple boundary is not provable",
+    "unavailable_denies": "required launcher exports absent or cleared (e.g. by setproctitle clobbering argv+env) -> UNAVAILABLE -> deny; never treat as empty/pass",
+    "single_call_truncation": {
+      "rule": "one KERN_PROCARGS2 call; reject when returned_length >= allocation; no size-query recollection",
+      "why": [
+        "with argc requested the kernel reserves the argc word first: buflen = *sizep - sizeof(int)",
+        "a truncated response copies the LAST buflen bytes and returns size = buflen + 4 = the allocation exactly, so returned_length < allocation rejects every truncated response"
+      ],
+      "nuance_exact_fit": "an untruncated response whose argument area is exactly allocation - 4 also returns the allocation and is rejected: a fail-closed false denial to document",
+      "nuance_arg_max": "the kernel returns EINVAL when the requested size minus 4 exceeds ARG_MAX, so the allocation must be <= ARG_MAX + 4 on the target kernel",
+      "sources": [
+        "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/kern_sysctl.c#L1450",
+        "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/kern_sysctl.c#L1456",
+        "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/kern_sysctl.c#L1652-L1703",
+        "https://github.com/apple-oss-distributions/xnu/blob/xnu-12377.121.6/bsd/kern/kern_sysctl.c#L1706-L1710"
+      ]
+    },
+    "retained": [
+      "argc bounds, exactly argc argv strings (may be empty)",
+      "private profile-name/value comparison of every profile-shaped string",
+      "duplicate and additional profile-name denial",
+      "wiping, one-shot use, identity re-verification before and after"
+    ]
+  },
+  "cpu_fixture": {
+    "implementation": "Temporary standalone Rust executable compiled the exact profile_name/LAUNCHER_ENV/EnvironmentComparison/parse_procargs_comparison source slice; linked production process_scope identity observers. This is not an invocation of the authorized live collect_x2 boundary.",
+    "child": "Owned C executable using only libc; ready byte then waits for EOF; parent verifies identity around single sysctl, closes stdin, waits/reaps and observes absence.",
+    "environment": "Command.env_clear(); exact literal LAUNCHER_ENV constants plus CPU_PADDING=p repeated0..7. Additional case adds OMLX_CPU_OVERRIDE=nonsecret. Argv-only-clobber case also sets SPT_NOENV=1. No inherited environment, MLX/native/model/Python imports.",
+    "argv": [
+      "temporary child executable (or empty argv[0] in named variant)",
+      "normal | clobber-all | clobber-argv",
+      "nonsecret-argument"
+    ],
+    "clobber_all": "C copies specified environ to heap, verifies contiguous argv+env string storage, clears original span and writes owned-cpu-title. Equivalent clearing mechanism, NOT an import/execution of py-setproctitle.",
+    "clobber_argv": "C clears only argv span, preserving specified environment; mode is explicit, not a test of real setproctitle honoring SPT_NOENV.",
+    "collection": "One KERN_PROCARGS2 call per owned child, 1MiB allocation except explicit64B short-buffer case. No raw returned buffer persisted, printed or hashed; copied production SecretBytes drop wiping.",
+    "source_sha256": {
+      "child.c": "1eebd1d04dd682f04d9e1f90b35392a7ad4fb4061d7a619d05b0d494e7307006",
+      "driver.rs": "dfa7d108e9d4004f9e91136a09838b912c2fd5694921f509e4a51c16937a06d2",
+      "probe.rs": "bbb373b154e56089315216b6e851ecefa22e39892d08287334419ee6fb3d0e02"
+    },
+    "temporary_sources_binaries_directory_removed": true,
+    "before_children": 13,
+    "after_children": 13,
+    "all_children_identity_verified_reaped_absent": true
+  },
+  "results": {
+    "normal_owned_children": {
+      "before_qualified": 0,
+      "after_qualified": 8,
+      "cases": 8
+    },
+    "synthetic_env_alignment": {
+      "before_qualified": 1,
+      "after_qualified": 8,
+      "cases": 8
+    },
+    "empty_argv_first_override": {
+      "before": "additional AND duplicate incorrectly qualified",
+      "after": "additional AND duplicate denied"
+    },
+    "owned_empty_argv": "after qualifies with exact specified launcher exports",
+    "late_profiles": "extra and duplicate after cleared apple data denied",
+    "owned_clobber_all": "after X2 launcher environment unavailable or incomplete; denied",
+    "owned_clobber_argv": "after qualifies with specified environment preserved",
+    "owned_short_buffer": "allocation64/returned_length64; existing length guard denies before parsing",
+    "files": [
+      "before.json",
+      "after.json",
+      "empty-argv-before.json",
+      "empty-argv-after.json"
+    ]
+  },
+  "commands": {
+    "c_compiler": [
+      "cc",
+      "-Wall",
+      "-Wextra",
+      "-O0",
+      "-o",
+      "/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-procargs-cpu-u8pee8cv/child",
+      "/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-procargs-cpu-u8pee8cv/child.c"
+    ],
+    "rust_compiler": [
+      "rustc",
+      "--edition=2024",
+      "/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-procargs-cpu-u8pee8cv/probe.rs",
+      "-L",
+      "dependency=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps",
+      "--extern",
+      "anyhow=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libanyhow-db1f6a292fd18298.rlib",
+      "--extern",
+      "serde=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libserde-dd639788c5847eaf.rlib",
+      "--extern",
+      "serde_json=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libserde_json-62172c0c324f471a.rlib",
+      "--extern",
+      "libc=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/liblibc-111badef97908fec.rlib",
+      "--extern",
+      "media_inference_lab=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libmedia_inference_lab-2fc877a4c419cc97.rlib",
+      "-o",
+      "/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-procargs-cpu-u8pee8cv/probe"
+    ],
+    "owned_smoke": [
+      "/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-procargs-cpu-u8pee8cv/probe",
+      "/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-procargs-cpu-u8pee8cv/child"
+    ],
+    "adversarial_smoke": [
+      "/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-procargs-cpu-u8pee8cv/probe",
+      "--empty-argv-adversarial"
+    ],
+    "smoke_environment": {},
+    "checks": [
+      {
+        "command": "cargo fmt --all",
+        "exit_code": 0
+      },
+      {
+        "command": "cargo test --lib procargs_",
+        "passed": 6,
+        "failed": 0
+      },
+      {
+        "command": "cargo test --lib launcher_exports_require_private_value_equality_without_secret_output",
+        "passed": 1,
+        "failed": 0
+      },
+      {
+        "command": "cargo clippy --all-targets -- -D warnings",
+        "exit_code": 0
+      },
+      {
+        "command": "cargo build --bin mil",
+        "exit_code": 0
+      }
+    ],
+    "smoke_exit_codes": {
+      "before": 0,
+      "after": 0,
+      "adversarial_before": 0,
+      "adversarial_after": 0
+    }
+  },
+  "artifact_sha256": {
+    "target/debug/mil": "d60ed1886ac9962043fb76f9c05c007f33af3a9f929e5205bfc02c3b0b744f37",
+    "src/restore_qualification.rs": "43865f099458c4b45fd9f5648cda5b0adc6d3b546ed46b8953380520d1f24327",
+    "Cargo.toml": "b5c681c426ab547fea9370a71497203de93e820dd76d542cfd4250fbd828977b",
+    "Cargo.lock": "58108075860c9f8c020f22a9dd16194d489f5d6de0879f59a10c8a372881330e"
+  },
+  "limitations": [
+    "Exact cause/layout of the historical live G2 denial remains unknown; backend procargs/environment were not recollected and raw buffers were not recovered.",
+    "No envc is returned, so environment/apple origin cannot be proven. Comparison conservatively covers every nonempty post-argv string.",
+    "Cleared/missing required exports deny even if a process retained copies on the heap. Correcting framing does not imply the old server can qualify.",
+    "Parent-reported code-only restore lineage inherits caller environment; source alone cannot attest absence of inherited profile overrides.",
+    "Existing returned_length<allocation rejects truncated and exact-fit responses; exact fit is an accepted fail-closed false denial. Requested allocation must be <=ARG_MAX+4 or collection fails closed. No second query.",
+    "No new live grant, retry, lease acquisition, service action, configuration change, private recollection, GPU work, inference imports or model downloads."
+  ]
+}

@@ -1871,6 +1871,7 @@ impl EnvironmentComparison {
 }
 fn parse_procargs_comparison(bytes: &[u8]) -> Result<EnvironmentComparison> {
     ensure!(bytes.len() >= 4, "X2 truncated argument buffer");
+    ensure!(bytes.len() < MAX_SECRET, "X2 oversized argument buffer");
     let argc = i32::from_ne_bytes(bytes[..4].try_into()?);
     ensure!((1..=65536).contains(&argc), "X2 invalid argument count");
     let mut offset = 4;
@@ -1884,10 +1885,21 @@ fn parse_procargs_comparison(bytes: &[u8]) -> Result<EnvironmentComparison> {
         *offset = end + 1;
         Ok(value)
     }
-    next(bytes, &mut offset)?; // executable path
-    while bytes.get(offset) == Some(&0) {
-        offset += 1;
-    }
+    ensure!(
+        !next(bytes, &mut offset)?.is_empty(),
+        "X2 missing executable path"
+    );
+    // 64-bit Darwin aligns the path area to eight bytes. KERN_PROCARGS2
+    // strips the 16-byte "executable_path=" prefix; argc is outside that area.
+    // Skip only alignment, never empty argv strings (including argv[0]).
+    let argv_start = 4 + (offset - 4).next_multiple_of(8);
+    ensure!(
+        bytes
+            .get(offset..argv_start)
+            .is_some_and(|padding| padding.iter().all(|b| *b == 0)),
+        "X2 invalid executable path padding"
+    );
+    offset = argv_start;
     for _ in 0..argc {
         next(bytes, &mut offset)?;
     }
@@ -1896,14 +1908,14 @@ fn parse_procargs_comparison(bytes: &[u8]) -> Result<EnvironmentComparison> {
         launcher_values_equal: BTreeMap::new(),
         additional_profile_names: false,
     };
+    // No envc is returned: the environment/apple split cannot be proven.
+    // Inspect EVERY nonempty tail string, including after NUL runs. These
+    // can exceed alignment when libSystem clears apple values in place.
+    // Never whitelist an apple suffix or infer an empty environment from zeros.
     while offset < bytes.len() {
         let entry = next(bytes, &mut offset)?;
         if entry.is_empty() {
-            ensure!(
-                bytes[offset..].iter().all(|b| *b == 0),
-                "X2 unexpected trailing argument data"
-            );
-            break;
+            continue;
         }
         let split = entry
             .iter()
@@ -1934,6 +1946,10 @@ fn parse_procargs_comparison(bytes: &[u8]) -> Result<EnvironmentComparison> {
             }
         }
     }
+    ensure!(
+        observation.launcher_values_equal.len() == LAUNCHER_ENV.len(),
+        "X2 launcher environment unavailable or incomplete"
+    );
     Ok(observation)
 }
 fn collect_x2(
@@ -1970,6 +1986,8 @@ fn collect_x2(
             )
         };
         ensure!(
+            // A short-buffer copy returns exactly the allocation (argc included).
+            // Reject exact fits too; no second size query/private observation.
             result == 0 && length > 0 && length < buffer.0.len(),
             "X2 unavailable or truncated"
         );
@@ -2819,25 +2837,151 @@ mod tests {
         assert!(plan.validate_reviewed_permissions(None).is_err());
         assert_eq!(GateReport::default().fidelity_gate, GateStatus::Deny);
     }
+    fn launcher_env_fixture() -> Vec<Vec<u8>> {
+        LAUNCHER_ENV
+            .iter()
+            .map(|(name, value)| format!("{name}={value}").into_bytes())
+            .collect()
+    }
+    fn procargs_fixture(argv: &[&[u8]], env: &[Vec<u8>], apple: &[&[u8]]) -> Vec<u8> {
+        fn align(bytes: &mut Vec<u8>) {
+            bytes.resize(4 + (bytes.len() - 4).next_multiple_of(8), 0);
+        }
+        let mut bytes = (argv.len() as i32).to_ne_bytes().to_vec();
+        bytes.extend_from_slice(b"/bin/tool\0");
+        align(&mut bytes);
+        for entry in argv.iter().copied().chain(env.iter().map(Vec::as_slice)) {
+            bytes.extend_from_slice(entry);
+            bytes.push(0);
+        }
+        align(&mut bytes);
+        for entry in apple {
+            bytes.extend_from_slice(entry);
+            bytes.push(0);
+        }
+        align(&mut bytes);
+        bytes
+    }
+    #[test]
+    fn procargs_scans_all_environment_alignment_variants() {
+        for padding in 0..8 {
+            let mut env = launcher_env_fixture();
+            env.push(format!("SAFE={}", "p".repeat(padding)).into_bytes());
+            let bytes = procargs_fixture(
+                &[b"tool", b"", b"serve", b""],
+                &env,
+                &[b"ptr_munge=", b"main_stack=nonsecret"],
+            );
+            assert!(parse_procargs_comparison(&bytes).unwrap().qualifies());
+        }
+    }
+    #[test]
+    fn procargs_empty_argv_cannot_consume_first_environment_override() {
+        let argv: &[&[u8]] = &[b""];
+        let valid = procargs_fixture(argv, &launcher_env_fixture(), &[b"ptr_munge="]);
+        assert!(parse_procargs_comparison(&valid).unwrap().qualifies());
+        let mut additional = launcher_env_fixture();
+        additional.insert(0, b"OMLX_EXTRA=private".to_vec());
+        let bytes = procargs_fixture(argv, &additional, &[b"ptr_munge="]);
+        assert!(!parse_procargs_comparison(&bytes).unwrap().qualifies());
+        let mut duplicate = launcher_env_fixture();
+        duplicate.insert(0, b"PYTHONHOME=private".to_vec());
+        let bytes = procargs_fixture(argv, &duplicate, &[b"ptr_munge="]);
+        assert!(parse_procargs_comparison(&bytes).is_err());
+    }
+    #[test]
+    fn procargs_checks_overrides_after_long_cleared_apple_runs() {
+        let mut bytes = procargs_fixture(&[b"tool"], &launcher_env_fixture(), &[b"ptr_munge="]);
+        bytes.extend_from_slice(&[0; 256]);
+        bytes.extend_from_slice(b"main_stack=\0");
+        bytes.extend_from_slice(&[0; 128]);
+        assert!(parse_procargs_comparison(&bytes).unwrap().qualifies());
+        for name in [
+            "OMLX_X",
+            "DYLD_X",
+            "MLX_X",
+            "METAL_X",
+            "HF_X",
+            "TRANSFORMERS_X",
+            "TOKENIZERS_X",
+            "PYTHONSTARTUP",
+            "PYTHONOPTIMIZE",
+            "PYTHONHASHSEED",
+        ] {
+            let mut extra = bytes.clone();
+            extra.extend_from_slice(format!("{name}=private\0").as_bytes());
+            assert!(!parse_procargs_comparison(&extra).unwrap().qualifies());
+        }
+        for entry in [
+            b"PYTHONHOME=private\0".as_slice(),
+            b"OMLX_MALFORMED\0",
+            b"OMLX_BAD\n=private\0",
+            b"OMLX_TRUNCATED=private",
+        ] {
+            let mut invalid = bytes.clone();
+            invalid.extend_from_slice(entry);
+            let error = parse_procargs_comparison(&invalid).unwrap_err();
+            assert!(!error.to_string().contains("private"));
+        }
+    }
+    #[test]
+    fn procargs_cleared_missing_or_partial_exports_are_unavailable() {
+        for env in [
+            Vec::new(),
+            vec![Vec::new(); 512],
+            launcher_env_fixture()[..2].to_vec(),
+        ] {
+            let bytes = procargs_fixture(
+                &[b"owned-title", b"", b""],
+                &env,
+                &[b"ptr_munge=", b"main_stack="],
+            );
+            assert!(parse_procargs_comparison(&bytes).is_err());
+        }
+    }
+    #[test]
+    fn procargs_rejects_invalid_framing_without_disclosure() {
+        let valid = procargs_fixture(&[b"tool"], &launcher_env_fixture(), &[]);
+        for length in 0..4 {
+            assert!(parse_procargs_comparison(&valid[..length]).is_err());
+        }
+        for argc in [-1i32, 0, 65537] {
+            let mut invalid = valid.clone();
+            invalid[..4].copy_from_slice(&argc.to_ne_bytes());
+            assert!(parse_procargs_comparison(&invalid).is_err());
+        }
+        let mut invalid_padding = valid.clone();
+        invalid_padding[14] = b'x'; // First alignment byte after /bin/tool NUL.
+        assert!(parse_procargs_comparison(&invalid_padding).is_err());
+        let mut empty_path = valid.clone();
+        empty_path[4] = 0;
+        assert!(parse_procargs_comparison(&empty_path).is_err());
+        let mut oversized = valid;
+        oversized.resize(MAX_SECRET, 0);
+        assert!(parse_procargs_comparison(&oversized).is_err());
+        let mut truncated = 1i32.to_ne_bytes().to_vec();
+        truncated.extend_from_slice(b"private");
+        let error = parse_procargs_comparison(&truncated).unwrap_err();
+        assert!(!error.to_string().contains("private"));
+    }
+    #[test]
+    fn procargs_argument_count_bound_includes_empty_arguments() {
+        let argv = vec![b"".as_slice(); 65536];
+        let bytes = procargs_fixture(&argv, &launcher_env_fixture(), &[b"ptr_munge="]);
+        assert!(parse_procargs_comparison(&bytes).unwrap().qualifies());
+    }
     #[test]
     fn launcher_exports_require_private_value_equality_without_secret_output() {
         fn buffer(suffix: &str, extra: bool) -> Vec<u8> {
-            let mut bytes = 2i32.to_ne_bytes().to_vec();
-            bytes.extend_from_slice(b"/bin/tool\0\0tool\0serve\0GRILL_OMLX_API_KEY=private\0");
+            let mut env = vec![b"GRILL_OMLX_API_KEY=private".to_vec()];
             for (name, value) in LAUNCHER_ENV {
-                bytes.extend_from_slice(name.as_bytes());
-                bytes.push(b'=');
-                bytes.extend_from_slice(value.as_bytes());
-                if name == "PYTHONPATH" {
-                    bytes.extend_from_slice(suffix.as_bytes());
-                }
-                bytes.push(0);
+                let suffix = if name == "PYTHONPATH" { suffix } else { "" };
+                env.push(format!("{name}={value}{suffix}").into_bytes());
             }
             if extra {
-                bytes.extend_from_slice(b"OMLX_X=private\0");
+                env.push(b"OMLX_X=private".to_vec());
             }
-            bytes.push(0);
-            bytes
+            procargs_fixture(&[b"tool", b"serve"], &env, &[b"ptr_munge="])
         }
         let valid = parse_procargs_comparison(&buffer("", false)).unwrap();
         assert!(valid.qualifies());
@@ -3232,10 +3376,23 @@ mod tests {
         std::os::unix::fs::symlink("data", root.join("directory-link")).unwrap();
         let (first, total) = timing_manifest(&root, &QualificationLimits::default()).unwrap();
         let expected_paths: BTreeSet<_> = [
-            "", "data", "data/blob", "data/empty", "hard-link", "file-link",
-            "directory-link", "directory-link/blob", "directory-link/empty",
-        ].into_iter().map(PathBuf::from).collect();
-        assert_eq!(first.keys().cloned().collect::<BTreeSet<_>>(), expected_paths);
+            "",
+            "data",
+            "data/blob",
+            "data/empty",
+            "hard-link",
+            "file-link",
+            "directory-link",
+            "directory-link/blob",
+            "directory-link/empty",
+        ]
+        .into_iter()
+        .map(PathBuf::from)
+        .collect();
+        assert_eq!(
+            first.keys().cloned().collect::<BTreeSet<_>>(),
+            expected_paths
+        );
         assert_eq!(total, 4 * bytes.len() as u64);
         for path in ["data/blob", "hard-link", "file-link", "directory-link/blob"] {
             assert_eq!(
@@ -3247,8 +3404,14 @@ mod tests {
             first[Path::new("directory-link/empty")].sha256.as_deref(),
             Some("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
         );
-        assert_eq!(first[Path::new("file-link")].symlink_target, Some("data/blob".into()));
-        assert_eq!(first[Path::new("directory-link")].symlink_target, Some("data".into()));
+        assert_eq!(
+            first[Path::new("file-link")].symlink_target,
+            Some("data/blob".into())
+        );
+        assert_eq!(
+            first[Path::new("directory-link")].symlink_target,
+            Some("data".into())
+        );
         *bytes.last_mut().unwrap() ^= 1;
         fs::write(root.join("data/blob"), &bytes).unwrap();
         let (second, total) = timing_manifest(&root, &QualificationLimits::default()).unwrap();
@@ -3280,10 +3443,18 @@ mod tests {
         let mut bytes = Vec::new();
         opened.read_to_end(&mut bytes).unwrap();
         assert_eq!(bytes, b"original code");
-        assert!(hash_regular_from(
-            &path, &expected, &QualificationLimits::default(), &mut 0,
-            Instant::now() + Duration::from_secs(5), &mut || Ok(()), Some(&parent),
-        ).is_err());
+        assert!(
+            hash_regular_from(
+                &path,
+                &expected,
+                &QualificationLimits::default(),
+                &mut 0,
+                Instant::now() + Duration::from_secs(5),
+                &mut || Ok(()),
+                Some(&parent),
+            )
+            .is_err()
+        );
         assert!(open_regular(&path).is_err());
     }
 
@@ -3300,13 +3471,24 @@ mod tests {
         fs::write(root.join("data/code"), b"same bytes").unwrap();
         let limits = QualificationLimits::default();
         let mut walker = ManifestWalker {
-            root: root.clone(), limits: &limits, entries: BTreeMap::new(),
-            total_bytes: 0, active_dirs: BTreeSet::new(),
+            root: root.clone(),
+            limits: &limits,
+            entries: BTreeMap::new(),
+            total_bytes: 0,
+            active_dirs: BTreeSet::new(),
         };
-        assert!(walker.walk_from(
-            &root.join("data"), Path::new("data"), 1,
-            Instant::now() + Duration::from_secs(5), &mut || Ok(()), Some(&parent),
-        ).is_err());
+        assert!(
+            walker
+                .walk_from(
+                    &root.join("data"),
+                    Path::new("data"),
+                    1,
+                    Instant::now() + Duration::from_secs(5),
+                    &mut || Ok(()),
+                    Some(&parent),
+                )
+                .is_err()
+        );
         assert_eq!(walker.total_bytes, 0);
     }
 
@@ -3317,7 +3499,9 @@ mod tests {
         fs::write(root.join("code"), b"abcd").unwrap();
         std::os::unix::fs::symlink("code", root.join("alias")).unwrap();
         let mut limits = QualificationLimits {
-            max_file_bytes: 4, max_total_bytes: 8, max_files: 3,
+            max_file_bytes: 4,
+            max_total_bytes: 8,
+            max_files: 3,
             ..QualificationLimits::default()
         };
         assert_eq!(timing_manifest(&root, &limits).unwrap().1, 8);
@@ -3351,20 +3535,39 @@ mod tests {
                         fs::rename(&path, root.join("old-code"))?;
                         fs::write(&path, vec![7_u8; 131073])?;
                     } else {
-                        fs::OpenOptions::new().append(true).open(&path)?.write_all(b"x")?;
+                        fs::OpenOptions::new()
+                            .append(true)
+                            .open(&path)?
+                            .write_all(b"x")?;
                     }
                 }
                 Ok(())
             };
-            assert!(hash_regular_from(
-                &path, &expected, &QualificationLimits::default(), &mut 0,
-                Instant::now() + Duration::from_secs(5), &mut tick, Some(&parent),
-            ).is_err());
+            assert!(
+                hash_regular_from(
+                    &path,
+                    &expected,
+                    &QualificationLimits::default(),
+                    &mut 0,
+                    Instant::now() + Duration::from_secs(5),
+                    &mut tick,
+                    Some(&parent),
+                )
+                .is_err()
+            );
             let current = reference_metadata(&path).unwrap();
-            assert!(hash_regular_from(
-                &path, &current, &QualificationLimits::default(), &mut 0,
-                Instant::now(), &mut || Ok(()), Some(&parent),
-            ).is_err());
+            assert!(
+                hash_regular_from(
+                    &path,
+                    &current,
+                    &QualificationLimits::default(),
+                    &mut 0,
+                    Instant::now(),
+                    &mut || Ok(()),
+                    Some(&parent),
+                )
+                .is_err()
+            );
         }
     }
 
@@ -3381,7 +3584,8 @@ mod tests {
             let entry = root.join("entry");
             match case {
                 "fifo" => {
-                    let name = std::ffi::CString::new(entry.as_os_str().as_encoded_bytes()).unwrap();
+                    let name =
+                        std::ffi::CString::new(entry.as_os_str().as_encoded_bytes()).unwrap();
                     assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0);
                 }
                 "cycle" => std::os::unix::fs::symlink(".", &entry).unwrap(),
@@ -3399,10 +3603,18 @@ mod tests {
         let parent = open_path(&root, true).unwrap();
         fs::remove_file(&path).unwrap();
         fs::create_dir(&path).unwrap();
-        assert!(hash_regular_from(
-            &path, &expected, &QualificationLimits::default(), &mut 0,
-            Instant::now() + Duration::from_secs(5), &mut || Ok(()), Some(&parent),
-        ).is_err());
+        assert!(
+            hash_regular_from(
+                &path,
+                &expected,
+                &QualificationLimits::default(),
+                &mut 0,
+                Instant::now() + Duration::from_secs(5),
+                &mut || Ok(()),
+                Some(&parent),
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -3423,12 +3635,18 @@ mod tests {
         let pinned = open_path(&root, true).unwrap();
         fs::rename(&root, &saved).unwrap();
         fs::rename(&replacement, &root).unwrap();
-        let mut path_names: Vec<_> = fs::read_dir(&root).unwrap()
-            .map(|entry| entry.unwrap().file_name()).collect();
+        let mut path_names: Vec<_> = fs::read_dir(&root)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
         path_names.sort();
         let pinned_names = directory_names(
-            &pinned, 2, Instant::now() + Duration::from_secs(5), &mut || Ok(()),
-        ).unwrap();
+            &pinned,
+            2,
+            Instant::now() + Duration::from_secs(5),
+            &mut || Ok(()),
+        )
+        .unwrap();
         fs::rename(&root, &replacement).unwrap();
         fs::rename(&saved, &root).unwrap();
         let names = |values: [&str; 2]| values.map(std::ffi::OsString::from).to_vec();
@@ -3441,29 +3659,53 @@ mod tests {
     fn manifest_timing_pinned_listing_enforces_bounds_deadline_and_directory_type() {
         let temp = tempfile::tempdir().unwrap();
         let root = fs::canonicalize(temp.path()).unwrap();
-        assert!(directory_names(
-            &open_path(&root, true).unwrap(), 0,
-            Instant::now() + Duration::from_secs(5), &mut || Ok(()),
-        ).unwrap().is_empty());
+        assert!(
+            directory_names(
+                &open_path(&root, true).unwrap(),
+                0,
+                Instant::now() + Duration::from_secs(5),
+                &mut || Ok(()),
+            )
+            .unwrap()
+            .is_empty()
+        );
         fs::write(root.join("b"), b"code").unwrap();
         fs::write(root.join("a"), b"code").unwrap();
         let names = directory_names(
-            &open_path(&root, true).unwrap(), 2,
-            Instant::now() + Duration::from_secs(5), &mut || Ok(()),
-        ).unwrap();
-        assert_eq!(names, ["a", "b"].map(std::ffi::OsString::from));
-        assert!(directory_names(
-            &open_path(&root, true).unwrap(), 1,
-            Instant::now() + Duration::from_secs(5), &mut || Ok(()),
-        ).is_err());
-        assert!(directory_names(
-            &open_path(&root, true).unwrap(), 2, Instant::now(), &mut || Ok(()),
-        ).is_err());
-        assert!(directory_names(
-            &open_path(&root, true).unwrap(), 2,
+            &open_path(&root, true).unwrap(),
+            2,
             Instant::now() + Duration::from_secs(5),
-            &mut || bail!("fixture authority revoked"),
-        ).is_err());
+            &mut || Ok(()),
+        )
+        .unwrap();
+        assert_eq!(names, ["a", "b"].map(std::ffi::OsString::from));
+        assert!(
+            directory_names(
+                &open_path(&root, true).unwrap(),
+                1,
+                Instant::now() + Duration::from_secs(5),
+                &mut || Ok(()),
+            )
+            .is_err()
+        );
+        assert!(
+            directory_names(
+                &open_path(&root, true).unwrap(),
+                2,
+                Instant::now(),
+                &mut || Ok(()),
+            )
+            .is_err()
+        );
+        assert!(
+            directory_names(
+                &open_path(&root, true).unwrap(),
+                2,
+                Instant::now() + Duration::from_secs(5),
+                &mut || bail!("fixture authority revoked"),
+            )
+            .is_err()
+        );
         let mut file = File::open(root.join("a")).unwrap();
         assert!(qualification_scope::DirectoryStream::open(&file).is_err());
         let mut content = String::new();
