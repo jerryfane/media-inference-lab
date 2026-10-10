@@ -1,0 +1,20 @@
+{
+  "fixture_root": "/private/tmp/mil-manifest-enumeration-oxckx52l",
+  "contents": "/private/tmp/mil-manifest-enumeration-oxckx52l/Contents",
+  "reference": "/private/tmp/mil-manifest-enumeration-oxckx52l/reference",
+  "revision": "faf128fbfbd5b09203961c8f48460599be95bf9e",
+  "fixture_same_shape_as_timing_case": true,
+  "logical_bundle_bytes": 336068648,
+  "probes": {
+    "before": {
+      "path": "/Users/jerry/Desktop/repos/media-inference-lab/examples/manifest_enumeration_before.rs",
+      "sha256": "8edad73c2d3a153f1dee687b89d8d505d3a8ccf25868cca01d3121de4daa2028"
+    },
+    "after": {
+      "path": "/Users/jerry/Desktop/repos/media-inference-lab/examples/manifest_enumeration_after.rs",
+      "sha256": "ada1e440ec4d72ecc841d48f2c7806f3528d28054049c30fa18050ee720c28e1"
+    }
+  },
+  "shared_stream_source_sha256": "7623f13f46a56c9bb46a072b1e8d1f86e5b6984b18c4561c8aa09802d1de63b3",
+  "method": "Exact production manifest spans and shared directory-stream helper copied into temporary CPU executables; before/after operate on same fresh owned fixture. No gate/controller/capability invoked."
+}

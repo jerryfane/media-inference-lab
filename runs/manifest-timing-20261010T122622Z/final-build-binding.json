@@ -1,0 +1,36 @@
+{
+  "guardian_path": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+  "guardian_sha256": "98010bc15e816d85f7eac90c188165fe76d4aea6d43d8dbff66a6b3e9c76ac39",
+  "build_command": [
+    "cargo",
+    "build",
+    "--offline",
+    "--lib",
+    "--bin",
+    "mil",
+    "--example",
+    "manifest_enumeration_before",
+    "--example",
+    "manifest_enumeration_after"
+  ],
+  "profile": "dev",
+  "application_opt_level": 0,
+  "application_debug_assertions": true,
+  "sha2_version": "0.10.9",
+  "sha2_opt_level": 3,
+  "sha2_features": "unchanged default std; ARM software backend",
+  "cargo_toml_sha256": "b5c681c426ab547fea9370a71497203de93e820dd76d542cfd4250fbd828977b",
+  "cargo_lock_sha256": "58108075860c9f8c020f22a9dd16194d489f5d6de0879f59a10c8a372881330e",
+  "source_sha256": {
+    "src/restore_qualification.rs": "ea2963444e499502bfcf5a236fff6a14b10fc3c3ecae861919a9b8b793d0e3a8",
+    "src/qualification_scope.rs": "bbdf62625e99ce9b322d34ed4e85497cca08e9676fae12ca50e2e940e128729d"
+  },
+  "superseded_guardian_sha256": [
+    "96e9fdfb7de3eba36dd13f239f1bc931c175ecb3efef3de3966b42151683cab6",
+    "2d053912f4d5c8551cc2a5c652f507ad13f5e4e30fad4e2e33f1130d90c899fb"
+  ],
+  "evidence_summary": "enumeration-summary.json",
+  "complete_code_manifest_sha256": "960ef89ac35ff1af39b928bd4db25fcb106a471723bd79a13e815ea46ecdc436",
+  "runtime_grant": false,
+  "old_transactions_or_grants_reusable": false
+}

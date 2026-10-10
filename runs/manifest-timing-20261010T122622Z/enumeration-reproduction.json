@@ -1,0 +1,15 @@
+{
+  "status": "reproduced_before_change",
+  "method": "Owned deterministic path replacement between pinning directory fd and enumeration; os.listdir(path) vs os.listdir(fd); restore original path afterward (ABA). No timestamp inspection or dependence.",
+  "path_names": [
+    "only-replacement.code",
+    "shared.code"
+  ],
+  "pinned_names": [
+    "only-original.code",
+    "shared.code"
+  ],
+  "omitted_original_entry": "only-original.code",
+  "unexpected_path_entry": "only-replacement.code",
+  "live_paths_accessed": false
+}

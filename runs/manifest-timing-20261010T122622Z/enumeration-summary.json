@@ -1,0 +1,107 @@
+{
+  "status": "PINNED_ENUMERATION_HARDENING_VERIFIED",
+  "base_timing_commit": "b416344",
+  "type_followup_commit": "1aab55d",
+  "reproduction": "enumeration-reproduction.json",
+  "correction": "Reuse qualification_scope::DirectoryStream in manifest listing and SC2. F_DUPFD_CLOEXEC duplicate -> fdopendir -> mutable-borrowed readdir names; checked errno/EOF, RAII closedir, per-entry checkpoints, dot skipping, original quotas and sorting. No path-based listing remains in the production manifest walker.",
+  "preserved": "Existing pinned-child opens, root/symlink/source full no-follow chains, directory/file fd+path metadata and complete byte checks, source/worktree checks, logical entries and60s/10s bounds. No persistent/cross-phase cache.",
+  "tests": {
+    "manifest_command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--lib",
+      "restore_qualification::tests::manifest_timing_"
+    ],
+    "manifest_passed": 8,
+    "manifest_log": "enumeration-manifest-tests.txt",
+    "shared_scope_command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--lib",
+      "qualification_scope::tests"
+    ],
+    "shared_scope_passed": 4,
+    "shared_scope_log": "enumeration-shared-scope-tests.txt",
+    "reason_for_affected_scope_rerun": "DirectoryStream is shared and its SC2 consumer migrated in this distinct candidate; unrelated suites/proofs not rerun.",
+    "new_enumeration_coverage": [
+      "Exact original name set under deterministic ABA path replacement without timestamp checks",
+      "EOF/dot filtering, stable sorted names, entry bound, expired deadline, revoked callback and non-directory rejection preserving caller file"
+    ]
+  },
+  "actual_executable_proof": {
+    "before_fixture": "enumeration-before-cpu-smoke.json",
+    "after_fixture": "enumeration-after-cpu-smoke.json",
+    "fixture_identity_equal": true,
+    "fixture_before_ms": 626.101084,
+    "fixture_after_ms": 614.3585,
+    "fixture_manifest_sha256": "581c06d79991e48b87794d887128bcde7a84a4f962756c2423cec7f13f51ffe2",
+    "full_code_smoke": "enumeration-code-only-smoke.json",
+    "full_code_result": {
+      "entries": 48104,
+      "logical_bytes_hashed": 1571584586,
+      "manifest_sha256": "960ef89ac35ff1af39b928bd4db25fcb106a471723bd79a13e815ea46ecdc436",
+      "ms": 4514.613291,
+      "status": "pass"
+    },
+    "identity_equal_to_original_and_prior_candidates": true
+  },
+  "build": {
+    "command": [
+      "cargo",
+      "build",
+      "--offline",
+      "--lib",
+      "--bin",
+      "mil",
+      "--example",
+      "manifest_enumeration_before",
+      "--example",
+      "manifest_enumeration_after"
+    ],
+    "exit_code": 0,
+    "log": "enumeration-build.txt",
+    "clippy_command": [
+      "cargo",
+      "clippy",
+      "--offline",
+      "--lib",
+      "--bin",
+      "mil",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "clippy_exit_code": 0,
+    "clippy_log": "enumeration-clippy.txt"
+  },
+  "provenance": {
+    "fixture_root": "/private/tmp/mil-manifest-enumeration-oxckx52l",
+    "contents": "/private/tmp/mil-manifest-enumeration-oxckx52l/Contents",
+    "reference": "/private/tmp/mil-manifest-enumeration-oxckx52l/reference",
+    "revision": "faf128fbfbd5b09203961c8f48460599be95bf9e",
+    "fixture_same_shape_as_timing_case": true,
+    "logical_bundle_bytes": 336068648,
+    "probes": {
+      "before": {
+        "path": "/Users/jerry/Desktop/repos/media-inference-lab/examples/manifest_enumeration_before.rs",
+        "sha256": "8edad73c2d3a153f1dee687b89d8d505d3a8ccf25868cca01d3121de4daa2028"
+      },
+      "after": {
+        "path": "/Users/jerry/Desktop/repos/media-inference-lab/examples/manifest_enumeration_after.rs",
+        "sha256": "ada1e440ec4d72ecc841d48f2c7806f3528d28054049c30fa18050ee720c28e1"
+      }
+    },
+    "shared_stream_source_sha256": "7623f13f46a56c9bb46a072b1e8d1f86e5b6984b18c4561c8aa09802d1de63b3",
+    "method": "Exact production manifest spans and shared directory-stream helper copied into temporary CPU executables; before/after operate on same fresh owned fixture. No gate/controller/capability invoked."
+  },
+  "limitations": [
+    "Cache state unknown; no global purge, memory pressure or cold-cache claim.",
+    "Full CODE-only smoke uses no-op guardian tick, not live qualification/restoration authority.",
+    "Whole directory/content snapshot is still non-atomic; original metadata and deadline denial remain mandatory.",
+    "No live maintenance, grant, lease, service controls, native imports, config/credential/service-env/API/log-tail reads."
+  ],
+  "cleanup": "Temporary probe sources/executables and owned fixtures removed after verification; measured JSON evidence retained.",
+  "runtime_grant": false
+}

@@ -14,6 +14,7 @@ use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::os::fd::{AsRawFd, FromRawFd};
+use std::os::unix::ffi::OsStringExt;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -782,16 +783,7 @@ impl ManifestWalker<'_> {
                     symlink_target,
                 },
             );
-            let mut children = Vec::new();
-            for entry in fs::read_dir(&resolved)? {
-                checkpoint(deadline, tick)?;
-                ensure!(
-                    children.len() < self.limits.max_files,
-                    "bundle directory exceeds bound"
-                );
-                children.push(entry?.file_name());
-            }
-            children.sort();
+            let children = directory_names(&directory, self.limits.max_files, deadline, tick)?;
             for child in children {
                 self.walk_from(
                     &resolved.join(&child),
@@ -825,6 +817,29 @@ impl ManifestWalker<'_> {
         }
         Ok(())
     }
+}
+
+fn directory_names(
+    directory: &File,
+    max_entries: usize,
+    deadline: Instant,
+    tick: &mut dyn FnMut() -> Result<()>,
+) -> Result<Vec<std::ffi::OsString>> {
+    let mut stream = qualification_scope::DirectoryStream::open(directory)?;
+    let mut names = Vec::new();
+    loop {
+        checkpoint(deadline, tick)?;
+        let Some(name) = stream.next_name()? else {
+            break;
+        };
+        if name == b"." || name == b".." {
+            continue;
+        }
+        ensure!(names.len() < max_entries, "bundle directory exceeds bound");
+        names.push(std::ffi::OsString::from_vec(name.to_vec()));
+    }
+    names.sort();
+    Ok(names)
 }
 fn open_regular(path: &Path) -> Result<File> {
     open_path(path, false)
@@ -3388,5 +3403,71 @@ mod tests {
             &path, &expected, &QualificationLimits::default(), &mut 0,
             Instant::now() + Duration::from_secs(5), &mut || Ok(()), Some(&parent),
         ).is_err());
+    }
+
+    #[test]
+    fn manifest_timing_pinned_listing_keeps_original_names_under_aba_replacement() {
+        let temp = tempfile::tempdir().unwrap();
+        let base = fs::canonicalize(temp.path()).unwrap();
+        let root = base.join("bundle");
+        let replacement = base.join("replacement");
+        let saved = base.join("saved");
+        fs::create_dir(&root).unwrap();
+        fs::create_dir(&replacement).unwrap();
+        for name in ["only-original.code", "shared.code"] {
+            fs::write(root.join(name), b"original").unwrap();
+        }
+        for name in ["only-replacement.code", "shared.code"] {
+            fs::write(replacement.join(name), b"replacement").unwrap();
+        }
+        let pinned = open_path(&root, true).unwrap();
+        fs::rename(&root, &saved).unwrap();
+        fs::rename(&replacement, &root).unwrap();
+        let mut path_names: Vec<_> = fs::read_dir(&root).unwrap()
+            .map(|entry| entry.unwrap().file_name()).collect();
+        path_names.sort();
+        let pinned_names = directory_names(
+            &pinned, 2, Instant::now() + Duration::from_secs(5), &mut || Ok(()),
+        ).unwrap();
+        fs::rename(&root, &replacement).unwrap();
+        fs::rename(&saved, &root).unwrap();
+        let names = |values: [&str; 2]| values.map(std::ffi::OsString::from).to_vec();
+        assert_eq!(path_names, names(["only-replacement.code", "shared.code"]));
+        assert_eq!(pinned_names, names(["only-original.code", "shared.code"]));
+        // Neither name-set assertion consults inode timestamps or ctime changes.
+    }
+
+    #[test]
+    fn manifest_timing_pinned_listing_enforces_bounds_deadline_and_directory_type() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(temp.path()).unwrap();
+        assert!(directory_names(
+            &open_path(&root, true).unwrap(), 0,
+            Instant::now() + Duration::from_secs(5), &mut || Ok(()),
+        ).unwrap().is_empty());
+        fs::write(root.join("b"), b"code").unwrap();
+        fs::write(root.join("a"), b"code").unwrap();
+        let names = directory_names(
+            &open_path(&root, true).unwrap(), 2,
+            Instant::now() + Duration::from_secs(5), &mut || Ok(()),
+        ).unwrap();
+        assert_eq!(names, ["a", "b"].map(std::ffi::OsString::from));
+        assert!(directory_names(
+            &open_path(&root, true).unwrap(), 1,
+            Instant::now() + Duration::from_secs(5), &mut || Ok(()),
+        ).is_err());
+        assert!(directory_names(
+            &open_path(&root, true).unwrap(), 2, Instant::now(), &mut || Ok(()),
+        ).is_err());
+        assert!(directory_names(
+            &open_path(&root, true).unwrap(), 2,
+            Instant::now() + Duration::from_secs(5),
+            &mut || bail!("fixture authority revoked"),
+        ).is_err());
+        let mut file = File::open(root.join("a")).unwrap();
+        assert!(qualification_scope::DirectoryStream::open(&file).is_err());
+        let mut content = String::new();
+        file.read_to_string(&mut content).unwrap();
+        assert_eq!(content, "code");
     }
 }

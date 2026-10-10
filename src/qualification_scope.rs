@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::ffi::{CStr, CString};
 use std::fs::{self, File};
-use std::os::fd::{AsRawFd, FromRawFd, IntoRawFd};
+use std::os::fd::{AsRawFd, FromRawFd};
 use std::path::{Component, PathBuf};
 use std::time::Instant;
 
@@ -169,7 +169,40 @@ fn open_scope(
     })
 }
 
-struct DirectoryStream(*mut libc::DIR);
+/// Owns a CLOEXEC duplicate; enumeration cannot be redirected by path replacement.
+/// The duplicate shares the directory offset, so each opened directory is listed once.
+pub(crate) struct DirectoryStream(*mut libc::DIR);
+impl DirectoryStream {
+    pub(crate) fn open(directory: &File) -> Result<Self> {
+        let fd = unsafe { libc::fcntl(directory.as_raw_fd(), libc::F_DUPFD_CLOEXEC, 0) };
+        ensure!(fd >= 0, "directory descriptor duplication failed");
+        let stream = unsafe { libc::fdopendir(fd) };
+        if stream.is_null() {
+            unsafe {
+                libc::close(fd);
+            }
+            bail!("directory name enumeration unavailable");
+        }
+        Ok(Self(stream))
+    }
+
+    pub(crate) fn next_name(&mut self) -> Result<Option<&[u8]>> {
+        unsafe {
+            *errno_pointer() = 0;
+        }
+        let entry = unsafe { libc::readdir(self.0) };
+        if entry.is_null() {
+            ensure!(
+                unsafe { *errno_pointer() } == 0,
+                "directory name enumeration failed"
+            );
+            return Ok(None);
+        }
+        // readdir owns the storage until its next call. The mutable borrow keeps
+        // callers from advancing or dropping this stream while a name is borrowed.
+        Ok(Some(unsafe { CStr::from_ptr((*entry).d_name.as_ptr()) }.to_bytes()))
+    }
+}
 impl Drop for DirectoryStream {
     fn drop(&mut self) {
         unsafe {
@@ -200,31 +233,14 @@ fn observe_inner(
     scope.validate()?;
     let before = open_scope(scope, deadline, tick)?;
     if let Some(directory) = &before.directory {
-        // fdopendir takes ownership of this duplicate; entries are never opened or statted.
-        let fd = directory.try_clone()?.into_raw_fd();
-        let stream = unsafe { libc::fdopendir(fd) };
-        if stream.is_null() {
-            unsafe {
-                libc::close(fd);
-            }
-            bail!("SC2 name enumeration unavailable");
-        }
-        let stream = DirectoryStream(stream);
+        // Entries are never opened or statted.
+        let mut stream = DirectoryStream::open(directory)?;
         let mut entries = 0;
         loop {
             checkpoint(deadline, tick)?;
-            unsafe {
-                *errno_pointer() = 0;
-            }
-            let entry = unsafe { libc::readdir(stream.0) };
-            if entry.is_null() {
-                ensure!(
-                    unsafe { *errno_pointer() } == 0,
-                    "SC2 name enumeration failed"
-                );
+            let Some(name) = stream.next_name()? else {
                 break;
-            }
-            let name = unsafe { CStr::from_ptr((*entry).d_name.as_ptr()) }.to_bytes();
+            };
             if name == b"." || name == b".." {
                 continue;
             }
