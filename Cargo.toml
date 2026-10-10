@@ -24,3 +24,8 @@ unicode-normalization = "0.1"
 parking_lot = "0.12"
 pulldown-cmark = { version = "0.13", default-features = false }
 tempfile = "3"
+
+# Full code manifests must also fit the restore deadline in debug builds.
+# Keep application debug assertions; optimize only the existing SHA backend.
+[profile.dev.package.sha2]
+opt-level = 3

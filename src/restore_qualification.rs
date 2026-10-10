@@ -706,6 +706,18 @@ impl ManifestWalker<'_> {
         deadline: Instant,
         tick: &mut dyn FnMut() -> Result<()>,
     ) -> Result<()> {
+        self.walk_from(actual, relative, depth, deadline, tick, None)
+    }
+
+    fn walk_from(
+        &mut self,
+        actual: &Path,
+        relative: &Path,
+        depth: usize,
+        deadline: Instant,
+        tick: &mut dyn FnMut() -> Result<()>,
+        parent: Option<&File>,
+    ) -> Result<()> {
         checkpoint(deadline, tick)?;
         ensure!(
             depth <= self.limits.max_depth && self.entries.len() < self.limits.max_files,
@@ -729,15 +741,19 @@ impl ManifestWalker<'_> {
             !target_meta.file_type().is_symlink(),
             "bundle resolution raced"
         );
+        // Only direct children use the pinned parent. Resolved symlinks still
+        // traverse the complete contained path with O_NOFOLLOW at every level.
+        let parent = parent.filter(|_| symlink_target.is_none());
         if target_meta.is_file() {
             let target_before = MetadataRecord::from_metadata(&target_meta);
-            let hash = hash_regular(
+            let hash = hash_regular_from(
                 &resolved,
                 &target_before,
                 self.limits,
                 &mut self.total_bytes,
                 deadline,
                 tick,
+                parent,
             )?;
             self.entries.insert(
                 relative.to_path_buf(),
@@ -751,6 +767,12 @@ impl ManifestWalker<'_> {
         } else if target_meta.is_dir() {
             let identity = (target_meta.dev(), target_meta.ino());
             ensure!(self.active_dirs.insert(identity), "bundle symlink cycle");
+            let directory = open_manifest_entry(&resolved, parent, true)?;
+            ensure!(
+                MetadataRecord::from_metadata(&directory.metadata()?)
+                    == MetadataRecord::from_metadata(&target_meta),
+                "bundle directory open raced"
+            );
             self.entries.insert(
                 relative.to_path_buf(),
                 ManifestEntry {
@@ -771,17 +793,21 @@ impl ManifestWalker<'_> {
             }
             children.sort();
             for child in children {
-                self.walk(
+                self.walk_from(
                     &resolved.join(&child),
                     &relative.join(child),
                     depth + 1,
                     deadline,
                     tick,
+                    Some(&directory),
                 )?;
             }
             self.active_dirs.remove(&identity);
             ensure!(
-                MetadataRecord::from_metadata(&target_meta) == reference_metadata(&resolved)?,
+                MetadataRecord::from_metadata(&directory.metadata()?)
+                    == MetadataRecord::from_metadata(&target_meta)
+                    && MetadataRecord::from_metadata(&target_meta)
+                        == reference_metadata(&resolved)?,
                 "bundle directory changed during traversal"
             );
         } else {
@@ -801,6 +827,10 @@ impl ManifestWalker<'_> {
     }
 }
 fn open_regular(path: &Path) -> Result<File> {
+    open_path(path, false)
+}
+
+fn open_path(path: &Path, final_directory: bool) -> Result<File> {
     validate_absolute(path)?;
     let components: Vec<_> = path
         .components()
@@ -821,20 +851,60 @@ fn open_regular(path: &Path) -> Result<File> {
             | libc::O_NOFOLLOW
             | libc::O_CLOEXEC
             | libc::O_NONBLOCK
-            | if last { 0 } else { libc::O_DIRECTORY };
+            | if !last || final_directory {
+                libc::O_DIRECTORY
+            } else {
+                0
+            };
         // Descriptor-relative traversal rejects symlinked ancestors, not just
         // the final component, preventing a parent swap from opening config.
         let fd = unsafe { libc::openat(directory.as_raw_fd(), name.as_ptr(), flags) };
         ensure!(fd >= 0, "no-follow file traversal failed");
         let opened = unsafe { File::from_raw_fd(fd) };
         if last {
-            ensure!(opened.metadata()?.is_file(), "expected regular file");
+            ensure!(
+                if final_directory {
+                    opened.metadata()?.is_dir()
+                } else {
+                    opened.metadata()?.is_file()
+                },
+                "unexpected code object type"
+            );
             return Ok(opened);
         }
         directory = opened;
     }
     bail!("regular file path missing")
 }
+
+fn open_manifest_entry(path: &Path, parent: Option<&File>, directory: bool) -> Result<File> {
+    let Some(parent) = parent else {
+        return open_path(path, directory);
+    };
+    // This descriptor is the already-opened, metadata-bound directory of this
+    // recursion frame. A replaced path cannot redirect the open into another
+    // tree. Its original path and inode are rechecked before the frame returns.
+    let name = path.file_name().context("manifest child name missing")?;
+    let name = std::ffi::CString::new(name.as_encoded_bytes())?;
+    let flags = libc::O_RDONLY
+        | libc::O_NOFOLLOW
+        | libc::O_CLOEXEC
+        | libc::O_NONBLOCK
+        | if directory { libc::O_DIRECTORY } else { 0 };
+    let fd = unsafe { libc::openat(parent.as_raw_fd(), name.as_ptr(), flags) };
+    ensure!(fd >= 0, "no-follow manifest child open failed");
+    let file = unsafe { File::from_raw_fd(fd) };
+    ensure!(
+        if directory {
+            file.metadata()?.is_dir()
+        } else {
+            file.metadata()?.is_file()
+        },
+        "unexpected code object type"
+    );
+    Ok(file)
+}
+
 fn hash_regular(
     path: &Path,
     expected: &MetadataRecord,
@@ -842,6 +912,18 @@ fn hash_regular(
     total: &mut u64,
     deadline: Instant,
     tick: &mut dyn FnMut() -> Result<()>,
+) -> Result<String> {
+    hash_regular_from(path, expected, limits, total, deadline, tick, None)
+}
+
+fn hash_regular_from(
+    path: &Path,
+    expected: &MetadataRecord,
+    limits: &QualificationLimits,
+    total: &mut u64,
+    deadline: Instant,
+    tick: &mut dyn FnMut() -> Result<()>,
+    parent: Option<&File>,
 ) -> Result<String> {
     ensure!(
         expected.size <= limits.max_file_bytes,
@@ -854,7 +936,7 @@ fn hash_regular(
         *total <= limits.max_total_bytes,
         "bundle exceeds byte bound"
     );
-    let mut file = open_regular(path)?;
+    let mut file = open_manifest_entry(path, parent, false)?;
     ensure!(
         &MetadataRecord::from_metadata(&file.metadata()?) == expected,
         "code open raced"
@@ -3099,5 +3181,175 @@ mod tests {
         assert!(consume_permission(&permission.usage.old_x3).is_err());
         consume_permission(&permission.usage.restored_x3).unwrap();
         assert!(consume_permission(&cloned.usage.restored_x3).is_err());
+    }
+
+    fn timing_manifest(
+        root: &Path,
+        limits: &QualificationLimits,
+    ) -> Result<(BTreeMap<PathBuf, ManifestEntry>, u64)> {
+        let mut walker = ManifestWalker {
+            root: root.to_owned(),
+            limits,
+            entries: BTreeMap::new(),
+            total_bytes: 0,
+            active_dirs: BTreeSet::new(),
+        };
+        walker.walk(
+            root,
+            Path::new(""),
+            0,
+            Instant::now() + Duration::from_secs(5),
+            &mut || Ok(()),
+        )?;
+        Ok((walker.entries, walker.total_bytes))
+    }
+
+    #[test]
+    fn manifest_timing_preserves_alias_entries_and_rehashes_every_phase() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(temp.path()).unwrap();
+        fs::create_dir(root.join("data")).unwrap();
+        let mut bytes: Vec<u8> = (0..131073).map(|n| (n % 251) as u8).collect();
+        fs::write(root.join("data/blob"), &bytes).unwrap();
+        fs::write(root.join("data/empty"), []).unwrap();
+        fs::hard_link(root.join("data/blob"), root.join("hard-link")).unwrap();
+        std::os::unix::fs::symlink("data/blob", root.join("file-link")).unwrap();
+        std::os::unix::fs::symlink("data", root.join("directory-link")).unwrap();
+        let (first, total) = timing_manifest(&root, &QualificationLimits::default()).unwrap();
+        let expected_paths: BTreeSet<_> = [
+            "", "data", "data/blob", "data/empty", "hard-link", "file-link",
+            "directory-link", "directory-link/blob", "directory-link/empty",
+        ].into_iter().map(PathBuf::from).collect();
+        assert_eq!(first.keys().cloned().collect::<BTreeSet<_>>(), expected_paths);
+        assert_eq!(total, 4 * bytes.len() as u64);
+        for path in ["data/blob", "hard-link", "file-link", "directory-link/blob"] {
+            assert_eq!(
+                first[Path::new(path)].sha256.as_deref(),
+                Some("dd84db969f4ff2abb79c8c2fbc06e8d8e02c46d6481c958e057f7ad7a24c58a7")
+            );
+        }
+        assert_eq!(
+            first[Path::new("directory-link/empty")].sha256.as_deref(),
+            Some("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+        );
+        assert_eq!(first[Path::new("file-link")].symlink_target, Some("data/blob".into()));
+        assert_eq!(first[Path::new("directory-link")].symlink_target, Some("data".into()));
+        *bytes.last_mut().unwrap() ^= 1;
+        fs::write(root.join("data/blob"), &bytes).unwrap();
+        let (second, total) = timing_manifest(&root, &QualificationLimits::default()).unwrap();
+        assert_eq!(total, 4 * bytes.len() as u64);
+        for path in ["data/blob", "hard-link", "file-link", "directory-link/blob"] {
+            assert_eq!(
+                second[Path::new(path)].sha256.as_deref(),
+                Some("b9262daaf106d6dafe34c4c36e2b907cd384aeb18c0b49eb6c92183fcbdb84bc")
+            );
+        }
+    }
+
+    #[test]
+    fn manifest_timing_pinned_parent_cannot_redirect_file_bytes() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(temp.path()).unwrap();
+        let parent_path = root.join("parent");
+        let outside = root.join("outside");
+        fs::create_dir(&parent_path).unwrap();
+        fs::create_dir(&outside).unwrap();
+        let path = parent_path.join("code");
+        fs::write(&path, b"original code").unwrap();
+        fs::write(outside.join("code"), b"not code; never redirect here").unwrap();
+        let expected = reference_metadata(&path).unwrap();
+        let parent = open_path(&parent_path, true).unwrap();
+        fs::rename(&parent_path, root.join("moved-parent")).unwrap();
+        std::os::unix::fs::symlink(&outside, &parent_path).unwrap();
+        let mut opened = open_manifest_entry(&path, Some(&parent), false).unwrap();
+        let mut bytes = Vec::new();
+        opened.read_to_end(&mut bytes).unwrap();
+        assert_eq!(bytes, b"original code");
+        assert!(hash_regular_from(
+            &path, &expected, &QualificationLimits::default(), &mut 0,
+            Instant::now() + Duration::from_secs(5), &mut || Ok(()), Some(&parent),
+        ).is_err());
+        assert!(open_regular(&path).is_err());
+    }
+
+    #[test]
+    fn manifest_timing_replaced_parent_directory_fails_binding() {
+        let temp = tempfile::tempdir().unwrap();
+        let base = fs::canonicalize(temp.path()).unwrap();
+        let root = base.join("bundle");
+        fs::create_dir_all(root.join("data")).unwrap();
+        fs::write(root.join("data/code"), b"same bytes").unwrap();
+        let parent = open_path(&root, true).unwrap();
+        fs::rename(&root, base.join("moved-bundle")).unwrap();
+        fs::create_dir_all(root.join("data")).unwrap();
+        fs::write(root.join("data/code"), b"same bytes").unwrap();
+        let limits = QualificationLimits::default();
+        let mut walker = ManifestWalker {
+            root: root.clone(), limits: &limits, entries: BTreeMap::new(),
+            total_bytes: 0, active_dirs: BTreeSet::new(),
+        };
+        assert!(walker.walk_from(
+            &root.join("data"), Path::new("data"), 1,
+            Instant::now() + Duration::from_secs(5), &mut || Ok(()), Some(&parent),
+        ).is_err());
+        assert_eq!(walker.total_bytes, 0);
+    }
+
+    #[test]
+    fn manifest_timing_logical_byte_and_entry_bounds_remain_enforced() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(temp.path()).unwrap();
+        fs::write(root.join("code"), b"abcd").unwrap();
+        std::os::unix::fs::symlink("code", root.join("alias")).unwrap();
+        let mut limits = QualificationLimits {
+            max_file_bytes: 4, max_total_bytes: 8, max_files: 3,
+            ..QualificationLimits::default()
+        };
+        assert_eq!(timing_manifest(&root, &limits).unwrap().1, 8);
+        limits.max_total_bytes = 7;
+        assert!(timing_manifest(&root, &limits).is_err());
+        limits.max_total_bytes = 8;
+        limits.max_file_bytes = 3;
+        assert!(timing_manifest(&root, &limits).is_err());
+        limits.max_file_bytes = 4;
+        limits.max_files = 2;
+        assert!(timing_manifest(&root, &limits).is_err());
+        limits.max_files = 3;
+        limits.max_depth = 0;
+        assert!(timing_manifest(&root, &limits).is_err());
+    }
+
+    #[test]
+    fn manifest_timing_stream_changes_and_expired_deadlines_deny() {
+        for replace in [false, true] {
+            let temp = tempfile::tempdir().unwrap();
+            let root = fs::canonicalize(temp.path()).unwrap();
+            let path = root.join("code");
+            fs::write(&path, vec![7_u8; 131073]).unwrap();
+            let expected = reference_metadata(&path).unwrap();
+            let parent = open_path(&root, true).unwrap();
+            let mut checkpoint_count = 0;
+            let mut tick = || {
+                checkpoint_count += 1;
+                if checkpoint_count == 2 {
+                    if replace {
+                        fs::rename(&path, root.join("old-code"))?;
+                        fs::write(&path, vec![7_u8; 131073])?;
+                    } else {
+                        fs::OpenOptions::new().append(true).open(&path)?.write_all(b"x")?;
+                    }
+                }
+                Ok(())
+            };
+            assert!(hash_regular_from(
+                &path, &expected, &QualificationLimits::default(), &mut 0,
+                Instant::now() + Duration::from_secs(5), &mut tick, Some(&parent),
+            ).is_err());
+            let current = reference_metadata(&path).unwrap();
+            assert!(hash_regular_from(
+                &path, &current, &QualificationLimits::default(), &mut 0,
+                Instant::now(), &mut || Ok(()), Some(&parent),
+            ).is_err());
+        }
     }
 }

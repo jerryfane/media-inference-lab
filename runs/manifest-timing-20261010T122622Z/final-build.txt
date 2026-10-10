@@ -1,0 +1,2 @@
+   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.60s
