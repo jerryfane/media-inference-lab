@@ -12,6 +12,8 @@ pub mod png_image;
 pub mod png_report;
 pub mod preflight;
 pub mod process_scope;
+pub mod qualification_profile;
+pub mod qualification_scope;
 pub mod restore_qualification;
 pub mod schema;
 pub mod sequence_report;

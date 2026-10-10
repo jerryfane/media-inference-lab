@@ -1,9 +1,9 @@
 //! Identity-bound restore qualification. Metadata and startup evidence never imply
 //! settings fidelity. Only authorization-minted capabilities can run X2 or X3.
 //!
-//! Contract v4: X2 privately compares the reviewed launcher's three exports;
-//! X3 compares only source-reviewed JSON-pointer/type projections. Unknown
-//! response fields and raw logs remain private and never become audit output.
+//! X2 privately compares the reviewed launcher's three exports. X3 validates an
+//! exhaustive source-reviewed configured-profile catalog and compares values in
+//! wiped private memory; only reviewed labels and equality booleans are reported.
 //! Restore stdio is unchanged (/dev/null), so console diagnostics are unavailable.
 //! PF2 is lstat-only change detection, not a content-preservation attestation.
 //! The parent authenticates the complete transaction before minting a capability;
@@ -29,6 +29,10 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 use crate::process_scope::{ProcessIdentity, verify_identity};
+use crate::qualification_profile::{
+    ProfileCatalog, ProfileComparison, ProfileSnapshot, ProfileSummary,
+};
+use crate::qualification_scope::{self, ReviewedLaunchScope, ScopeObservation};
 
 const ENV_NAMES: [&str; 5] = ["HOME", "LOGNAME", "PATH", "TMPDIR", "USER"];
 const RESTORE_PATH: &str = "/usr/bin:/bin:/usr/sbin:/sbin";
@@ -198,7 +202,7 @@ impl QualificationPlan {
         Ok(())
     }
 }
-fn validate_absolute(path: &Path) -> Result<()> {
+pub(crate) fn validate_absolute(path: &Path) -> Result<()> {
     ensure!(
         path.is_absolute()
             && path.as_os_str().len() <= 4096
@@ -212,41 +216,37 @@ fn validate_absolute(path: &Path) -> Result<()> {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ReviewedExclusions {
-    pub review_reference: String,
-    /// Exact RFC6901 pointers into {global_settings: ..., models: ...}.
-    /// These fields are explicitly not compared; an empty list must still be reviewed.
-    pub json_pointers: Vec<String>,
-}
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct CredentialReference {
     pub path: PathBuf,
     pub json_pointer: Option<String>,
+    /// Exact transaction-bound permission for settings_path /auth/api_key only.
+    pub allow_settings_api_key_projection: bool,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
-pub enum ReviewedValueType {
-    Boolean,
-    Integer,
-    Number,
-    /// No arbitrary string or URL export: only exact source-reviewed enum values.
-    Enum {
-        values: Vec<String>,
-    },
-}
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ReviewedSettingField {
-    pub json_pointer: String,
-    pub value_type: ReviewedValueType,
-}
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ReviewedSettingsAllowlist {
-    pub source_review_reference: String,
-    pub coverage_review_reference: String,
-    pub fields: Vec<ReviewedSettingField>,
+impl CredentialReference {
+    fn validate_for(&self, plan: &QualificationPlan) -> Result<()> {
+        validate_absolute(&self.path)?;
+        if let Some(pointer) = &self.json_pointer {
+            ensure!(valid_pointer(pointer), "invalid credential pointer");
+        }
+        ensure!(
+            !self.path.starts_with(&plan.bundle_contents)
+                && !self.path.starts_with(&plan.reference_worktree),
+            "credential reference must not read a code reference"
+        );
+        if self.allow_settings_api_key_projection {
+            ensure!(
+                self.path.as_os_str() == plan.settings_path.as_os_str()
+                    && self.json_pointer.as_deref() == Some("/auth/api_key"),
+                "credential settings projection permission does not match reference"
+            );
+        } else {
+            ensure!(
+                !plan.config_paths().contains(&self.path.as_path()),
+                "credential reference must not read a PF2 config reference"
+            );
+        }
+        Ok(())
+    }
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -256,8 +256,7 @@ pub struct ReviewedX3Input {
     /// Protocol shape must be reviewed, not inferred from an arbitrary response.
     pub login_key_field: String,
     pub session_cookie_name: String,
-    pub concurrency_pointer: String,
-    pub settings_allowlist: Option<ReviewedSettingsAllowlist>,
+    pub profile_catalog: ProfileCatalog,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -268,7 +267,7 @@ pub struct ReviewedPermissionInput {
     pub x2_launcher_private_comparison: bool,
     pub existing_log_observation_review_reference: String,
     pub x3: Option<ReviewedX3Input>,
-    pub volatile_exclusions: Option<ReviewedExclusions>,
+    pub launch_scope: ReviewedLaunchScope,
     /// Explicit review of the residuals reported by FidelityReport, not a bypass
     /// of any mandatory gate or a claim about unread settings bytes.
     pub residuals_review_reference: String,
@@ -292,106 +291,11 @@ impl ReviewedPermissionInput {
             "DENY: X3 protocol not reviewed"
         );
         validate_absolute(&x3.credential.path)?;
-        ensure!(
-            valid_pointer(&x3.concurrency_pointer)
-                && x3
-                    .concurrency_pointer
-                    .ends_with("/scheduler/max_concurrent_requests"),
-            "invalid concurrency projection"
-        );
         if let Some(pointer) = &x3.credential.json_pointer {
             ensure!(valid_pointer(pointer), "invalid credential pointer");
         }
-        let exclusions = self
-            .volatile_exclusions
-            .as_ref()
-            .context("DENY: volatile field exclusions not reviewed")?;
-        ensure!(
-            review_text(&exclusions.review_reference) && exclusions.json_pointers.len() <= 256,
-            "invalid exclusion review"
-        );
-        let mut seen = BTreeSet::new();
-        for pointer in &exclusions.json_pointers {
-            ensure!(
-                valid_pointer(pointer)
-                    && (pointer.starts_with("/global_settings/")
-                        || pointer.starts_with("/models/"))
-                    && seen.insert(pointer),
-                "invalid or duplicate exclusion pointer"
-            );
-            let concurrency = format!("/global_settings{}", x3.concurrency_pointer);
-            ensure!(
-                pointer != &concurrency && !concurrency.starts_with(&format!("{pointer}/")),
-                "concurrency may not be excluded"
-            );
-        }
-        for left in &exclusions.json_pointers {
-            ensure!(
-                !exclusions
-                    .json_pointers
-                    .iter()
-                    .any(|right| left != right && left.starts_with(&format!("{right}/"))),
-                "overlapping exclusions"
-            );
-        }
-        let allowlist = x3
-            .settings_allowlist
-            .as_ref()
-            .context("DENY: source-reviewed X3 field/type allowlist unavailable")?;
-        ensure!(
-            review_text(&allowlist.source_review_reference)
-                && review_text(&allowlist.coverage_review_reference)
-                && !allowlist.fields.is_empty()
-                && allowlist.fields.len() <= 4096,
-            "invalid settings allowlist review"
-        );
-        let mut pointers = BTreeSet::new();
-        for field in &allowlist.fields {
-            let pointer = &field.json_pointer;
-            ensure!(
-                valid_pointer(pointer)
-                    && (pointer.starts_with("/global_settings/")
-                        || pointer.starts_with("/models/"))
-                    && pointers.insert(pointer),
-                "invalid/duplicate allowlisted settings pointer"
-            );
-            ensure!(
-                !exclusions
-                    .json_pointers
-                    .iter()
-                    .any(|excluded| pointer == excluded
-                        || pointer.starts_with(&format!("{excluded}/"))),
-                "compared field overlaps volatile exclusion"
-            );
-            if let ReviewedValueType::Enum { values } = &field.value_type {
-                ensure!(
-                    !values.is_empty()
-                        && values.len() <= 256
-                        && values.iter().all(|s| !s.is_empty()
-                            && s.len() <= 128
-                            && s.bytes()
-                                .all(|b| b.is_ascii_alphanumeric() || b"_-.".contains(&b))),
-                    "reviewed string enums must be bounded symbolic values, not URLs/headers/arbitrary text"
-                );
-            }
-        }
-        let concurrency = format!("/global_settings{}", x3.concurrency_pointer);
-        ensure!(
-            allowlist
-                .fields
-                .iter()
-                .any(|field| field.json_pointer == concurrency
-                    && matches!(field.value_type, ReviewedValueType::Integer)),
-            "observed concurrency must be a compared integer"
-        );
-        ensure!(
-            allowlist
-                .fields
-                .iter()
-                .any(|field| field.json_pointer.starts_with("/models/")),
-            "per-model settings comparison is mandatory"
-        );
-        Ok(())
+        self.launch_scope.validate()?;
+        x3.profile_catalog.validate()
     }
 }
 fn review_text(s: &str) -> bool {
@@ -473,20 +377,12 @@ impl AuthorizedPermissions {
             self.reviewed.old_identity.same_process(old_backend),
             "permission binds another old service"
         );
-        let credential = &self
-            .reviewed
+        self.reviewed
             .x3
             .as_ref()
             .context("X3 unavailable")?
             .credential
-            .path;
-        ensure!(
-            !plan.config_paths().contains(&credential.as_path())
-                && !credential.starts_with(&plan.bundle_contents)
-                && !credential.starts_with(&plan.reference_worktree),
-            "credential reference must not read a PF2 config or code reference"
-        );
-        Ok(())
+            .validate_for(plan)
     }
     pub fn old_identity(&self) -> &ProcessIdentity {
         &self.reviewed.old_identity
@@ -518,15 +414,24 @@ pub struct GateReport {
     pub fidelity_gate: GateStatus,
     pub checks: BTreeMap<String, CheckStatus>,
     pub reasons: Vec<String>,
+    pub launch_scope: Option<ScopeObservation>,
 }
 impl Default for GateReport {
     fn default() -> Self {
         Self {
             fidelity_gate: GateStatus::Deny,
+            launch_scope: None,
             checks: [
                 "G1_old_in_memory_settings",
                 "G2_old_env_overrides",
                 "G3_bundle_manifest",
+                "PS1_unpinned",
+                "PS2_model_inventory",
+                "PS3_configured_default",
+                "PS4_concurrency",
+                "PS5_authentication",
+                "SC1_no_distributed_workers",
+                "SC2_no_launch_manifest_candidates",
             ]
             .into_iter()
             .map(|s| (s.into(), CheckStatus::NotEvaluated))
@@ -559,19 +464,23 @@ pub struct FidelityReport {
     pub excluded_volatile_pointers: Vec<String>,
     pub comparison_coverage_review_reference: Option<String>,
     pub environment_comparison: Option<EnvironmentComparison>,
+    pub old_profile: Option<ProfileSummary>,
+    pub restored_profile: Option<ProfileSummary>,
+    pub profile_comparison: Option<ProfileComparison>,
 }
 impl Default for FidelityReport {
     fn default() -> Self {
         Self {
             compared_settings_pointers: Vec::new(), excluded_volatile_pointers: Vec::new(),
             comparison_coverage_review_reference: None, environment_comparison: None,
+            old_profile: None, restored_profile: None, profile_comparison: None,
             dimensions: [
                 (FidelityDimension::OldEffectiveProfile, "unavailable without identity-bound X3"),
                 (FidelityDimension::OldInheritedEnvironment, "unavailable without X2; constructed PF3 is not the old environment"),
                 (FidelityDimension::EffectiveConcurrency, "unavailable as an in-process observation; historical value is derived, not proof"),
                 (FidelityDimension::NativeBundleBytes, "not observed"),
                 (FidelityDimension::GuiResumeBehavior, "unproven"),
-                (FidelityDimension::OnDiskSettingsContents, "unread; metadata equality only"),
+                (FidelityDimension::OnDiskSettingsContents, "unattested; PF2 metadata only; the permitted authentication projection does not prove settings content fidelity"),
                 (FidelityDimension::OldLoadedBytes, "unavailable; current bundle does not prove old loaded bytes"),
                 (FidelityDimension::NonSettingsRuntimeState, "not compared"),
                 (FidelityDimension::UnenumeratedEnvironmentReads, "unavailable"),
@@ -580,13 +489,15 @@ impl Default for FidelityReport {
                 "Unenumerated third-party environment reads remain unverified".into(),
                 "Non-settings runtime state, including caches and live-applied engine state, is not compared".into(),
                 "The old process's loaded bytes are not established by the current bundle manifest".into(),
-                "On-disk JSON, unexposed keys, model_profiles.json and global_templates.json contents remain unread and unverified".into(),
+                "On-disk settings contents are not attested; only the explicitly permitted /auth/api_key projection is read for authentication. Unexposed keys, undiscovered-model settings, model_profiles.json and global_templates.json remain unverified".into(),
                 "PF2 metadata equality does not prove contents or absence of writes".into(),
                 "Restore stdin/stdout/stderr remain /dev/null; console-only diagnostics are UNAVAILABLE, not observed or proven absent".into(),
-                "Only explicitly source-reviewed typed settings pointers are compared; all unreviewed configuration coverage remains unverified".into(),
+                "Equality covers only the reviewed source-exposed configured profile, not the full profile, unexposed configuration, on-disk contents or runtime-applied state".into(),
+                "Unexposed configured fields remain unverified: version, logging.log_dir/retention_days, server.cors_origins/max_image_upload_size/max_image_side_length, memory.soft_threshold/hard_threshold/prefill_safe_zone_ratio/prefill_min_chunk_tokens, auth.secret_key/allow_unauthenticated_inference".into(),
                 "Existing log observations are bounded and private; request content and raw log bytes are never evidence output".into(),
                 "SE8 cluster-python publication, base-directory mkdir and shutdown stats writes are expected non-config writes, not prohibited or attested by PF2".into(),
                 "External process identity and listener checks are non-atomic with requests".into(),
+                "SC1 and bounded SC2 observations deny known distributed/reaper scope; they do not establish whole-host worker absence or atomic absence between the last observation and replacement exec".into(),
             ],
         }
     }
@@ -656,7 +567,7 @@ fn status(pass: bool) -> CheckStatus {
         CheckStatus::Fail
     }
 }
-fn checkpoint(deadline: Instant, tick: &mut dyn FnMut() -> Result<()>) -> Result<()> {
+pub(crate) fn checkpoint(deadline: Instant, tick: &mut dyn FnMut() -> Result<()>) -> Result<()> {
     tick()?;
     ensure!(
         Instant::now() < deadline,
@@ -677,7 +588,7 @@ pub struct MetadataRecord {
     pub ctime_ns: i128,
 }
 impl MetadataRecord {
-    fn from_metadata(m: &fs::Metadata) -> Self {
+    pub(crate) fn from_metadata(m: &fs::Metadata) -> Self {
         Self {
             exists: true,
             dev: m.dev(),
@@ -1323,13 +1234,14 @@ pub struct GateObservations {
     plan_sha256: String,
     transaction_sha256: String,
     old_identity: ProcessIdentity,
-    old_snapshot: Value,
+    old_snapshot: ProfileSnapshot,
     manifest: BundleManifest,
     report: GateReport,
     environment_comparison: EnvironmentComparison,
     comparison_fields: Vec<String>,
     volatile_fields: Vec<String>,
     coverage_review_reference: String,
+    launch_scope: ReviewedLaunchScope,
 }
 
 #[derive(Debug)]
@@ -1369,14 +1281,34 @@ fn gate_result<T>(report: &mut GateReport, check: &str, result: Result<T>) -> Re
 pub fn capture_gate(
     plan: &QualificationPlan,
     permissions: &AuthorizedPermissions,
+    restore_env: &BTreeMap<String, String>,
     deadline: Instant,
     tick: &mut dyn FnMut() -> Result<()>,
     verify_service: &mut dyn FnMut(&ProcessIdentity) -> Result<()>,
 ) -> Result<GateObservations> {
     permissions.validate_for(plan, permissions.old_identity())?;
+    permissions
+        .reviewed
+        .launch_scope
+        .validate_for(restore_env)?;
     checkpoint(deadline, tick)?;
     let mut report = GateReport::default();
     report.reasons.clear();
+    let scope_observation =
+        qualification_scope::observe(&permissions.reviewed.launch_scope, deadline, tick);
+    let scope_passed = scope_observation.qualifies();
+    report.launch_scope = Some(scope_observation);
+    gate_result(
+        &mut report,
+        "SC2_no_launch_manifest_candidates",
+        (|| {
+            ensure!(
+                scope_passed,
+                "SC2 launch-manifest scope unavailable or contains candidates"
+            );
+            Ok(())
+        })(),
+    )?;
     let manifest = gate_result(
         &mut report,
         "G3_bundle_manifest",
@@ -1399,30 +1331,33 @@ pub fn capture_gate(
         verify_service,
     )
     .and_then(|snapshot| {
-        let concurrency = &permissions
-            .reviewed
-            .x3
-            .as_ref()
-            .context("X3 unavailable")?
-            .concurrency_pointer;
+        let prestop = snapshot.prestop(&plan.expected_health);
+        for (name, passed) in [
+            ("PS1_unpinned", prestop.ps1),
+            ("PS2_model_inventory", prestop.ps2),
+            ("PS3_configured_default", prestop.ps3),
+            ("PS4_concurrency", prestop.ps4),
+            ("PS5_authentication", prestop.ps5),
+            ("SC1_no_distributed_workers", prestop.ps6),
+        ] {
+            report.checks.insert(name.into(), status(passed));
+        }
         ensure!(
-            snapshot
-                .get(format!("/global_settings{concurrency}"))
-                .and_then(Value::as_u64)
-                == Some(8),
-            "observed old in-memory concurrency is not 8"
+            prestop.passed(),
+            "mandatory old-snapshot pre-stop predicates failed"
         );
+        checkpoint(deadline, tick)?;
         verify_identity(permissions.old_identity())?;
         Ok(snapshot)
     });
     let old_snapshot = gate_result(&mut report, "G1_old_in_memory_settings", snapshot_result)?;
     report.fidelity_gate = GateStatus::Pass;
-    let allowlist = permissions
+    let catalog = &permissions
         .reviewed
         .x3
         .as_ref()
-        .and_then(|x| x.settings_allowlist.as_ref())
-        .context("reviewed allowlist unavailable")?;
+        .context("reviewed profile catalog unavailable")?
+        .profile_catalog;
     Ok(GateObservations {
         plan_sha256: plan.sha256()?,
         transaction_sha256: permissions.transaction_sha256.clone(),
@@ -1431,19 +1366,10 @@ pub fn capture_gate(
         manifest,
         report,
         environment_comparison,
-        comparison_fields: allowlist
-            .fields
-            .iter()
-            .map(|f| f.json_pointer.clone())
-            .collect(),
-        volatile_fields: permissions
-            .reviewed
-            .volatile_exclusions
-            .as_ref()
-            .context("reviewed exclusions unavailable")?
-            .json_pointers
-            .clone(),
-        coverage_review_reference: allowlist.coverage_review_reference.clone(),
+        comparison_fields: catalog.compared_labels(),
+        volatile_fields: catalog.volatile_labels(),
+        coverage_review_reference: catalog.coverage_review_reference.clone(),
+        launch_scope: permissions.reviewed.launch_scope.clone(),
     })
 }
 
@@ -1476,6 +1402,7 @@ impl QualificationState {
     ) -> Result<Self> {
         plan.validate()?;
         validate_restore_environment(restore_env)?;
+        gate.launch_scope.validate_for(restore_env)?;
         ensure!(
             gate.plan_sha256 == plan.sha256()? && gate.report.fidelity_gate == GateStatus::Pass,
             "DENY: gate binding mismatch"
@@ -1503,6 +1430,31 @@ impl QualificationState {
             before_attempted: false,
             after_attempted: false,
         })
+    }
+    pub(crate) fn check_named_scope_absence(
+        &mut self,
+        deadline: Instant,
+        tick: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<ScopeObservation> {
+        ensure!(
+            self.gate.report.fidelity_gate == GateStatus::Pass,
+            "SC2 previous scope denial is sticky; service effects withheld"
+        );
+        let observation = qualification_scope::observe(&self.gate.launch_scope, deadline, tick);
+        let passed = observation.qualifies();
+        self.gate.report.launch_scope = Some(observation.clone());
+        self.gate
+            .report
+            .checks
+            .insert("SC2_no_launch_manifest_candidates".into(), status(passed));
+        if !passed {
+            self.gate.report.fidelity_gate = GateStatus::Deny;
+            bail!(
+                "SC2 service effects withheld: {}",
+                serde_json::to_string(&observation)?
+            );
+        }
+        Ok(observation)
     }
     pub fn before_restore(
         &mut self,
@@ -1552,9 +1504,10 @@ impl QualificationState {
             excluded_volatile_pointers: self.gate.volatile_fields.clone(),
             comparison_coverage_review_reference: Some(self.gate.coverage_review_reference.clone()),
             environment_comparison: Some(self.gate.environment_comparison.clone()),
+            old_profile: Some(self.gate.old_snapshot.summary().clone()),
             ..FidelityReport::default()
         };
-        fidelity.dimensions.insert(FidelityDimension::OldEffectiveProfile, "identity-bound source-reviewed typed old settings projection observed by X3; remaining configuration coverage unverified".into());
+        fidelity.dimensions.insert(FidelityDimension::OldEffectiveProfile, "identity-bound source-exposed configured profile observed by X3; mandatory PS1-PS5, SC1 and SC2 passed before stopping services; full-profile equivalence is not claimed".into());
         fidelity.dimensions.insert(FidelityDimension::OldInheritedEnvironment, "X2 privately matched exact launcher exports and found no additional enumerated profile overrides; full old environment not compared".into());
         fidelity.dimensions.insert(
             FidelityDimension::EffectiveConcurrency,
@@ -1673,11 +1626,18 @@ impl QualificationState {
                 tick,
                 verify_service,
             )?;
-            compare_snapshots(
-                &self.gate.old_snapshot,
-                &new_snapshot,
-                &permissions.reviewed,
-            )?;
+            let catalog = &permissions
+                .reviewed
+                .x3
+                .as_ref()
+                .context("X3 unavailable")?
+                .profile_catalog;
+            let comparison = self.gate.old_snapshot.compare(&new_snapshot, catalog)?;
+            let equal = comparison.equal;
+            report.fidelity.restored_profile = Some(new_snapshot.summary().clone());
+            report.fidelity.profile_comparison = Some(comparison);
+            ensure!(equal, "source-exposed configured profiles differ");
+            checkpoint(deadline, tick)?;
             Ok(())
         })();
         match compare {
@@ -1691,7 +1651,7 @@ impl QualificationState {
                     } else {
                         FidelityStatus::Fail
                     };
-                report.fidelity.dimensions.insert(FidelityDimension::OldEffectiveProfile, "PASS only for explicitly source-reviewed typed settings pointers; remaining configuration coverage unverified".into());
+                report.fidelity.dimensions.insert(FidelityDimension::OldEffectiveProfile, "PASS for the exhaustive reviewed source-exposed configured profile only; no full-profile, on-disk or runtime-state equivalence claim".into());
                 report.fidelity.dimensions.insert(
                     FidelityDimension::EffectiveConcurrency,
                     "old and restored exposed in-memory concurrency observed as 8".into(),
@@ -1757,69 +1717,11 @@ fn wipe_value(value: &mut Value) {
         _ => {}
     }
 }
-struct SecretJson(Value);
+pub(crate) struct SecretJson(pub(crate) Value);
 impl Drop for SecretJson {
     fn drop(&mut self) {
         wipe_value(&mut self.0);
     }
-}
-/// Projection is an allowlist, not a secret-name denylist. Unknown data at any
-/// depth, including innocently named URLs and headers, never leaves raw storage.
-fn project_settings(raw: &Value, reviewed: &ReviewedX3Input) -> Result<Value> {
-    let allowlist = reviewed
-        .settings_allowlist
-        .as_ref()
-        .context("reviewed settings allowlist missing")?;
-    let mut projected = serde_json::Map::new();
-    for field in &allowlist.fields {
-        let value = raw
-            .pointer(&field.json_pointer)
-            .context("required compared setting unavailable")?;
-        let matches = match &field.value_type {
-            ReviewedValueType::Boolean => value.is_boolean(),
-            ReviewedValueType::Integer => value.is_i64() || value.is_u64(),
-            ReviewedValueType::Number => value.is_number(),
-            ReviewedValueType::Enum { values } => value
-                .as_str()
-                .is_some_and(|s| values.iter().any(|allowed| allowed == s)),
-        };
-        ensure!(
-            matches,
-            "compared setting has unreviewed type or enum value"
-        );
-        projected.insert(field.json_pointer.clone(), value.clone());
-    }
-    Ok(Value::Object(projected))
-}
-fn compare_snapshots(old: &Value, new: &Value, reviewed: &ReviewedPermissionInput) -> Result<()> {
-    reviewed.validate()?;
-    let x3 = reviewed.x3.as_ref().context("X3 unavailable")?;
-    let fields = &x3
-        .settings_allowlist
-        .as_ref()
-        .context("reviewed allowlist missing")?
-        .fields;
-    let concurrency = format!("/global_settings{}", x3.concurrency_pointer);
-    for snapshot in [old, new] {
-        ensure!(
-            snapshot
-                .as_object()
-                .is_some_and(|o| o.len() == fields.len())
-                && fields
-                    .iter()
-                    .all(|f| snapshot.get(&f.json_pointer).is_some()),
-            "compared settings coverage missing"
-        );
-        ensure!(
-            snapshot.get(&concurrency).and_then(Value::as_u64) == Some(8),
-            "observed concurrency is not 8"
-        );
-    }
-    ensure!(
-        old == new,
-        "source-reviewed exposed settings snapshots differ"
-    );
-    Ok(())
 }
 fn profile_name(name: &[u8]) -> bool {
     [
@@ -1983,55 +1885,90 @@ fn collect_x2(
         bail!("X2 KERN_PROCARGS2 requires macOS")
     }
 }
+fn validate_credential_metadata(metadata: &MetadataRecord) -> Result<()> {
+    ensure!(
+        metadata.exists
+            && metadata.mode & libc::S_IFMT as u32 == libc::S_IFREG as u32
+            && metadata.size > 0
+            && metadata.size <= MAX_SECRET as u64
+            && metadata.mode & 0o077 == 0
+            && metadata.uid == unsafe { libc::geteuid() },
+        "X3 credential reference is not private/bounded regular data"
+    );
+    Ok(())
+}
+fn check_credential_config_aliases(
+    plan: &QualificationPlan,
+    reference: &CredentialReference,
+    expected: &MetadataRecord,
+    deadline: Instant,
+    tick: &mut dyn FnMut() -> Result<()>,
+) -> Result<()> {
+    for (index, path) in plan.config_paths().into_iter().enumerate() {
+        checkpoint(deadline, tick)?;
+        let metadata = reference_metadata(path)
+            .map_err(|_| anyhow::anyhow!("X3 config reference metadata unavailable"))?;
+        if reference.allow_settings_api_key_projection && index == 0 {
+            ensure!(expected == &metadata, "X3 credential reference changed");
+        } else {
+            ensure!(
+                !expected.same_inode(&metadata),
+                "X3 credential reference aliases a metadata-only config reference"
+            );
+        }
+    }
+    Ok(())
+}
 fn credential_bytes(
     plan: &QualificationPlan,
     reference: &CredentialReference,
     deadline: Instant,
     tick: &mut dyn FnMut() -> Result<()>,
 ) -> Result<SecretBytes> {
+    reference.validate_for(plan)?;
     checkpoint(deadline, tick)?;
-    let before = reference_metadata(&reference.path)?;
-    for path in plan.config_paths() {
-        checkpoint(deadline, tick)?;
-        ensure!(
-            !before.same_inode(&reference_metadata(path)?),
-            "X3 credential reference aliases a metadata-only config reference"
-        );
-    }
+    let before = reference_metadata(&reference.path)
+        .map_err(|_| anyhow::anyhow!("X3 credential reference metadata unavailable"))?;
+    validate_credential_metadata(&before)?;
+    check_credential_config_aliases(plan, reference, &before, deadline, tick)?;
     let mut file = open_regular(&reference.path)
         .map_err(|_| anyhow::anyhow!("X3 credential reference unavailable"))?;
     ensure!(
         before == MetadataRecord::from_metadata(&file.metadata()?),
         "X3 credential reference open raced"
     );
-    ensure!(
-        before.size > 0
-            && before.size <= MAX_SECRET as u64
-            && before.mode & 0o077 == 0
-            && before.uid == unsafe { libc::geteuid() },
-        "X3 credential reference is not private/bounded"
-    );
     let bytes = read_exact_bounded(&mut file, before.size, deadline, tick)
         .map_err(|_| anyhow::anyhow!("X3 credential read failed"))?;
+    check_credential_config_aliases(plan, reference, &before, deadline, tick)?;
+    // Reopen without following any symlink, including swapped ancestors.
+    // This descriptor is used only for metadata; no second content read occurs.
+    let current = open_regular(&reference.path)
+        .map_err(|_| anyhow::anyhow!("X3 credential reference changed"))?;
     ensure!(
         before == MetadataRecord::from_metadata(&file.metadata()?)
-            && before == reference_metadata(&reference.path)?,
+            && before == MetadataRecord::from_metadata(&current.metadata()?)
+            && before
+                == reference_metadata(&reference.path)
+                    .map_err(|_| anyhow::anyhow!("X3 credential reference metadata unavailable"))?,
         "X3 credential reference changed"
     );
     if let Some(pointer) = &reference.json_pointer {
         let parsed: Value = serde_json::from_slice(&bytes.0)
             .map_err(|_| anyhow::anyhow!("X3 credential projection invalid JSON"))?;
-        let parsed = SecretJson(parsed);
+        let mut parsed = SecretJson(parsed);
         let key = parsed
             .0
-            .pointer(pointer)
-            .and_then(Value::as_str)
+            .pointer_mut(pointer)
             .context("X3 credential projection unavailable")?;
         ensure!(
-            !key.is_empty() && key.len() <= 8192,
+            key.as_str()
+                .is_some_and(|value| !value.is_empty() && value.len() <= 8192),
             "X3 credential projection invalid"
         );
-        Ok(SecretBytes(key.as_bytes().to_vec()))
+        let Value::String(key) = key.take() else {
+            unreachable!("credential string type checked");
+        };
+        Ok(SecretBytes(key.into_bytes()))
     } else {
         ensure!(
             bytes.0.len() <= 8192 && std::str::from_utf8(&bytes.0).is_ok(),
@@ -2200,7 +2137,7 @@ fn collect_x3(
     deadline: Instant,
     tick: &mut dyn FnMut() -> Result<()>,
     verify_service: &mut dyn FnMut(&ProcessIdentity) -> Result<()>,
-) -> Result<Value> {
+) -> Result<ProfileSnapshot> {
     permissions.reviewed.validate()?;
     let reviewed = permissions.reviewed.x3.as_ref().context("X3 unavailable")?;
     if permissions.old_identity().same_process(identity) {
@@ -2262,17 +2199,16 @@ fn collect_x3(
             serde_json::from_slice(response.body())
                 .map_err(|_| anyhow::anyhow!("X3 invalid admin JSON"))?,
         );
-        ensure!(
-            json.0.is_object() || (name == "models" && json.0.is_array()),
-            "X3 invalid settings response shape"
-        );
+        ensure!(json.0.is_object(), "X3 invalid settings response shape");
         raw.0
             .as_object_mut()
             .context("private response assembly failed")?
             .insert(name.into(), std::mem::take(&mut json.0));
     }
     verify(tick, verify_service)?;
-    project_settings(&raw.0, reviewed)
+    let snapshot = ProfileSnapshot::capture(std::mem::take(&mut raw.0), &reviewed.profile_catalog)?;
+    checkpoint(deadline, tick)?;
+    Ok(snapshot)
 }
 
 #[cfg(test)]
@@ -2280,6 +2216,430 @@ mod tests {
     use super::*;
     use serde_json::json;
     use std::os::unix::fs::PermissionsExt;
+
+    const CREDENTIAL_FIXTURE_KEY: &str = "synthetic-credential-alpha";
+    const CREDENTIAL_FIXTURE_PRIVATE: &str = "synthetic-unrelated-private-value";
+
+    fn credential_fixture() -> (tempfile::TempDir, QualificationPlan, CredentialReference) {
+        let dir = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(dir.path()).unwrap();
+        let plan = fixture_plan(&root);
+        write_private_credential(
+            &plan.settings_path,
+            &serde_json::to_vec(&json!({
+                "auth": {"api_key": CREDENTIAL_FIXTURE_KEY},
+                "unrelated": CREDENTIAL_FIXTURE_PRIVATE,
+            }))
+            .unwrap(),
+        );
+        let reference = CredentialReference {
+            path: plan.settings_path.clone(),
+            json_pointer: Some("/auth/api_key".into()),
+            allow_settings_api_key_projection: true,
+        };
+        (dir, plan, reference)
+    }
+
+    fn write_private_credential(path: &Path, bytes: &[u8]) {
+        fs::write(path, bytes).unwrap();
+        fs::set_permissions(path, fs::Permissions::from_mode(0o600)).unwrap();
+    }
+
+    fn assert_credential_denied<T>(result: Result<T>) {
+        let error = result.err().expect("credential access must fail closed");
+        let diagnostic = format!("{error:#} {error:?}");
+        assert!(!diagnostic.contains(CREDENTIAL_FIXTURE_KEY));
+        assert!(!diagnostic.contains(CREDENTIAL_FIXTURE_PRIVATE));
+    }
+
+    fn credential_permissions(
+        plan: &QualificationPlan,
+        reference: &CredentialReference,
+    ) -> AuthorizedPermissions {
+        let mut reviewed = fixture_reviewed();
+        reviewed.plan_sha256 = plan.sha256().unwrap();
+        reviewed.x3.as_mut().unwrap().credential = reference.clone();
+        AuthorizedPermissions::from_transaction_authorization(&reviewed, &"a".repeat(64)).unwrap()
+    }
+
+    #[test]
+    fn credential_settings_projection_requires_explicit_serialized_permission() {
+        for permission in [None, Some(json!(null)), Some(json!("true"))] {
+            let mut raw = json!({
+                "path": "/synthetic/settings.json",
+                "json_pointer": "/auth/api_key",
+            });
+            if let Some(permission) = permission {
+                raw["allow_settings_api_key_projection"] = permission;
+            }
+            assert!(serde_json::from_value::<CredentialReference>(raw).is_err());
+        }
+        let (_dir, plan, reference) = credential_fixture();
+        let reference: CredentialReference =
+            serde_json::from_value(serde_json::to_value(reference).unwrap()).unwrap();
+        let permissions = credential_permissions(&plan, &reference);
+        permissions
+            .validate_for(&plan, permissions.old_identity())
+            .unwrap();
+        let key = credential_bytes(
+            &plan,
+            &reference,
+            Instant::now() + Duration::from_secs(5),
+            &mut || Ok(()),
+        )
+        .unwrap();
+        assert!(key.0 == CREDENTIAL_FIXTURE_KEY.as_bytes());
+    }
+
+    #[test]
+    fn credential_projection_requires_lexically_exact_settings_path() {
+        let (_dir, plan, reference) = credential_fixture();
+        let parent = plan.settings_path.parent().unwrap().display();
+        for path in [
+            format!("{parent}/./settings.json"),
+            format!("{parent}//settings.json"),
+        ] {
+            let alternate = CredentialReference {
+                path: path.into(),
+                ..reference.clone()
+            };
+            assert!(alternate.validate_for(&plan).is_err());
+        }
+    }
+    #[test]
+    fn credential_projection_permission_cannot_widen_path_or_pointer() {
+        let (_dir, plan, reference) = credential_fixture();
+        let mut denied = vec![CredentialReference {
+            allow_settings_api_key_projection: false,
+            ..reference.clone()
+        }];
+        for pointer in [
+            None,
+            Some("/auth"),
+            Some("/auth/api_key/"),
+            Some("/auth/api~1key"),
+            Some("/auth/other"),
+        ] {
+            denied.push(CredentialReference {
+                json_pointer: pointer.map(str::to_owned),
+                ..reference.clone()
+            });
+        }
+        for path in plan.config_paths().into_iter().skip(1).chain([
+            plan.bundle_contents.as_path(),
+            plan.reference_worktree.as_path(),
+        ]) {
+            for allowed in [false, true] {
+                denied.push(CredentialReference {
+                    path: path.to_path_buf(),
+                    allow_settings_api_key_projection: allowed,
+                    ..reference.clone()
+                });
+            }
+        }
+        denied.push(CredentialReference {
+            path: plan.settings_path.with_file_name("standalone"),
+            ..reference
+        });
+        for reference in denied {
+            let permissions = credential_permissions(&plan, &reference);
+            assert_credential_denied(permissions.validate_for(&plan, permissions.old_identity()));
+            let mut ticked = false;
+            assert_credential_denied(credential_bytes(
+                &plan,
+                &reference,
+                Instant::now() + Duration::from_secs(5),
+                &mut || {
+                    ticked = true;
+                    Ok(())
+                },
+            ));
+            assert!(!ticked, "permission denial must precede file access");
+        }
+    }
+
+    #[test]
+    fn credential_standalone_private_raw_and_json_references_remain_supported() {
+        let (_dir, plan, _) = credential_fixture();
+        let path = plan.settings_path.with_file_name("standalone");
+        for pointer in [None, Some("/private/key")] {
+            let bytes = if pointer.is_some() {
+                serde_json::to_vec(&json!({
+                    "private": {"key": CREDENTIAL_FIXTURE_KEY},
+                    "unrelated": CREDENTIAL_FIXTURE_PRIVATE,
+                }))
+                .unwrap()
+            } else {
+                CREDENTIAL_FIXTURE_KEY.as_bytes().to_vec()
+            };
+            write_private_credential(&path, &bytes);
+            let reference = CredentialReference {
+                path: path.clone(),
+                json_pointer: pointer.map(str::to_owned),
+                allow_settings_api_key_projection: false,
+            };
+            let permissions = credential_permissions(&plan, &reference);
+            permissions
+                .validate_for(&plan, permissions.old_identity())
+                .unwrap();
+            let key = credential_bytes(
+                &plan,
+                &reference,
+                Instant::now() + Duration::from_secs(5),
+                &mut || Ok(()),
+            )
+            .unwrap();
+            assert!(key.0 == CREDENTIAL_FIXTURE_KEY.as_bytes());
+        }
+    }
+
+    #[test]
+    fn credential_standalone_hardlinks_to_every_pf2_reference_deny_before_read() {
+        for config_index in 0..5 {
+            let (_dir, plan, _) = credential_fixture();
+            let config = plan.config_paths()[config_index];
+            write_private_credential(config, CREDENTIAL_FIXTURE_KEY.as_bytes());
+            let path = plan.settings_path.with_file_name("standalone");
+            fs::hard_link(config, &path).unwrap();
+            let reference = CredentialReference {
+                path,
+                json_pointer: None,
+                allow_settings_api_key_projection: false,
+            };
+            let mut checkpoints = 0;
+            assert_credential_denied(credential_bytes(
+                &plan,
+                &reference,
+                Instant::now() + Duration::from_secs(5),
+                &mut || {
+                    checkpoints += 1;
+                    Ok(())
+                },
+            ));
+            assert!(checkpoints < 2 + plan.config_paths().len());
+        }
+    }
+
+    #[test]
+    fn credential_settings_projection_rejects_every_other_pf2_inode_alias() {
+        for config_index in 1..5 {
+            let (_dir, plan, reference) = credential_fixture();
+            fs::hard_link(&reference.path, plan.config_paths()[config_index]).unwrap();
+            let mut checkpoints = 0;
+            assert_credential_denied(credential_bytes(
+                &plan,
+                &reference,
+                Instant::now() + Duration::from_secs(5),
+                &mut || {
+                    checkpoints += 1;
+                    Ok(())
+                },
+            ));
+            assert!(checkpoints < 2 + plan.config_paths().len());
+        }
+    }
+
+    #[test]
+    fn credential_symlinks_and_nonregular_references_are_never_read() {
+        for ancestor in [false, true] {
+            let (_dir, plan, mut reference) = credential_fixture();
+            if ancestor {
+                let actual = plan.settings_path.with_file_name("actual");
+                fs::create_dir(&actual).unwrap();
+                write_private_credential(&actual.join("key"), CREDENTIAL_FIXTURE_KEY.as_bytes());
+                let alias = plan.settings_path.with_file_name("alias");
+                std::os::unix::fs::symlink(&actual, &alias).unwrap();
+                reference.path = alias.join("key");
+                reference.json_pointer = None;
+                reference.allow_settings_api_key_projection = false;
+            } else {
+                let actual = plan.settings_path.with_file_name("actual");
+                fs::rename(&reference.path, &actual).unwrap();
+                std::os::unix::fs::symlink(&actual, &reference.path).unwrap();
+            }
+            assert_credential_denied(credential_bytes(
+                &plan,
+                &reference,
+                Instant::now() + Duration::from_secs(5),
+                &mut || Ok(()),
+            ));
+        }
+        let (_dir, plan, reference) = credential_fixture();
+        fs::remove_file(&reference.path).unwrap();
+        fs::create_dir(&reference.path).unwrap();
+        assert_credential_denied(credential_bytes(
+            &plan,
+            &reference,
+            Instant::now() + Duration::from_secs(5),
+            &mut || Ok(()),
+        ));
+    }
+
+    #[test]
+    fn credential_projection_preserves_mode_owner_and_file_size_boundaries() {
+        let (_dir, plan, reference) = credential_fixture();
+        for mode in [0o604, 0o640, 0o660, 0o644] {
+            fs::set_permissions(&reference.path, fs::Permissions::from_mode(mode)).unwrap();
+            assert_credential_denied(credential_bytes(
+                &plan,
+                &reference,
+                Instant::now() + Duration::from_secs(5),
+                &mut || Ok(()),
+            ));
+        }
+        fs::set_permissions(&reference.path, fs::Permissions::from_mode(0o400)).unwrap();
+        let key = credential_bytes(
+            &plan,
+            &reference,
+            Instant::now() + Duration::from_secs(5),
+            &mut || Ok(()),
+        )
+        .unwrap();
+        assert!(key.0 == CREDENTIAL_FIXTURE_KEY.as_bytes());
+        let mut wrong_owner = reference_metadata(&reference.path).unwrap();
+        wrong_owner.uid = wrong_owner.uid.wrapping_add(1);
+        assert_credential_denied(validate_credential_metadata(&wrong_owner));
+
+        fs::set_permissions(&reference.path, fs::Permissions::from_mode(0o600)).unwrap();
+        let file = fs::OpenOptions::new()
+            .write(true)
+            .open(&reference.path)
+            .unwrap();
+        for size in [0, MAX_SECRET as u64 + 1] {
+            file.set_len(size).unwrap();
+            let mut checkpoints = 0;
+            assert_credential_denied(credential_bytes(
+                &plan,
+                &reference,
+                Instant::now() + Duration::from_secs(5),
+                &mut || {
+                    checkpoints += 1;
+                    Ok(())
+                },
+            ));
+            assert_eq!(checkpoints, 1, "size denial must precede content access");
+        }
+    }
+
+    #[test]
+    fn credential_projection_validates_payload_without_secret_diagnostics() {
+        let (_dir, plan, reference) = credential_fixture();
+        for bytes in [
+            format!(r#"{{"auth":{{"api_key":"{CREDENTIAL_FIXTURE_KEY}"}},"{CREDENTIAL_FIXTURE_PRIVATE}":"#)
+                .into_bytes(),
+            serde_json::to_vec(&json!({
+                "auth": {"api_key": {"private": CREDENTIAL_FIXTURE_KEY}},
+                "unrelated": CREDENTIAL_FIXTURE_PRIVATE,
+            }))
+            .unwrap(),
+            serde_json::to_vec(&json!({
+                "auth": {"other": CREDENTIAL_FIXTURE_KEY},
+                "unrelated": CREDENTIAL_FIXTURE_PRIVATE,
+            }))
+            .unwrap(),
+            serde_json::to_vec(&json!({"auth": {"api_key": ""}})).unwrap(),
+            serde_json::to_vec(&json!({"auth": {"api_key": "x".repeat(8193)}})).unwrap(),
+        ] {
+            write_private_credential(&reference.path, &bytes);
+            assert_credential_denied(credential_bytes(
+                &plan,
+                &reference,
+                Instant::now() + Duration::from_secs(5),
+                &mut || Ok(()),
+            ));
+        }
+        let mut bytes =
+            serde_json::to_vec(&json!({"auth": {"api_key": "x".repeat(8192)}})).unwrap();
+        bytes.resize(MAX_SECRET, b' ');
+        write_private_credential(&reference.path, &bytes);
+        let key = credential_bytes(
+            &plan,
+            &reference,
+            Instant::now() + Duration::from_secs(5),
+            &mut || Ok(()),
+        )
+        .unwrap();
+        assert!(key.0 == vec![b'x'; 8192]);
+    }
+
+    #[test]
+    fn credential_reference_races_fail_closed_before_returning_projection() {
+        for after_open in [false, true] {
+            for mutation in ["replace", "truncate", "mode", "new_pf2_alias"] {
+                let (_dir, plan, reference) = credential_fixture();
+                let mutation_checkpoint = 1 + plan.config_paths().len() + usize::from(after_open);
+                let mut checkpoints = 0;
+                assert_credential_denied(credential_bytes(
+                    &plan,
+                    &reference,
+                    Instant::now() + Duration::from_secs(5),
+                    &mut || {
+                        checkpoints += 1;
+                        if checkpoints == mutation_checkpoint {
+                            match mutation {
+                                "replace" => {
+                                    fs::rename(
+                                        &reference.path,
+                                        reference.path.with_file_name("previous"),
+                                    )?;
+                                    write_private_credential(
+                                        &reference.path,
+                                        br#"{"auth":{"api_key":"replacement"}}"#,
+                                    );
+                                }
+                                "truncate" => {
+                                    fs::OpenOptions::new()
+                                        .write(true)
+                                        .open(&reference.path)?
+                                        .set_len(0)?;
+                                }
+                                "mode" => fs::set_permissions(
+                                    &reference.path,
+                                    fs::Permissions::from_mode(0o644),
+                                )?,
+                                "new_pf2_alias" => {
+                                    fs::hard_link(&reference.path, &plan.model_settings_path)?;
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+                        Ok(())
+                    },
+                ));
+                assert!(checkpoints >= mutation_checkpoint);
+            }
+        }
+    }
+
+    #[test]
+    fn credential_ancestor_symlink_swap_during_read_fails_closed() {
+        let (_dir, plan, _) = credential_fixture();
+        let parent = plan.settings_path.with_file_name("credential-dir");
+        let moved = plan.settings_path.with_file_name("moved-credential-dir");
+        fs::create_dir(&parent).unwrap();
+        let reference = CredentialReference {
+            path: parent.join("key"),
+            json_pointer: None,
+            allow_settings_api_key_projection: false,
+        };
+        write_private_credential(&reference.path, CREDENTIAL_FIXTURE_KEY.as_bytes());
+        let first_read_checkpoint = 2 + plan.config_paths().len();
+        let mut checkpoints = 0;
+        assert_credential_denied(credential_bytes(
+            &plan,
+            &reference,
+            Instant::now() + Duration::from_secs(5),
+            &mut || {
+                checkpoints += 1;
+                if checkpoints == first_read_checkpoint {
+                    fs::rename(&parent, &moved)?;
+                    std::os::unix::fs::symlink(&moved, &parent)?;
+                }
+                Ok(())
+            },
+        ));
+        assert!(checkpoints >= first_read_checkpoint);
+    }
 
     #[test]
     fn metadata_detects_ctime_mode_and_replacement_without_reading_contents() {
@@ -2346,28 +2706,6 @@ mod tests {
         );
     }
     #[test]
-    fn reviewed_projection_excludes_unknown_secrets_at_every_depth() {
-        let reviewed = fixture_reviewed();
-        let x3 = reviewed.x3.as_ref().unwrap();
-        let raw = json!({
-            "global_settings": {"scheduler":{"max_concurrent_requests":8}, "max_tokens":512,
-                "innocent":"https://host/?credential=private", "headers":{"x-any":"private"}, "auth":{"api_key":"private"}},
-            "models":[{"settings":{"mode":"a","friendly_url":"https://private/","unknown":{"safe_name":"private"}}}],
-        });
-        let projected = project_settings(&raw, x3).unwrap();
-        assert_eq!(
-            projected,
-            json!({
-                "/global_settings/scheduler/max_concurrent_requests":8,
-                "/global_settings/max_tokens":512,
-                "/models/0/settings/mode":"a"
-            })
-        );
-        let mut wrong_type = raw;
-        wrong_type["global_settings"]["max_tokens"] = json!("private");
-        assert!(project_settings(&wrong_type, x3).is_err());
-    }
-    #[test]
     fn absent_gate_denies_without_invoking_tick_or_stop() {
         let plan = fixture_plan(Path::new("/nonexistent-qualification-fixture"));
         let mut called = false;
@@ -2427,35 +2765,6 @@ mod tests {
         assert!(!output.contains("private") && !output.contains("/Applications"));
     }
     #[test]
-    fn snapshot_inequality_and_explicit_exclusions() {
-        let reviewed = fixture_reviewed();
-        let x3 = reviewed.x3.as_ref().unwrap();
-        let old = json!({"global_settings":{"scheduler":{"max_concurrent_requests":8},"max_tokens":512,"volatile":1},"models":[{"settings":{"mode":"a"}}]});
-        let original = project_settings(&old, x3).unwrap();
-        let mut new = old.clone();
-        new["global_settings"]["volatile"] = json!(2);
-        assert!(
-            compare_snapshots(&original, &project_settings(&new, x3).unwrap(), &reviewed).is_ok()
-        );
-        new["models"][0]["settings"]["mode"] = json!("b");
-        assert!(
-            compare_snapshots(&original, &project_settings(&new, x3).unwrap(), &reviewed).is_err()
-        );
-        new = old.clone();
-        new["global_settings"]["scheduler"]["max_concurrent_requests"] = json!(4);
-        assert!(
-            compare_snapshots(&original, &project_settings(&new, x3).unwrap(), &reviewed).is_err()
-        );
-        new["global_settings"]
-            .as_object_mut()
-            .unwrap()
-            .remove("max_tokens");
-        assert!(project_settings(&new, x3).is_err());
-        let mut missing_review = reviewed;
-        missing_review.volatile_exclusions = None;
-        assert!(compare_snapshots(&original, &original, &missing_review).is_err());
-    }
-    #[test]
     fn environment_cannot_hide_concurrency_override() {
         let mut env: BTreeMap<String, String> = ENV_NAMES
             .iter()
@@ -2501,42 +2810,89 @@ mod tests {
             },
             x2_launcher_private_comparison: true,
             existing_log_observation_review_reference: "synthetic-log-review".into(),
+            launch_scope: ReviewedLaunchScope {
+                review_reference: "synthetic-scope".into(),
+                source_review_reference: "synthetic-scope-source".into(),
+                allow_metadata_name_observation: true,
+                restore_home: "/fixture".into(),
+                runtime_directory: "/fixture/.omlx/cluster/runtime".into(),
+                manifest_prefix: "launch-".into(),
+                manifest_suffix: ".json".into(),
+                max_entries: 4096,
+            },
             x3: Some(ReviewedX3Input {
                 review_reference: "synthetic-protocol".into(),
                 credential: CredentialReference {
                     path: "/fixture/key-reference".into(),
                     json_pointer: None,
+                    allow_settings_api_key_projection: false,
                 },
                 login_key_field: "api_key".into(),
                 session_cookie_name: "session".into(),
-                concurrency_pointer: "/scheduler/max_concurrent_requests".into(),
-                settings_allowlist: Some(ReviewedSettingsAllowlist {
-                    source_review_reference: "synthetic-field-review".into(),
-                    coverage_review_reference: "synthetic-coverage-review".into(),
-                    fields: vec![
-                        ReviewedSettingField {
-                            json_pointer: "/global_settings/scheduler/max_concurrent_requests"
-                                .into(),
-                            value_type: ReviewedValueType::Integer,
-                        },
-                        ReviewedSettingField {
-                            json_pointer: "/global_settings/max_tokens".into(),
-                            value_type: ReviewedValueType::Integer,
-                        },
-                        ReviewedSettingField {
-                            json_pointer: "/models/0/settings/mode".into(),
-                            value_type: ReviewedValueType::Enum {
-                                values: vec!["a".into(), "b".into()],
-                            },
-                        },
-                    ],
-                }),
-            }),
-            volatile_exclusions: Some(ReviewedExclusions {
-                review_reference: "synthetic-exclusion-review".into(),
-                json_pointers: vec!["/global_settings/volatile".into()],
+                profile_catalog: fixture_profile_catalog(),
             }),
             residuals_review_reference: "synthetic-residual-review".into(),
+        }
+    }
+    fn fixture_profile_catalog() -> ProfileCatalog {
+        use crate::qualification_profile::{ComparisonMode, ProfileRule, ProfileShape};
+        fn rule(shape: ProfileShape) -> ProfileRule {
+            ProfileRule {
+                required: true,
+                comparison: ComparisonMode::Public,
+                shape,
+            }
+        }
+        fn object(fields: &[(&str, ProfileRule)]) -> ProfileRule {
+            rule(ProfileShape::Object {
+                fields: fields
+                    .iter()
+                    .map(|(key, value)| ((*key).into(), value.clone()))
+                    .collect(),
+            })
+        }
+        let boolean = || rule(ProfileShape::Boolean {});
+        let mut settings = object(&[("is_pinned", boolean()), ("is_default", boolean())]);
+        settings.required = false;
+        ProfileCatalog {
+            source_review_reference: "synthetic-source".into(),
+            coverage_review_reference: "synthetic-coverage".into(),
+            model_ids: vec!["fixture".into()],
+            virtual_model_id: None,
+            global_settings: object(&[
+                (
+                    "scheduler",
+                    object(&[("max_concurrent_requests", rule(ProfileShape::Integer {}))]),
+                ),
+                (
+                    "auth",
+                    object(&[
+                        ("api_key_set", boolean()),
+                        ("skip_api_key_verification", boolean()),
+                    ]),
+                ),
+                (
+                    "server",
+                    object(&[
+                        ("distributed_inference_active", boolean()),
+                        ("distributed_inference_enabled", boolean()),
+                    ]),
+                ),
+            ]),
+            model: object(&[
+                (
+                    "id",
+                    rule(ProfileShape::Enum {
+                        values: vec!["fixture".into()],
+                    }),
+                ),
+                ("pinned", boolean()),
+                ("is_default", boolean()),
+                ("settings", settings),
+                ("distributed", boolean()),
+                ("cluster", rule(ProfileShape::Null {})),
+            ]),
+            virtual_model: None,
         }
     }
     #[test]
@@ -2575,6 +2931,7 @@ mod tests {
             failures: BTreeMap::new(),
             fidelity_gate: GateReport {
                 fidelity_gate: GateStatus::Pass,
+                launch_scope: None,
                 checks: BTreeMap::new(),
                 reasons: Vec::new(),
             },
@@ -2631,6 +2988,102 @@ mod tests {
         fs::write(outside.path().join("opaque"), b"never-hash").unwrap();
         std::os::unix::fs::symlink(outside.path().join("opaque"), root.join("escape")).unwrap();
         assert!(manifest(&root).is_err());
+    }
+    #[test]
+    fn qualification_scope_failure_is_sticky_before_replacement() {
+        let dir = tempfile::tempdir().unwrap();
+        let home = fs::canonicalize(dir.path()).unwrap();
+        let mut reviewed = fixture_reviewed();
+        reviewed.launch_scope.restore_home = home.clone();
+        reviewed.launch_scope.runtime_directory = home.join(".omlx/cluster/runtime");
+        fs::create_dir_all(&reviewed.launch_scope.runtime_directory).unwrap();
+        let snapshot = ProfileSnapshot::capture(json!({
+            "global_settings": {
+                "scheduler": {"max_concurrent_requests": 8},
+                "auth": {"api_key_set": true, "skip_api_key_verification": false},
+                "server": {"distributed_inference_active": false, "distributed_inference_enabled": false}
+            },
+            "models": {"models": [{"id": "fixture", "pinned": false, "is_default": true,
+                "distributed": false, "cluster": null,
+                "settings": {"is_pinned": false, "is_default": true}}]}
+        }), &reviewed.x3.as_ref().unwrap().profile_catalog).unwrap();
+        let candidate = reviewed
+            .launch_scope
+            .runtime_directory
+            .join("launch-SYNTHETIC-PRIVATE.json");
+        let mut state = QualificationState {
+            plan: fixture_plan(&home),
+            gate: GateObservations {
+                plan_sha256: "0".repeat(64),
+                transaction_sha256: "0".repeat(64),
+                old_identity: reviewed.old_identity,
+                old_snapshot: snapshot,
+                manifest: BundleManifest {
+                    entries: BTreeMap::new(),
+                    revision: String::new(),
+                },
+                report: GateReport {
+                    fidelity_gate: GateStatus::Pass,
+                    ..GateReport::default()
+                },
+                environment_comparison: EnvironmentComparison {
+                    names: BTreeSet::new(),
+                    launcher_values_equal: BTreeMap::new(),
+                    additional_profile_names: false,
+                },
+                comparison_fields: Vec::new(),
+                volatile_fields: Vec::new(),
+                coverage_review_reference: "synthetic".into(),
+                launch_scope: reviewed.launch_scope,
+            },
+            references: ConfigReferences {
+                files: BTreeMap::new(),
+                side_effect_entry_names: BTreeSet::new(),
+            },
+            log_offset: None,
+            checks: BTreeMap::new(),
+            failures: BTreeMap::new(),
+            before_attempted: false,
+            after_attempted: false,
+        };
+        let deadline = Instant::now() + Duration::from_secs(5);
+        assert!(
+            state
+                .check_named_scope_absence(deadline, &mut || Ok(()))
+                .unwrap()
+                .qualifies()
+        );
+        fs::write(&candidate, b"NEVER-READ-MANIFEST").unwrap();
+        let error = state
+            .check_named_scope_absence(deadline, &mut || Ok(()))
+            .unwrap_err()
+            .to_string();
+        assert!(!error.contains("SYNTHETIC-PRIVATE") && !error.contains("NEVER-READ"));
+        assert_eq!(state.gate.report.fidelity_gate, GateStatus::Deny);
+        assert_eq!(
+            state
+                .gate
+                .report
+                .launch_scope
+                .as_ref()
+                .unwrap()
+                .candidate_count,
+            Some(1)
+        );
+        fs::remove_file(candidate).unwrap();
+        let mut called = false;
+        assert!(
+            state
+                .check_named_scope_absence(deadline, &mut || {
+                    called = true;
+                    Ok(())
+                })
+                .is_err()
+        );
+        assert!(
+            !called,
+            "known unsupported scope must not become an implicit retry"
+        );
     }
     #[test]
     fn cloned_permissions_cannot_repeat_restricted_observations() {

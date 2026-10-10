@@ -519,8 +519,14 @@ impl ServiceHandle {
                 let mut verify = |identity: &ProcessIdentity| {
                     verify_backend_listener(identity, deadline, recovery)
                 };
-                let gate =
-                    restore_qualification::capture_gate(plan, grant, deadline, tick, &mut verify)?;
+                let gate = restore_qualification::capture_gate(
+                    plan,
+                    grant,
+                    &launcher.environment,
+                    deadline,
+                    tick,
+                    &mut verify,
+                )?;
                 qualification = Some(QualificationState::preflight_authorized(
                     plan,
                     &launcher.environment,
@@ -555,6 +561,18 @@ impl ServiceHandle {
             launch_record: None,
             actors: recovery.observations(),
         })
+    }
+    pub(crate) fn check_named_scope_absence(
+        &mut self,
+        deadline: Instant,
+        tick: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<()> {
+        if let Some(qualification) = self.qualification.as_mut() {
+            let observation = qualification.check_named_scope_absence(deadline, tick)?;
+            self.evidence
+                .push(format!("SC2 {}", serde_json::to_string(&observation)?));
+        }
+        Ok(())
     }
     pub fn stop(
         &mut self,
@@ -835,6 +853,7 @@ impl ServiceHandle {
                 let launch_end = cap(deadline, Duration::from_secs(60));
                 let old_executable = self.root.executable.clone();
                 self.launch_record = Some(launcher.clone());
+                qualification.check_named_scope_absence(launch_end, tick)?;
                 self.root = launch_detached(launcher, &old_executable, launch_end, tick, recovery)?;
                 let health = wait_health(*health_address, launch_end, tick)?;
                 let root = process_scope::verify_identity(&self.root)?;

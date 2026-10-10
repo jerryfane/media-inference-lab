@@ -741,8 +741,13 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                 .clock
                 .phase_deadline(Duration::from_millis(budget));
             let mut services = std::mem::take(&mut runtime.borrow_mut().services);
-            let result =
-                services[index].stop(deadline, &mut || runtime.borrow_mut().tick(), &mut recovery);
+            let result = (|| {
+                for service in &mut services {
+                    service
+                        .check_named_scope_absence(deadline, &mut || runtime.borrow_mut().tick())?;
+                }
+                services[index].stop(deadline, &mut || runtime.borrow_mut().tick(), &mut recovery)
+            })();
             runtime.borrow_mut().services = services;
             let observation = result?;
             runtime.borrow_mut().event(label, observation)?;
@@ -923,11 +928,18 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                     .clock
                     .phase_deadline(Duration::from_millis(budget));
                 let mut services = std::mem::take(&mut runtime.borrow_mut().services);
-                let result = services[index].restore(
-                    deadline,
-                    &mut || runtime.borrow_mut().recovery_tick(),
-                    &mut recovery,
-                );
+                let result = (|| {
+                    for service in &mut services {
+                        service.check_named_scope_absence(deadline, &mut || {
+                            runtime.borrow_mut().recovery_tick()
+                        })?;
+                    }
+                    services[index].restore(
+                        deadline,
+                        &mut || runtime.borrow_mut().recovery_tick(),
+                        &mut recovery,
+                    )
+                })();
                 runtime.borrow_mut().services = services;
                 let observation = result?;
                 ensure!(

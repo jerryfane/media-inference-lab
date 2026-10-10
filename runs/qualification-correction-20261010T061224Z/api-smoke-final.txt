@@ -1,0 +1,45 @@
+$ /Users/jerry/Desktop/repos/media-inference-lab/target/debug/examples/qualification_correction_smoke smoke /Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/profile-catalog.json /Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/qualification-plan.json
+{
+  "baseline_predicates": {
+    "ps1": true,
+    "ps2": true,
+    "ps3": true,
+    "ps4": true,
+    "ps5": true,
+    "ps6": true
+  },
+  "checks": {
+    "approved_sensitive_fields_and_persisted_subkey_metadata": true,
+    "array_order_and_optional_settings_presence": true,
+    "by_id_and_explicit_volatility": true,
+    "every_enrolled_model_settings": true,
+    "ps1_through_ps5_denials": true,
+    "sc1_all_distributed_denials": true,
+    "strict_shapes_and_all_three_source_corrections": true,
+    "virtual_literal_shapes_and_real_count": true
+  },
+  "compared_labels": 806,
+  "lease_acquired": false,
+  "live_collectors_invoked": false,
+  "service_controls_invoked": false,
+  "summary": {
+    "model_count": 5,
+    "model_ids": [
+      "Qwen3.5-0.8B-MLX-4bit",
+      "Qwen3.5-35B-A3B-4bit",
+      "Qwen3.8-Flash-Next-MLX-oQ4-MTP",
+      "Qwen3.8-Flash-Next-oQ5e-mtp",
+      "Vontra--Qwen3.8-Flash-Next-MLX-4bit-MTP"
+    ],
+    "settings_present": {
+      "Qwen3.5-0.8B-MLX-4bit": true,
+      "Qwen3.5-35B-A3B-4bit": true,
+      "Qwen3.8-Flash-Next-MLX-oQ4-MTP": true,
+      "Qwen3.8-Flash-Next-oQ5e-mtp": true,
+      "Vontra--Qwen3.8-Flash-Next-MLX-4bit-MTP": true
+    },
+    "virtual_model_present": false
+  },
+  "synthetic_cpu_only": true,
+  "volatile_labels": 85
+}

@@ -1,0 +1,32 @@
+$ cargo test --offline --lib qualification_profile::tests
+
+running 10 tests
+test qualification_profile::tests::strict_shapes_reject_unknown_missing_and_wrong_types_at_every_depth ... ok
+test qualification_profile::tests::catalog_bounds_and_capture_binding_prevent_reclassification ... FAILED
+test qualification_profile::tests::private_changes_in_every_model_are_reported_without_values_or_dynamic_keys ... ok
+test qualification_profile::tests::object_maps_are_typed_private_and_never_export_dynamic_keys ... ok
+test qualification_profile::tests::virtual_inventory_requires_exact_identity_discriminator_and_null_types ... ok
+test qualification_profile::tests::inventory_is_canonical_by_id_and_settings_presence_is_compared ... ok
+test qualification_profile::tests::optional_private_absent_null_and_value_are_distinct ... ok
+test qualification_profile::tests::prestop_predicates_each_fail_closed ... ok
+test qualification_profile::tests::array_order_cardinality_and_nested_volatility_are_independent ... ok
+test qualification_profile::tests::named_scope_guard_denies_distributed_state_and_missing_or_wrong_types ... ok
+
+failures:
+
+---- qualification_profile::tests::catalog_bounds_and_capture_binding_prevent_reclassification stdout ----
+
+thread 'qualification_profile::tests::catalog_bounds_and_capture_binding_prevent_reclassification' (73339227) panicked at src/qualification_profile.rs:1461:9:
+assertion failed: serde_json::from_value::<ProfileShape>(malformed).is_err()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    qualification_profile::tests::catalog_bounds_and_capture_binding_prevent_reclassification
+
+test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 59 filtered out; finished in 0.01s
+
+   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.80s
+     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-f2e656554c1e4b94)
+error: test failed, to rerun pass `--lib`

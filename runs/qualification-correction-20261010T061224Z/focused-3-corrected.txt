@@ -1,0 +1,24 @@
+$ cargo test --offline --lib qualification_scope::tests
+
+running 3 tests
+test qualification_scope::tests::scope_permissions_path_binding_types_and_symlinks_deny ... ok
+test qualification_scope::tests::scope_missing_empty_and_source_exact_candidate_grammar ... ok
+test qualification_scope::tests::scope_entry_bound_malformed_names_deadline_and_races_deny ... FAILED
+
+failures:
+
+---- qualification_scope::tests::scope_entry_bound_malformed_names_deadline_and_races_deny stdout ----
+
+thread 'qualification_scope::tests::scope_entry_bound_malformed_names_deadline_and_races_deny' (73363234) panicked at src/qualification_scope.rs:382:36:
+called `Result::unwrap()` on an `Err` value: Os { code: 92, kind: Uncategorized, message: "Illegal byte sequence" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    qualification_scope::tests::scope_entry_bound_malformed_names_deadline_and_races_deny
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 66 filtered out; finished in 0.26s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-f2e656554c1e4b94)
+error: test failed, to rerun pass `--lib`
