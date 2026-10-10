@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "transaction_id": "cpu-1791647217667-3671",
+  "purpose": "cpu",
+  "evidence_root": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected/cpu-1791647217667-3671",
+  "lease_path": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected/.cpu-maintenance.lock",
+  "guardian_sha256": "d10d8a65a62d14590e5c68ae4c0c97cff60de624ec0194e8ab855e6249f7385f",
+  "budgets": {
+    "arming_ms": 3000,
+    "studio_stop_ms": 2000,
+    "omlx_stop_ms": 2000,
+    "prelaunch_ms": 1000,
+    "experiment_ms": 6000,
+    "cleanup_ms": 2000,
+    "omlx_restore_ms": 3000,
+    "studio_restore_ms": 2000,
+    "recovery_ms": 3000,
+    "total_ms": 30000
+  },
+  "services": [
+    {
+      "kind": "owned_cpu",
+      "role": "studio",
+      "command": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected",
+        "environment": {}
+      },
+      "restore_command": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected",
+        "environment": {}
+      },
+      "gui_command": null
+    },
+    {
+      "kind": "omlx_absent",
+      "binding": {
+        "kind": "cpu",
+        "probe": {
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "args": [
+            "maintenance-participant",
+            "--mode",
+            "absence-probe",
+            "--duration-ms",
+            "1"
+          ],
+          "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected",
+          "environment": {}
+        },
+        "executable_root": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected/absence-bin"
+      }
+    }
+  ],
+  "experiment": {
+    "kind": "cpu",
+    "command": {
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "args": [
+        "maintenance-participant",
+        "--mode",
+        "hold",
+        "--duration-ms",
+        "5000"
+      ],
+      "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected",
+      "environment": {}
+    }
+  },
+  "reviewed_permissions": null
+}

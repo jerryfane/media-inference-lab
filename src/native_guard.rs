@@ -207,8 +207,11 @@ impl ScopeAuthority {
                 RecoveryControl::deferred(Rc::clone(&recovery_budget), &mut recovery_tick);
             match service.observe_inhibited(deadline, &mut active, &mut recovery) {
                 Ok(observation) => {
-                    if !observation.inhibited || observation.failure.is_some() {
-                        reasons.push(format!("{:?} inhibition is unqualified", observation.role));
+                    let admitted_absence = observation.absence.as_ref().is_some_and(|absence| {
+                        matches!(absence.state, crate::service_lifecycle::AbsenceState::Absent)
+                    });
+                    if (!observation.inhibited && !admitted_absence) || observation.failure.is_some() {
+                        reasons.push(format!("{:?} scope admission is unqualified", observation.role));
                     }
                     observations.push(observation);
                 }

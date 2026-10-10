@@ -7,7 +7,7 @@ use crate::{
     restore_qualification::{AuthorizedPermissions, ReviewedPermissionInput},
     service_lifecycle::{
         RecoveryBudget, RecoveryControl, ServiceEnrollmentFailure, ServiceHandle, ServiceRole,
-        ServiceSpec,
+        ServiceSpec, AbsenceBinding,
     },
 };
 use anyhow::{Context, Result, bail, ensure};
@@ -268,6 +268,12 @@ impl Transaction {
                         if let Some(gui) = gui_command {
                             validate_cpu_command(gui)?;
                         }
+                    } else if let ServiceSpec::OmlxAbsent { binding: AbsenceBinding::Cpu { probe, .. } } = service {
+                        validate_cpu_command(probe)?;
+                        ensure!(
+                            probe.args == ["maintenance-participant", "--mode", "absence-probe", "--duration-ms", "1"],
+                            "CPU absence requires the bounded metadata fixture probe"
+                        );
                     } else {
                         bail!("CPU transaction contains a live service");
                     }
@@ -280,11 +286,20 @@ impl Transaction {
                     self.budgets.experiment_ms == plan.command.timeout_ms,
                     "native phase and invocation deadlines differ"
                 );
-                let reviewed=self.reviewed_permissions.as_ref().context("native activation denied before effects: explicit reviewed X2/X3 permission absent")?;
-                for service in &self.services {
-                    if let ServiceSpec::Omlx { qualification, .. } = service {
-                        qualification.validate_reviewed_permissions(Some(reviewed))?;
-                    }
+                if let ServiceSpec::Omlx { qualification, .. } = &self.services[1] {
+                    let reviewed = self.reviewed_permissions.as_ref().context(
+                        "native activation denied before effects: explicit reviewed X2/X3 permission absent"
+                    )?;
+                    qualification.validate_reviewed_permissions(Some(reviewed))?;
+                } else {
+                    ensure!(
+                        matches!(self.services[1], ServiceSpec::OmlxAbsent { binding: AbsenceBinding::Native }),
+                        "native transaction requires explicit running or absent oMLX scope"
+                    );
+                    ensure!(
+                        self.reviewed_permissions.is_none(),
+                        "absent oMLX cannot carry private running-service permissions"
+                    );
                 }
             }
             _ => bail!("experiment purpose mismatch"),
@@ -295,11 +310,7 @@ impl Transaction {
 fn validate_cpu_command(command: &CommandSpec) -> Result<()> {
     command.validate()?;
     ensure!(
-        command.executable == std::env::current_exe()?
-            && command
-                .args
-                .first()
-                .is_some_and(|arg| arg == "maintenance-participant")
+        command.args.first().is_some_and(|arg| arg == "maintenance-participant")
             && command.environment.is_empty(),
         "CPU scope only permits this executable's finite CPU participant, with empty environment"
     );
@@ -349,6 +360,25 @@ pub fn validate_authorization(
 /// Validate all no-effect gates before creating a guardian, lease, service or capture.
 fn guardian_environment(transaction: &Transaction) -> Result<BTreeMap<String, String>> {
     let mut environment = BTreeMap::new();
+    if transaction.purpose == ScopePurpose::Cpu {
+        let executable = std::env::current_exe()?;
+        let check = |command: &CommandSpec| -> Result<()> {
+            ensure!(command.executable == executable, "CPU participant executable differs from guardian");
+            Ok(())
+        };
+        for service in &transaction.services {
+            match service {
+                ServiceSpec::OwnedCpu { command, restore_command, gui_command, .. } => {
+                    check(command)?;
+                    check(restore_command)?;
+                    if let Some(gui) = gui_command { check(gui)?; }
+                }
+                ServiceSpec::OmlxAbsent { binding: AbsenceBinding::Cpu { probe, .. } } => check(probe)?,
+                _ => bail!("CPU service binding mismatch"),
+            }
+        }
+        if let Experiment::Cpu { command } = &transaction.experiment { check(command)?; }
+    }
     if transaction.purpose == ScopePurpose::Native {
         // Only after exact authorization. Read these four names from OUR process,
         // never another process's environment or an inherited arbitrary map.
@@ -359,13 +389,12 @@ fn guardian_environment(transaction: &Transaction) -> Result<BTreeMap<String, St
             environment.insert(key.into(), value);
         }
         environment.insert("PATH".into(), "/usr/bin:/bin:/usr/sbin:/sbin".into());
-        let ServiceSpec::Omlx { launcher, .. } = &transaction.services[1] else {
-            bail!("native oMLX specification absent");
-        };
-        ensure!(
-            environment == launcher.environment,
-            "PF3 constructed environment differs from exact reviewed launch plan"
-        );
+        if let ServiceSpec::Omlx { launcher, .. } = &transaction.services[1] {
+            ensure!(
+                environment == launcher.environment,
+                "PF3 constructed environment differs from exact reviewed launch plan"
+            );
+        }
     }
     Ok(environment)
 }
@@ -723,6 +752,10 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
             &mut recovery,
         )?;
         runtime.borrow_mut().services.push(omlx);
+        if runtime.borrow().services[0].is_absent_scope() {
+            let observation = runtime.borrow().services[0].last_observation();
+            runtime.borrow_mut().event("omlx_absence_admission", observation)?;
+        }
         let studio = ServiceHandle::enroll(
             &transaction.services[0],
             transaction.purpose,
@@ -745,11 +778,17 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                 for service in &mut services {
                     service
                         .check_named_scope_absence(deadline, &mut || runtime.borrow_mut().tick())?;
+                    service.observe_absent_scope(deadline, &mut || runtime.borrow_mut().tick(), &mut recovery)?;
                 }
-                services[index].stop(deadline, &mut || runtime.borrow_mut().tick(), &mut recovery)
+                if services[index].is_absent_scope() {
+                    Ok(services[index].last_observation())
+                } else {
+                    services[index].stop(deadline, &mut || runtime.borrow_mut().tick(), &mut recovery)
+                }
             })();
             runtime.borrow_mut().services = services;
             let observation = result?;
+            let label = if observation.absence.is_some() { "omlx_absence_prelaunch" } else { label };
             runtime.borrow_mut().event(label, observation)?;
         }
         let prelaunch = runtime
@@ -844,6 +883,7 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
             }
             Experiment::Native { plan } => {
                 plan.verify_files()?;
+                runtime.borrow_mut().last_scope_observation = None;
                 runtime.borrow_mut().active_tick()?;
                 ensure!(
                     Instant::now() < prelaunch,
@@ -929,10 +969,17 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                     .phase_deadline(Duration::from_millis(budget));
                 let mut services = std::mem::take(&mut runtime.borrow_mut().services);
                 let result = (|| {
+                    // Absence failures revoke experiment authority, never the
+                    // separately authorized recovery of our interrupted Studio.
+                    if services[index].is_absent_scope() {
+                        return Ok(services[index].last_observation());
+                    }
                     for service in &mut services {
-                        service.check_named_scope_absence(deadline, &mut || {
-                            runtime.borrow_mut().recovery_tick()
-                        })?;
+                        if !service.is_absent_scope() {
+                            service.check_named_scope_absence(deadline, &mut || {
+                                runtime.borrow_mut().recovery_tick()
+                            })?;
+                        }
                     }
                     services[index].restore(
                         deadline,
@@ -943,9 +990,10 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                 runtime.borrow_mut().services = services;
                 let observation = result?;
                 ensure!(
-                    observation.restored && observation.failure.is_none(),
+                    observation.absence.is_some() || (observation.restored && observation.failure.is_none()),
                     "restore unqualified; no next callback"
                 );
+                let label = if observation.absence.is_some() { "omlx_absence_recovery_no_control" } else { label };
                 runtime.borrow_mut().event(label, observation)?;
             }
             Ok(())
@@ -969,12 +1017,27 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
         }
         runtime.borrow_mut().services = services;
     }
+    // Final evidence remains independent of recovery and accounting. In
+    // particular an appearing foreign service is never stopped or "restored".
+    let mut final_absence_failure = None;
+    {
+        let deadline = runtime.borrow().clock.phase_deadline(Duration::from_millis(500));
+        let mut services = std::mem::take(&mut runtime.borrow_mut().services);
+        for service in &mut services {
+            if let Err(error) = service.observe_absent_scope(
+                deadline, &mut || runtime.borrow_mut().recovery_tick(), &mut recovery,
+            ) {
+                final_absence_failure = Some(format!("{error:#}"));
+            }
+        }
+        runtime.borrow_mut().services = services;
+    }
     if !recovery.complete() {
         recovery_failure.get_or_insert_with(|| {
             "service helper accounting remains incomplete; no retry or budget extension".into()
         });
     }
-    let success = outcome.is_ok() && restored && recovery_failure.is_none();
+    let success = outcome.is_ok() && restored && recovery_failure.is_none() && final_absence_failure.is_none();
     let service_outcomes: Vec<_> = runtime
         .borrow()
         .services
@@ -993,6 +1056,7 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
         "success":success,"experiment_failure":outcome.err().map(|error|format!("{error:#}")),
         "creation_attempted":creation_attempted,"settlement":settlement,"restored":restored,
         "recovery_failure":recovery_failure,"capture_directory":capture_directory,
+        "final_absence_failure":final_absence_failure,
         "service_enrollment_failure":enrollment_failure,
         "service_process_dispositions":recovery.observations(),
         "service_accounting_complete":recovery.complete(),
@@ -1030,6 +1094,33 @@ pub fn participant(mode: &str, duration_ms: u64) -> Result<bool> {
         "participant duration outside finite CPU limit"
     );
     match mode {
+        "absence-probe" => {
+            let path = std::env::current_dir()?.join("absence-candidates.json");
+            match fs::symlink_metadata(&path) {
+                Ok(metadata) => ensure!(metadata.len() <= 65_536, "CPU candidate input exceeds bound"),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+                Err(error) => return Err(error).context("CPU candidate probe unavailable"),
+            }
+            let candidates: Vec<ProcessIdentity> = read_private(&path)?;
+            ensure!(candidates.len() <= 16, "CPU candidate bound exceeded");
+            let prefix = std::env::current_dir()?.join("absence-bin");
+            let mut seen = std::collections::BTreeSet::new();
+            let mut present = Vec::new();
+            for expected in candidates {
+                ensure!(seen.insert(expected.pid), "ambiguous CPU candidate identity");
+                if let Some(current) = process_scope::observe(expected.pid)? {
+                    ensure!(current.same_process(&expected), "CPU candidate PID reused");
+                    ensure!(process_scope::executable_matches_prefix(expected.pid, &prefix)?, "CPU candidate executable binding differs");
+                    present.push(current.pid);
+                }
+            }
+            for pid in &present { println!("{pid}"); }
+            return Ok(!present.is_empty());
+        }
+        "absence-appear" => {
+            private_json(&std::env::current_dir()?.join("absence-ready.json"), &true)?;
+            thread::sleep(Duration::from_millis(duration_ms));
+        }
         "service" | "hold" => thread::sleep(Duration::from_millis(duration_ms)),
         "fail" => return Ok(false),
         "ignore-term" => {
@@ -1097,6 +1188,13 @@ pub fn run_cpu(root: &Path, scenario: &str) -> Result<PathBuf> {
                 | "stale"
                 | "arming-deadline"
                 | "restore-launch-deadline"
+                | "absence-clean"
+                | "absence-presence"
+                | "absence-late"
+                | "absence-ambiguous"
+                | "absence-probe-error"
+                | "absence-reused"
+                | "absence-controller-loss"
         ),
         "unknown CPU lifecycle scenario"
     );
@@ -1123,7 +1221,8 @@ pub fn run_cpu(root: &Path, scenario: &str) -> Result<PathBuf> {
     };
     let id = format!("cpu-{}-{}", native_guard::unix_ms()?, std::process::id());
     let (mode, duration, experiment_ms, cleanup_ms) = match scenario {
-        "controller-loss" | "stale" => ("hold", 5000, 6000, 2000),
+        "controller-loss" | "stale" | "absence-controller-loss" => ("hold", 5000, 6000, 2000),
+        "absence-late" => ("absence-appear", 5000, 6000, 2000),
         "retained" => ("retained", 1500, 3000, 2000),
         "escaped" => ("escaped", 1500, 3000, 2000),
         "deadline" => ("hold", 2000, 100, 2000),
@@ -1131,7 +1230,7 @@ pub fn run_cpu(root: &Path, scenario: &str) -> Result<PathBuf> {
         _ => ("compute", 200, 3000, 2000),
     };
     let service = command("service", 30_000);
-    let transaction = Transaction {
+    let mut transaction = Transaction {
         schema_version: 1,
         transaction_id: id.clone(),
         purpose: ScopePurpose::Cpu,
@@ -1181,6 +1280,15 @@ pub fn run_cpu(root: &Path, scenario: &str) -> Result<PathBuf> {
         },
         reviewed_permissions: None,
     };
+    let absent = scenario.starts_with("absence-");
+    if absent {
+        transaction.services[1] = ServiceSpec::OmlxAbsent {
+            binding: AbsenceBinding::Cpu {
+                probe: command("absence-probe", 1),
+                executable_root: root.join("absence-bin"),
+            },
+        };
+    }
     let now = native_guard::unix_ms()?;
     let authorization = Authorization {
         schema_version: 1,
@@ -1195,5 +1303,144 @@ pub fn run_cpu(root: &Path, scenario: &str) -> Result<PathBuf> {
         cold_restore_approved: true,
         interrupted_work_loss_approved: true,
     };
-    run_controller(transaction, authorization)
+    let stop = Arc::new(AtomicBool::new(false));
+    let fixture = if matches!(scenario, "absence-presence" | "absence-late" | "absence-ambiguous" | "absence-reused") {
+        Some(cpu_absence_actor(&root, scenario, Arc::clone(&stop))?)
+    } else {
+        if scenario == "absence-probe-error" {
+            private_json(&root.join("absence-candidates.json"), &serde_json::json!({"invalid":"candidate list"}))?;
+        }
+        None
+    };
+    let result = run_controller(transaction, authorization);
+    stop.store(true, Ordering::Relaxed);
+    if let Some(fixture) = fixture {
+        fixture.finish()?;
+    }
+    result
+}
+
+struct CpuAbsenceActor {
+    stop: Arc<AtomicBool>,
+    worker: Option<thread::JoinHandle<Result<serde_json::Value>>>,
+}
+impl CpuAbsenceActor {
+    fn finish(mut self) -> Result<serde_json::Value> {
+        self.stop.store(true, Ordering::Relaxed);
+        self.worker.take().unwrap().join()
+            .map_err(|_| anyhow::anyhow!("CPU fixture owner panicked"))?
+    }
+}
+impl Drop for CpuAbsenceActor {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(worker) = self.worker.take() {
+            let _ = worker.join();
+        }
+    }
+}
+
+/// This fixture actor belongs to the CLI driver, NOT the guardian transaction.
+/// It has no oMLX title/listener and is detected solely by its private executable
+/// binding. Only this owner settles it, after checking guardian non-interference.
+fn cpu_absence_actor(
+    root: &Path,
+    scenario: &str,
+    stop: Arc<AtomicBool>,
+) -> Result<CpuAbsenceActor> {
+    let directory = root.join("absence-bin");
+    fs::DirBuilder::new().mode(0o700).create(&directory)?;
+    let executable = directory.join("startup-actor");
+    fs::copy("/bin/sleep", &executable)?;
+    // macOS can kill an Apple platform binary copied outside its trusted path.
+    // Ad-hoc sign only our private copy; never alter the system executable.
+    let signing_deadline = Instant::now() + Duration::from_secs(2);
+    let attempt = OwnedProcess::spawn_with_deadline(&CommandSpec {
+        executable: "/usr/bin/codesign".into(),
+        args: vec!["--force".into(), "--sign".into(), "-".into(), executable.to_string_lossy().into_owned()],
+        cwd: root.to_owned(),
+        environment: BTreeMap::new(),
+    }, signing_deadline, &mut || Ok(()))?;
+    let mut signer = attempt.process;
+    let signing = (|| -> Result<()> {
+        if let Some(failure) = attempt.failure { bail!(failure); }
+        while !signer.exited_unreaped()? {
+            ensure!(Instant::now() < signing_deadline, "CPU fixture signing timed out");
+            thread::sleep(POLL);
+        }
+        Ok(())
+    })();
+    let signing_settlement = signer.settle(
+        Instant::now() + Duration::from_secs(2), Duration::from_millis(100), &mut || Ok(()),
+    )?;
+    private_json(&root.join("absence-fixture-preparation.json"), &serde_json::json!({
+        "kind":"ad_hoc_sign_owned_sleep_copy", "pid":signer.pid(),
+        "executable":executable, "failure":signing.as_ref().err().map(|error|format!("{error:#}")),
+        "settlement":signing_settlement,
+    }))?;
+    signing?;
+    ensure!(
+        signing_settlement.complete && signing_settlement.exit_code == Some(0),
+        "CPU fixture signing failed"
+    );
+    let root = root.to_owned();
+    let scenario = scenario.to_owned();
+    let (ready, waiting) = std::sync::mpsc::sync_channel(1);
+    let worker_stop = Arc::clone(&stop);
+    let worker = thread::spawn(move || -> Result<serde_json::Value> {
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let late = scenario == "absence-late";
+        if late {
+            ready.send(()).map_err(|_| anyhow::anyhow!("CPU fixture receiver lost"))?;
+            while !root.join("absence-ready.json").try_exists()? {
+                if worker_stop.load(Ordering::Relaxed) {
+                    let observation = serde_json::json!({"created":false});
+                    private_json(&root.join("absence-fixture-settlement.json"), &observation)?;
+                    return Ok(observation);
+                }
+                ensure!(Instant::now() < deadline, "CPU appearance fixture timed out");
+                thread::sleep(POLL);
+            }
+        }
+        let command = CommandSpec {
+            executable, args: vec!["25".into()], cwd: root.clone(), environment: BTreeMap::new(),
+        };
+        let attempt = OwnedProcess::spawn_with_deadline(&command, deadline, &mut || Ok(()))?;
+        let mut actor = attempt.process;
+        let execution = (|| -> Result<ProcessIdentity> {
+            if let Some(failure) = attempt.failure { bail!(failure); }
+            let identity = actor.identity()?;
+            let mut enrolled = identity.clone();
+            if scenario == "absence-reused" { enrolled.start_seconds = enrolled.start_seconds.saturating_sub(1); }
+            let candidates = if scenario == "absence-ambiguous" {
+                vec![enrolled.clone(), enrolled]
+            } else { vec![enrolled] };
+            private_json(&root.join("absence-candidates.json"), &candidates)?;
+            if !late { ready.send(()).map_err(|_| anyhow::anyhow!("CPU fixture receiver lost"))?; }
+            while !worker_stop.load(Ordering::Relaxed) {
+                ensure!(Instant::now() < deadline, "CPU fixture owner timed out");
+                thread::sleep(POLL);
+            }
+            let current = process_scope::verify_identity(&identity)?;
+            ensure!(current.state == process_scope::ProcessState::Running, "guardian interfered with non-owned fixture");
+            Ok(identity)
+        })();
+        let settlement = actor.settle(Instant::now() + Duration::from_secs(2), Duration::from_millis(100), &mut || Ok(()))?;
+        let observation = serde_json::json!({
+            "created":true, "pid":actor.pid(), "identity":execution.as_ref().ok(),
+            "uncontrolled_by_guardian":execution.is_ok(), "settlement":settlement,
+            "failure":execution.as_ref().err().map(|error|format!("{error:#}")),
+        });
+        private_json(&root.join("absence-fixture-settlement.json"), &observation)?;
+        execution?;
+        ensure!(settlement.complete, "CPU fixture settlement incomplete");
+        Ok(observation)
+    });
+    let fixture = CpuAbsenceActor { stop: Arc::clone(&stop), worker: Some(worker) };
+    if waiting.recv_timeout(Duration::from_secs(3)).is_err() {
+        stop.store(true, Ordering::Relaxed);
+        let detail = fixture.finish();
+        bail!("CPU fixture enrollment failed: {detail:?}");
+    }
+    Ok(fixture)
 }

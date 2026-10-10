@@ -23,6 +23,30 @@ pub enum ServiceRole {
     Omlx,
 }
 
+/// The native binding has fixed names/port, not user-selected exclusions.
+/// CPU probes are explicit fixtures and can never authorize native work.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum AbsenceBinding {
+    Native,
+    Cpu { probe: CommandSpec, executable_root: PathBuf },
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AbsenceState {
+    Absent,
+    Present,
+    Unavailable,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct AbsenceObservation {
+    pub state: AbsenceState,
+    pub private_qualification: &'static str,
+    pub scope: &'static str,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ServiceSpec {
@@ -45,18 +69,32 @@ pub enum ServiceSpec {
         health_address: SocketAddr,
         qualification: Box<QualificationPlan>,
     },
+    OmlxAbsent {
+        binding: AbsenceBinding,
+    },
 }
 impl ServiceSpec {
     pub fn role(&self) -> ServiceRole {
         match self {
             Self::OwnedCpu { role, .. } => *role,
             Self::StudioLaunchd { .. } => ServiceRole::Studio,
-            Self::Omlx { .. } => ServiceRole::Omlx,
+            Self::Omlx { .. } | Self::OmlxAbsent { .. } => ServiceRole::Omlx,
         }
     }
     /// Pure validation: never opens a path, probes a PID, or reads the environment.
     pub fn validate(&self, purpose: ScopePurpose) -> Result<()> {
         match self {
+            Self::OmlxAbsent { binding } => match binding {
+                AbsenceBinding::Native => ensure!(
+                    purpose == ScopePurpose::Native,
+                    "native absence probes denied in CPU scope"
+                ),
+                AbsenceBinding::Cpu { probe, executable_root } => {
+                    ensure!(purpose == ScopePurpose::Cpu, "CPU absence cannot authorize native work");
+                    probe.validate()?;
+                    ensure!(*executable_root == probe.cwd.join("absence-bin"), "CPU executable binding must be fixture-local");
+                }
+            },
             Self::OwnedCpu {
                 role,
                 command,
@@ -353,13 +391,14 @@ pub struct ServiceObservation {
     pub evidence: Vec<String>,
     pub launch_record: Option<CommandSpec>,
     pub actors: Vec<ActorDisposition>,
+    pub absence: Option<AbsenceObservation>,
 }
 
 pub struct ServiceHandle {
     spec: ServiceSpec,
     cpu: Option<OwnedProcess>,
     cpu_gui: Option<OwnedProcess>,
-    root: ProcessIdentity,
+    root: Option<ProcessIdentity>,
     gui: Option<ProcessIdentity>,
     qualification: Option<QualificationState>,
     permissions: Option<AuthorizedPermissions>,
@@ -371,8 +410,95 @@ pub struct ServiceHandle {
     evidence: Vec<String>,
     launch_record: Option<CommandSpec>,
     actors: Vec<ActorDisposition>,
+    absence: Option<AbsenceObservation>,
 }
 impl ServiceHandle {
+    pub(crate) fn is_absent_scope(&self) -> bool {
+        matches!(self.spec, ServiceSpec::OmlxAbsent { .. })
+    }
+
+    /// Observation only, including after revocation. A fresh final absence never
+    /// clears the sticky failure and never grants control of an appearing actor.
+    pub(crate) fn observe_absent_scope(
+        &mut self,
+        deadline: Instant,
+        tick: &mut dyn FnMut() -> Result<()>,
+        recovery: &mut RecoveryControl<'_>,
+    ) -> Result<()> {
+        if self.is_absent_scope() {
+            self.observe_absence(deadline, tick, recovery)?;
+        }
+        Ok(())
+    }
+
+    fn observe_absence(
+        &mut self,
+        deadline: Instant,
+        tick: &mut dyn FnMut() -> Result<()>,
+        recovery: &mut RecoveryControl<'_>,
+    ) -> Result<()> {
+        let ServiceSpec::OmlxAbsent { binding } = &self.spec else {
+            anyhow::bail!("absence observation requires explicit absence scope");
+        };
+        let deadline = cap(deadline, Duration::from_millis(500));
+        let reading = (|| -> Result<AbsenceState> {
+            check(deadline, tick)?;
+            let state = match binding {
+                AbsenceBinding::Native => {
+                    if !process_scope::named_executable_absent(
+                        std::path::Path::new("/Applications/oMLX.app/Contents"),
+                        deadline, tick,
+                    )? {
+                        check(deadline, tick)?;
+                        return Ok(AbsenceState::Present);
+                    }
+                    let (status, output) = bounded_command_status(
+                        "/usr/bin/pgrep",
+                        &["-x".into(), "oMLX|omlx-server".into()],
+                        deadline, tick, recovery,
+                    )?;
+                    let names = absence_probe_state(status, &output);
+                    if !matches!(names, AbsenceState::Absent) {
+                        check(deadline, tick)?;
+                        return Ok(names);
+                    }
+                    let (status, output) = bounded_command_status(
+                        "/usr/sbin/lsof",
+                        &["-nP", "-iTCP:8000", "-sTCP:LISTEN", "-Fp"].map(String::from),
+                        deadline, tick, recovery,
+                    )?;
+                    absence_probe_state(status, &output)
+                }
+                AbsenceBinding::Cpu { probe, .. } => {
+                    let (status, output) = bounded_spec_status(probe, deadline, tick, recovery)?;
+                    let state = absence_probe_state(status, &output);
+                    ensure!(
+                        !matches!(state, AbsenceState::Unavailable),
+                        "owned CPU absence probe unavailable (exit {status:?}): {output}"
+                    );
+                    state
+                }
+            };
+            check(deadline, tick)?;
+            Ok(state)
+        })();
+        let (state, result) = match reading {
+            Ok(AbsenceState::Absent) => (AbsenceState::Absent, Ok(())),
+            Ok(state) => (state, Err(anyhow::anyhow!(
+                "named absence not established; no control of candidates authorized"
+            ))),
+            Err(error) => (AbsenceState::Unavailable, Err(
+                error.context("bounded named absence probe unavailable")
+            )),
+        };
+        self.absence = Some(AbsenceObservation {
+            state,
+            private_qualification: "not_applicable",
+            scope: "bounded named absence only; non-atomic, not whole-host idle",
+        });
+        self.actors = recovery.observations();
+        self.record_result(result)
+    }
     /// Caller must validate every native specification and transaction authority before enrolling any service.
     pub fn enroll(
         spec: &ServiceSpec,
@@ -385,6 +511,9 @@ impl ServiceHandle {
         let start = recovery.budget.borrow().actors.len();
         let result = Self::enroll_inner(spec, purpose, permissions, deadline, tick, recovery);
         result.map_err(|error| {
+            if error.downcast_ref::<ServiceEnrollmentFailure>().is_some() {
+                return error;
+            }
             let actors = recovery.observations();
             let current = &actors[start..];
             let (root, gui) = match spec {
@@ -402,6 +531,7 @@ impl ServiceHandle {
                 ServiceSpec::Omlx { backend, gui, .. } => {
                     (Some(backend.clone()), Some(gui.clone()))
                 }
+                ServiceSpec::OmlxAbsent { .. } => (None, None),
             };
             ServiceEnrollmentFailure {
                 observation: ServiceObservation {
@@ -414,6 +544,13 @@ impl ServiceHandle {
                     evidence: Vec::new(),
                     launch_record: current.last().map(|actor| actor.launch_record.clone()),
                     actors,
+                    absence: matches!(spec, ServiceSpec::OmlxAbsent { .. }).then_some(
+                        AbsenceObservation {
+                            state: AbsenceState::Unavailable,
+                            private_qualification: "not_applicable",
+                            scope: "bounded named absence only; non-atomic, not whole-host idle",
+                        },
+                    ),
                 },
             }
             .into()
@@ -428,23 +565,39 @@ impl ServiceHandle {
         recovery: &mut RecoveryControl<'_>,
     ) -> Result<Self> {
         spec.validate(purpose)?;
-        if purpose == ScopePurpose::Native {
-            let grant = permissions.context(
-                "native enrollment denied before probes: missing reviewed X2/X3 authority",
-            )?;
-            if let ServiceSpec::Omlx {
-                qualification,
-                backend,
-                ..
-            } = spec
-            {
-                grant.validate_for(qualification, backend)?;
-            }
+        if let ServiceSpec::Omlx { qualification, backend, .. } = spec {
+            permissions
+                .context("native enrollment denied before probes: missing reviewed X2/X3 authority")?
+                .validate_for(qualification, backend)?;
         }
         check(deadline, tick)?;
         let mut cpu = None;
         let mut cpu_gui = None;
         let mut qualification = None;
+        if matches!(spec, ServiceSpec::OmlxAbsent { .. }) {
+            let mut handle = Self {
+                spec: spec.clone(),
+                cpu: None,
+                cpu_gui: None,
+                root: None,
+                gui: None,
+                qualification: None,
+                permissions: None,
+                stop_attempted: false,
+                restore_attempted: false,
+                stopped: false,
+                restored: false,
+                failure: None,
+                evidence: Vec::new(),
+                launch_record: None,
+                actors: Vec::new(),
+                absence: None,
+            };
+            if handle.observe_absence(deadline, tick, recovery).is_err() {
+                return Err(ServiceEnrollmentFailure { observation: handle.last_observation() }.into());
+            }
+            return Ok(handle);
+        }
         let (root, gui) = match spec {
             ServiceSpec::OwnedCpu {
                 command,
@@ -543,12 +696,13 @@ impl ServiceHandle {
                 );
                 (root, Some(gui))
             }
+            ServiceSpec::OmlxAbsent { .. } => unreachable!(),
         };
         Ok(Self {
             spec: spec.clone(),
             cpu,
             cpu_gui,
-            root,
+            root: Some(root),
             gui,
             qualification,
             permissions: permissions.cloned(),
@@ -560,6 +714,7 @@ impl ServiceHandle {
             evidence: Vec::new(),
             launch_record: None,
             actors: recovery.observations(),
+            absence: None,
         })
     }
     pub(crate) fn check_named_scope_absence(
@@ -572,6 +727,9 @@ impl ServiceHandle {
             self.evidence
                 .push(format!("SC2 {}", serde_json::to_string(&observation)?));
         }
+        if self.is_absent_scope() {
+            ensure!(self.failure.is_none(), "absence admission was revoked");
+        }
         Ok(())
     }
     pub fn stop(
@@ -580,6 +738,7 @@ impl ServiceHandle {
         tick: &mut dyn FnMut() -> Result<()>,
         recovery: &mut RecoveryControl<'_>,
     ) -> Result<ServiceObservation> {
+        ensure!(!self.is_absent_scope(), "absent service has no stop callback");
         let deadline = cap(deadline, Duration::from_secs(120));
         ensure!(
             !self.stop_attempted && self.failure.is_none(),
@@ -598,6 +757,7 @@ impl ServiceHandle {
         tick: &mut dyn FnMut() -> Result<()>,
         recovery: &mut RecoveryControl<'_>,
     ) -> Result<()> {
+        let root = self.root.as_ref().context("missing service root")?;
         check(deadline, tick)?;
         if let Some(gui) = &self.gui {
             let pause_end = cap(deadline, Duration::from_secs(1));
@@ -657,27 +817,27 @@ impl ServiceHandle {
                     launchctl_registration(
                         target,
                         plist,
-                        Some(self.root.pid),
+                        Some(root.pid),
                         deadline,
                         tick,
                         recovery,
                     )?;
-                    process_scope::verify_identity(&self.root)?;
+                    process_scope::verify_identity(root)?;
                     launchctl(
                         &["bootout".into(), target.clone()],
                         deadline,
                         tick,
                         recovery,
                     )?;
-                    wait_absent(&self.root, deadline, Duration::ZERO, tick)?;
+                    wait_absent(root, deadline, Duration::ZERO, tick)?;
                     launchctl_absent(target, deadline, tick, recovery)?;
                     self.evidence.push(
                         "exact launchd target booted out; original process/group absent".into(),
                     );
                 }
                 ServiceSpec::Omlx { .. } => {
-                    terminate_bound(&self.root, deadline, tick)?;
-                    wait_absent(&self.root, deadline, Duration::from_secs(10), tick)?;
+                    terminate_bound(root, deadline, tick)?;
+                    wait_absent(root, deadline, Duration::from_secs(10), tick)?;
                     self.evidence.push(
                         "bound backend TERM60/KILL20; group absent throughout quiet10".into(),
                     );
@@ -694,6 +854,11 @@ impl ServiceHandle {
         recovery: &mut RecoveryControl<'_>,
     ) -> Result<ServiceObservation> {
         let deadline = cap(deadline, Duration::from_millis(500));
+        if self.is_absent_scope() {
+            self.observe_absence(deadline, tick, recovery)?;
+            ensure!(self.failure.is_none(), "absence admission was revoked");
+            return Ok(self.observation(false));
+        }
         let result = (|| {
             ensure!(self.stopped && !self.restored, "service is not inhibited");
             ensure!(
@@ -701,7 +866,7 @@ impl ServiceHandle {
                 "inhibition observation failure is sticky"
             );
             ensure!(
-                bound_absent(&self.root)?,
+                bound_absent(self.root.as_ref().context("missing service root")?)?,
                 "backend identity/group reappeared"
             );
             if let Some(gui) = &self.gui {
@@ -725,6 +890,7 @@ impl ServiceHandle {
                     listener_absent(*health_address, deadline, tick, recovery)?;
                     verify_gui_group(gui, gui_group_members, Some(ProcessState::Stopped))?;
                 }
+                ServiceSpec::OmlxAbsent { .. } => unreachable!(),
             }
             ensure!(
                 Instant::now() < deadline,
@@ -739,6 +905,7 @@ impl ServiceHandle {
             ServiceSpec::OwnedCpu { .. } => {}
             ServiceSpec::StudioLaunchd { .. } => observation.evidence.push("fresh exact launchd registration absence plus original PID/group absence; polling is non-atomic and does not prove continuous absence".into()),
             ServiceSpec::Omlx { .. } => observation.evidence.push("fresh enrolled-port listener absence and exact reviewed GUI group still stopped plus original PID/group absence; polling is non-atomic and does not attest arbitrary escaped descendants".into()),
+            ServiceSpec::OmlxAbsent { .. } => unreachable!(),
         }
         Ok(observation)
     }
@@ -748,6 +915,7 @@ impl ServiceHandle {
         tick: &mut dyn FnMut() -> Result<()>,
         recovery: &mut RecoveryControl<'_>,
     ) -> Result<ServiceObservation> {
+        ensure!(!self.is_absent_scope(), "absent service has no restore callback");
         let deadline = cap(deadline, Duration::from_secs(120));
         ensure!(
             self.stopped && !self.restore_attempted && self.failure.is_none(),
@@ -802,7 +970,7 @@ impl ServiceHandle {
                 let actor = self.cpu.as_mut().unwrap();
                 self.evidence
                     .push(format!("owned replacement launch PID {}", actor.pid()));
-                self.root = actor.identity()?;
+                self.root = Some(actor.identity()?);
                 stable_owned(actor, deadline, tick)?;
                 self.evidence.push("owned CPU replacement survived bounded lifetime observation; not native fidelity evidence".into());
             }
@@ -822,18 +990,19 @@ impl ServiceHandle {
                     launchctl_registration(target, plist, None, deadline, tick, recovery)?;
                 let root =
                     process_scope::observe(new_pid)?.context("restored Studio PID missing")?;
+                let previous = self.root.as_ref().context("missing Studio root")?;
                 ensure!(
-                    root.uid == self.root.uid
-                        && root.executable == self.root.executable
-                        && root.cwd == self.root.cwd
-                        && !root.same_process(&self.root),
+                    root.uid == previous.uid
+                        && root.executable == previous.executable
+                        && root.cwd == previous.cwd
+                        && !root.same_process(previous),
                     "Studio replacement binding mismatch"
                 );
                 ensure!(
                     root.state == ProcessState::Running,
                     "Studio replacement not running"
                 );
-                self.root = root;
+                self.root = Some(root);
                 self.evidence.push(
                     "exact launchd target bootstrapped once; fresh bound replacement observed"
                         .into(),
@@ -851,12 +1020,12 @@ impl ServiceHandle {
                     .context("missing preflight qualification")?;
                 qualification.before_restore(cap(deadline, Duration::from_secs(10)), tick)?;
                 let launch_end = cap(deadline, Duration::from_secs(60));
-                let old_executable = self.root.executable.clone();
+                let old_executable = self.root.as_ref().context("missing backend root")?.executable.clone();
                 self.launch_record = Some(launcher.clone());
                 qualification.check_named_scope_absence(launch_end, tick)?;
-                self.root = launch_detached(launcher, &old_executable, launch_end, tick, recovery)?;
+                self.root = Some(launch_detached(launcher, &old_executable, launch_end, tick, recovery)?);
                 let health = wait_health(*health_address, launch_end, tick)?;
-                let root = process_scope::verify_identity(&self.root)?;
+                let root = process_scope::verify_identity(self.root.as_ref().context("missing backend root")?)?;
                 ensure!(
                     root.ppid == 1
                         && root.pgid == root.pid
@@ -890,6 +1059,7 @@ impl ServiceHandle {
                 );
                 self.evidence.push("guardian recorded exact launcher argv/cwd/environment; detached PPID1 PGID=SID=PID observed".into());
             }
+            ServiceSpec::OmlxAbsent { .. } => unreachable!(),
         }
         if let Some(gui) = &self.gui {
             ensure!(
@@ -948,7 +1118,7 @@ impl ServiceHandle {
                     "GUI failed after resume"
                 );
                 ensure!(
-                    process_scope::verify_identity(&self.root)?.state == ProcessState::Running,
+                    process_scope::verify_identity(self.root.as_ref().context("missing backend root")?)?.state == ProcessState::Running,
                     "backend failed after resume"
                 );
                 if Instant::now() >= end {
@@ -993,7 +1163,7 @@ impl ServiceHandle {
     fn observation(&self, inhibited: bool) -> ServiceObservation {
         ServiceObservation {
             role: self.spec.role(),
-            root: Some(self.root.clone()),
+            root: self.root.clone(),
             gui: self.gui.clone(),
             inhibited,
             restored: self.restored,
@@ -1001,6 +1171,7 @@ impl ServiceHandle {
             evidence: self.evidence.clone(),
             launch_record: self.launch_record.clone(),
             actors: self.actors.clone(),
+            absence: self.absence.clone(),
         }
     }
     pub fn last_observation(&self) -> ServiceObservation {
@@ -1008,6 +1179,9 @@ impl ServiceHandle {
     }
     /// Disposes only this handle's owned CPU actors; never controls a restored production process.
     pub fn finish_owned_cpu(&mut self, recovery: &mut RecoveryControl<'_>) -> Result<()> {
+        if self.is_absent_scope() {
+            return Ok(());
+        }
         let ServiceSpec::OwnedCpu {
             command,
             restore_command,
@@ -1044,6 +1218,20 @@ impl ServiceHandle {
             return self.record_result(Err(error));
         }
         Ok(())
+    }
+}
+
+fn absence_probe_state(status: i32, output: &str) -> AbsenceState {
+    if status == 1 && output.is_empty() {
+        AbsenceState::Absent
+    } else if status == 0 && !output.is_empty()
+        && output.lines().all(|line| {
+            line.strip_prefix('p').unwrap_or(line).parse::<u32>().is_ok_and(|pid| pid > 1)
+        })
+    {
+        AbsenceState::Present
+    } else {
+        AbsenceState::Unavailable
     }
 }
 fn validate_identity(identity: &ProcessIdentity) -> Result<()> {
@@ -1204,9 +1392,18 @@ fn bounded_command_status(
         cwd: PathBuf::from("/"),
         environment: BTreeMap::new(),
     };
-    let attempt = OwnedProcess::spawn_with_deadline(&spec, deadline, tick)?;
+    bounded_spec_status(&spec, deadline, tick, recovery)
+}
+
+fn bounded_spec_status(
+    spec: &CommandSpec,
+    deadline: Instant,
+    tick: &mut dyn FnMut() -> Result<()>,
+    recovery: &mut RecoveryControl<'_>,
+) -> Result<(i32, String)> {
+    let attempt = OwnedProcess::spawn_with_deadline(spec, deadline, tick)?;
     let mut actor = attempt.process;
-    let index = recovery.enroll_actor(&actor, &spec, "bounded helper");
+    let index = recovery.enroll_actor(&actor, spec, "bounded helper");
     let result = (|| {
         if let Some(failure) = attempt.failure {
             anyhow::bail!(failure);
@@ -2562,7 +2759,7 @@ mod tests {
             )?,
             scope.0.clone(),
         );
-        let original = handle.root.clone();
+        let original = handle.root.clone().unwrap();
         let gui = handle.gui.clone().unwrap();
         ensure!(
             handle.stop(deadline, &mut tick, &mut recovery)?.inhibited,
@@ -2585,7 +2782,7 @@ mod tests {
             handle.restore(deadline, &mut tick, &mut recovery).is_err(),
             "restore retried"
         );
-        let replacement = handle.root.clone();
+        let replacement = handle.root.clone().unwrap();
         handle.finish_owned_cpu(&mut recovery)?;
         ensure!(
             process_scope::observe(replacement.pid)?.is_none()

@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "maintenance-cpu",
+    "--root",
+    "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/before-absence-probe-error",
+    "--scenario",
+    "absence-probe-error"
+  ],
+  "returncode": 1,
+  "stdout": "{\"controller_pid\":89885,\"guardian_pid\":89886,\"receipt\":\"/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/before-absence-probe-error/cpu-1791646888812-89885/receipt.json\"}\n/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/before-absence-probe-error/cpu-1791646888812-89885/receipt.json\n",
+  "stderr": ""
+}

@@ -249,6 +249,23 @@ fn platform_signal(_pid: i32, _signal: i32) -> Result<()> {
 pub use darwin::{OwnedProcess, bound_absent, group_members, observe};
 
 #[cfg(target_os = "macos")]
+pub(crate) use darwin::{executable_matches_prefix, named_executable_absent};
+
+#[cfg(not(target_os = "macos"))]
+pub(crate) fn named_executable_absent(
+    _prefix: &Path,
+    _deadline: Instant,
+    _tick: &mut dyn FnMut() -> Result<()>,
+) -> Result<bool> {
+    bail!("named executable absence requires Darwin metadata")
+}
+
+#[cfg(not(target_os = "macos"))]
+pub(crate) fn executable_matches_prefix(_pid: u32, _prefix: &Path) -> Result<bool> {
+    bail!("named executable observation requires Darwin metadata")
+}
+
+#[cfg(target_os = "macos")]
 mod darwin {
     use super::*;
     use std::ffi::{CString, OsString};
@@ -388,6 +405,66 @@ mod darwin {
         let path = PathBuf::from(OsString::from_vec(bytes[..length].to_vec()));
         ensure!(path.is_absolute(), "kernel process path is not absolute");
         Ok(path)
+    }
+
+    /// Bounded executable metadata only: no argv, environment, cwd or controls.
+    /// Unknown live paths/reuse are unavailable. Kernel-confirmed exits are absent.
+    pub(crate) fn named_executable_absent(
+        prefix: &Path,
+        deadline: Instant,
+        tick: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<bool> {
+        tick()?;
+        ensure!(Instant::now() < deadline, "named executable probe expired");
+        let mut ids = [0_i32; MAX_MEMBERS];
+        let bytes = unsafe {
+            libc::proc_listpids(1, 0, ids.as_mut_ptr().cast(), size_of_val(&ids) as i32)
+        };
+        ensure!(
+            bytes > 0 && (bytes as usize) < size_of_val(&ids)
+                && (bytes as usize).is_multiple_of(size_of::<i32>()),
+            "named executable enumeration incomplete"
+        );
+        let count = bytes as usize / size_of::<i32>();
+        ids[..count].sort_unstable();
+        for (index, pid) in ids[..count].iter().enumerate() {
+            if index.is_multiple_of(32) { tick()?; }
+            ensure!(Instant::now() < deadline, "named executable probe expired");
+            // PID 0 is the kernel. launchd (PID 1) cannot be an installed app actor.
+            if *pid <= 1 {
+                ensure!(*pid >= 0, "invalid enumerated PID");
+                continue;
+            }
+            ensure!(index == 0 || ids[index - 1] != *pid, "ambiguous PID enumeration");
+            if executable_matches_prefix(*pid as u32, prefix)? {
+                return Ok(false);
+            }
+        }
+        tick()?;
+        ensure!(Instant::now() < deadline, "named executable probe expired");
+        Ok(true)
+    }
+
+    /// Shared by native enumeration and owned CPU fixtures. ESRCH establishes
+    /// absence at that observation; it does not close the external-start race.
+    pub(crate) fn executable_matches_prefix(pid: u32, prefix: &Path) -> Result<bool> {
+        let Some(before) = basic(pid)? else {
+            return Ok(false);
+        };
+        let mut path = [0_u8; 4096];
+        let length = unsafe {
+            libc::proc_pidpath(pid as i32, path.as_mut_ptr().cast(), path.len() as u32)
+        };
+        let Some(after) = basic(pid)? else {
+            return Ok(false);
+        };
+        ensure!(before.same_birth(after), "PID reused during executable observation");
+        ensure!(length > 0 && (length as usize) < path.len(), "executable observation unavailable");
+        let end = path.iter().position(|byte| *byte == 0).context("truncated executable path")?;
+        ensure!(end > 0 && end < MAX_PATH_BYTES, "unavailable executable path");
+        let path = Path::new(std::ffi::OsStr::from_bytes(&path[..end]));
+        ensure!(path.is_absolute(), "ambiguous executable path");
+        Ok(path.starts_with(prefix))
     }
 
     /// Zombies may no longer expose vnode/cwd information; that is an error,
@@ -1896,6 +1973,7 @@ mod tests {
             .into_parts();
         let observations = (|| -> Result<_> {
             let identity = process.identity()?;
+            let executable_matched = executable_matches_prefix(identity.pid, &identity.executable)?;
             let live_absent = bound_absent(&identity)?;
             let mut reused = identity.clone();
             reused.start_subseconds += 1;
@@ -1909,16 +1987,18 @@ mod tests {
                 std::thread::sleep(Duration::from_millis(2));
             }
             let zombie_absent = bound_absent(&identity)?;
-            Ok((identity, live_absent, reuse_rejected, zombie_absent))
+            Ok((identity, live_absent, reuse_rejected, zombie_absent, executable_matched))
         })();
         // Cleanup precedes assertions, including failed observation assertions.
         let settlement = process.settle(deadline, Duration::ZERO, &mut tick).unwrap();
         assert!(failure.is_none(), "{failure:?}");
-        let (identity, live_absent, reuse_rejected, zombie_absent) = observations.unwrap();
+        let (identity, live_absent, reuse_rejected, zombie_absent, executable_matched) = observations.unwrap();
         assert!(settlement.complete, "{settlement:?}");
         assert!(!live_absent && !zombie_absent);
         assert!(reuse_rejected);
         assert!(bound_absent(&identity).unwrap());
+        assert!(executable_matched);
+        assert!(!executable_matches_prefix(identity.pid, &identity.executable).unwrap());
         assert_eq!(settlement.exit_signal, Some(libc::SIGTERM));
     }
 

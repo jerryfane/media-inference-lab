@@ -1,0 +1,26 @@
+[
+  {
+    "pid": 99952,
+    "ppid": 99950,
+    "pgid": 99952,
+    "sid": 99952,
+    "uid": 501,
+    "start_seconds": 1791647142,
+    "start_subseconds": 21510,
+    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-ambiguous/absence-bin/startup-actor",
+    "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-ambiguous",
+    "state": "running"
+  },
+  {
+    "pid": 99952,
+    "ppid": 99950,
+    "pgid": 99952,
+    "sid": 99952,
+    "uid": 501,
+    "start_seconds": 1791647142,
+    "start_subseconds": 21510,
+    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-ambiguous/absence-bin/startup-actor",
+    "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-ambiguous",
+    "state": "running"
+  }
+]

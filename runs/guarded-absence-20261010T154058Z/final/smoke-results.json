@@ -1,0 +1,914 @@
+{
+  "guardian_sha256": "d10d8a65a62d14590e5c68ae4c0c97cff60de624ec0194e8ab855e6249f7385f",
+  "scenarios": [
+    {
+      "scenario": "absence-clean",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-clean",
+        "--scenario",
+        "absence-clean"
+      ],
+      "returncode": 0,
+      "receipt": "runs/guarded-absence-20261010T154058Z/final/absence-clean/cpu-1791647139421-99825/receipt.json",
+      "success": true,
+      "creation_attempted": true,
+      "restored": true,
+      "service_accounting_complete": true,
+      "settlement": {
+        "complete": true,
+        "exit_code": 0,
+        "exit_signal": null,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": false,
+        "leader_reaped": true
+      },
+      "experiment_failure": null,
+      "final_absence_failure": null,
+      "service_enrollment_failure": null,
+      "service_outcomes": [
+        {
+          "role": "studio",
+          "root": {
+            "pid": 99868,
+            "ppid": 99839,
+            "pgid": 99868,
+            "sid": 99868,
+            "uid": 501,
+            "start_seconds": 1791647140,
+            "start_subseconds": 109785,
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-clean",
+            "state": "running"
+          },
+          "gui": null,
+          "inhibited": false,
+          "restored": true,
+          "failure": null,
+          "evidence": [
+            "owned backend settled and reaped; group absent",
+            "owned replacement launch PID 99868",
+            "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence"
+          ],
+          "launch_record": {
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "args": [
+              "maintenance-participant",
+              "--mode",
+              "service",
+              "--duration-ms",
+              "30000"
+            ],
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-clean",
+            "environment": {}
+          },
+          "actors": [
+            {
+              "kind": "CPU fixture disposal",
+              "pid": 99868,
+              "identity": {
+                "pid": 99868,
+                "ppid": 99839,
+                "pgid": 99868,
+                "sid": 99868,
+                "uid": 501,
+                "start_seconds": 1791647140,
+                "start_subseconds": 109785,
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-clean",
+                "state": "running"
+              },
+              "intermediate_pid": null,
+              "intermediate_identity": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "launch_record": {
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "args": [
+                  "maintenance-participant",
+                  "--mode",
+                  "service",
+                  "--duration-ms",
+                  "30000"
+                ],
+                "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-clean",
+                "environment": {}
+              },
+              "settlement": {
+                "complete": true,
+                "leader_reaped": true,
+                "group_absent": true,
+                "group_signalled": true,
+                "exit_code": null,
+                "exit_signal": 15,
+                "failure": null
+              },
+              "complete": true,
+              "known_absent": true,
+              "failure": null,
+              "descendant_uncertainty": null
+            }
+          ],
+          "absence": null
+        },
+        {
+          "role": "omlx",
+          "root": null,
+          "gui": null,
+          "inhibited": false,
+          "restored": false,
+          "failure": null,
+          "evidence": [],
+          "launch_record": null,
+          "actors": [
+            {
+              "kind": "CPU fixture disposal",
+              "pid": 99868,
+              "identity": {
+                "pid": 99868,
+                "ppid": 99839,
+                "pgid": 99868,
+                "sid": 99868,
+                "uid": 501,
+                "start_seconds": 1791647140,
+                "start_subseconds": 109785,
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-clean",
+                "state": "running"
+              },
+              "intermediate_pid": null,
+              "intermediate_identity": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "launch_record": {
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "args": [
+                  "maintenance-participant",
+                  "--mode",
+                  "service",
+                  "--duration-ms",
+                  "30000"
+                ],
+                "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-clean",
+                "environment": {}
+              },
+              "settlement": {
+                "complete": true,
+                "leader_reaped": true,
+                "group_absent": true,
+                "group_signalled": true,
+                "exit_code": null,
+                "exit_signal": 15,
+                "failure": null
+              },
+              "complete": true,
+              "known_absent": true,
+              "failure": null,
+              "descendant_uncertainty": null
+            }
+          ],
+          "absence": {
+            "state": "absent",
+            "private_qualification": "not_applicable",
+            "scope": "bounded named absence only; non-atomic, not whole-host idle"
+          }
+        }
+      ],
+      "fixture": null,
+      "fixture_preparation": null,
+      "controller_killed_after_experiment_created": false,
+      "owned_pids": [
+        99825,
+        99839,
+        99856,
+        99860,
+        99868
+      ],
+      "all_recorded_owned_pids_absent": true
+    },
+    {
+      "scenario": "absence-presence",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-presence",
+        "--scenario",
+        "absence-presence"
+      ],
+      "returncode": 1,
+      "receipt": "runs/guarded-absence-20261010T154058Z/final/absence-presence/cpu-1791647140528-99882/receipt.json",
+      "success": false,
+      "creation_attempted": false,
+      "restored": false,
+      "service_accounting_complete": true,
+      "settlement": null,
+      "experiment_failure": "service enrollment failed: named absence not established; no control of candidates authorized",
+      "final_absence_failure": null,
+      "service_enrollment_failure": {
+        "absence": {
+          "private_qualification": "not_applicable",
+          "scope": "bounded named absence only; non-atomic, not whole-host idle",
+          "state": "present"
+        },
+        "actors": [],
+        "evidence": [],
+        "failure": "named absence not established; no control of candidates authorized",
+        "gui": null,
+        "inhibited": false,
+        "launch_record": null,
+        "restored": false,
+        "role": "omlx",
+        "root": null
+      },
+      "service_outcomes": [],
+      "fixture": {
+        "created": true,
+        "failure": null,
+        "identity": {
+          "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-presence",
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-presence/absence-bin/startup-actor",
+          "pgid": 99899,
+          "pid": 99899,
+          "ppid": 99882,
+          "sid": 99899,
+          "start_seconds": 1791647140,
+          "start_subseconds": 621006,
+          "state": "running",
+          "uid": 501
+        },
+        "pid": 99899,
+        "settlement": {
+          "complete": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": true,
+          "leader_reaped": true
+        },
+        "uncontrolled_by_guardian": true
+      },
+      "fixture_preparation": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-presence/absence-bin/startup-actor",
+        "failure": null,
+        "kind": "ad_hoc_sign_owned_sleep_copy",
+        "pid": 99898,
+        "settlement": {
+          "complete": true,
+          "exit_code": 0,
+          "exit_signal": null,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": false,
+          "leader_reaped": true
+        }
+      },
+      "controller_killed_after_experiment_created": false,
+      "owned_pids": [
+        99882,
+        99898,
+        99899,
+        99900
+      ],
+      "all_recorded_owned_pids_absent": true
+    },
+    {
+      "scenario": "absence-late",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late",
+        "--scenario",
+        "absence-late"
+      ],
+      "returncode": 1,
+      "receipt": "runs/guarded-absence-20261010T154058Z/final/absence-late/cpu-1791647140848-99902/receipt.json",
+      "success": false,
+      "creation_attempted": true,
+      "restored": true,
+      "service_accounting_complete": true,
+      "settlement": {
+        "complete": true,
+        "exit_code": null,
+        "exit_signal": 15,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": true,
+        "leader_reaped": true
+      },
+      "experiment_failure": "named scope revoked: required service observation unavailable: named absence not established; no control of candidates authorized",
+      "final_absence_failure": "named absence not established; no control of candidates authorized",
+      "service_enrollment_failure": null,
+      "service_outcomes": [
+        {
+          "role": "studio",
+          "root": {
+            "pid": 99929,
+            "ppid": 99904,
+            "pgid": 99929,
+            "sid": 99929,
+            "uid": 501,
+            "start_seconds": 1791647141,
+            "start_subseconds": 513283,
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late",
+            "state": "running"
+          },
+          "gui": null,
+          "inhibited": false,
+          "restored": true,
+          "failure": null,
+          "evidence": [
+            "owned backend settled and reaped; group absent",
+            "owned replacement launch PID 99929",
+            "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence"
+          ],
+          "launch_record": {
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "args": [
+              "maintenance-participant",
+              "--mode",
+              "service",
+              "--duration-ms",
+              "30000"
+            ],
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late",
+            "environment": {}
+          },
+          "actors": [
+            {
+              "kind": "CPU fixture disposal",
+              "pid": 99929,
+              "identity": {
+                "pid": 99929,
+                "ppid": 99904,
+                "pgid": 99929,
+                "sid": 99929,
+                "uid": 501,
+                "start_seconds": 1791647141,
+                "start_subseconds": 513283,
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late",
+                "state": "running"
+              },
+              "intermediate_pid": null,
+              "intermediate_identity": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "launch_record": {
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "args": [
+                  "maintenance-participant",
+                  "--mode",
+                  "service",
+                  "--duration-ms",
+                  "30000"
+                ],
+                "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late",
+                "environment": {}
+              },
+              "settlement": {
+                "complete": true,
+                "leader_reaped": true,
+                "group_absent": true,
+                "group_signalled": true,
+                "exit_code": null,
+                "exit_signal": 15,
+                "failure": null
+              },
+              "complete": true,
+              "known_absent": true,
+              "failure": null,
+              "descendant_uncertainty": null
+            }
+          ],
+          "absence": null
+        },
+        {
+          "role": "omlx",
+          "root": null,
+          "gui": null,
+          "inhibited": false,
+          "restored": false,
+          "failure": "named absence not established; no control of candidates authorized",
+          "evidence": [],
+          "launch_record": null,
+          "actors": [
+            {
+              "kind": "CPU fixture disposal",
+              "pid": 99929,
+              "identity": {
+                "pid": 99929,
+                "ppid": 99904,
+                "pgid": 99929,
+                "sid": 99929,
+                "uid": 501,
+                "start_seconds": 1791647141,
+                "start_subseconds": 513283,
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late",
+                "state": "running"
+              },
+              "intermediate_pid": null,
+              "intermediate_identity": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "launch_record": {
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "args": [
+                  "maintenance-participant",
+                  "--mode",
+                  "service",
+                  "--duration-ms",
+                  "30000"
+                ],
+                "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late",
+                "environment": {}
+              },
+              "settlement": {
+                "complete": true,
+                "leader_reaped": true,
+                "group_absent": true,
+                "group_signalled": true,
+                "exit_code": null,
+                "exit_signal": 15,
+                "failure": null
+              },
+              "complete": true,
+              "known_absent": true,
+              "failure": null,
+              "descendant_uncertainty": null
+            }
+          ],
+          "absence": {
+            "state": "present",
+            "private_qualification": "not_applicable",
+            "scope": "bounded named absence only; non-atomic, not whole-host idle"
+          }
+        }
+      ],
+      "fixture": {
+        "created": true,
+        "failure": null,
+        "identity": {
+          "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late",
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late/absence-bin/startup-actor",
+          "pgid": 99921,
+          "pid": 99921,
+          "ppid": 99902,
+          "sid": 99921,
+          "start_seconds": 1791647141,
+          "start_subseconds": 397570,
+          "state": "running",
+          "uid": 501
+        },
+        "pid": 99921,
+        "settlement": {
+          "complete": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": true,
+          "leader_reaped": true
+        },
+        "uncontrolled_by_guardian": true
+      },
+      "fixture_preparation": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late/absence-bin/startup-actor",
+        "failure": null,
+        "kind": "ad_hoc_sign_owned_sleep_copy",
+        "pid": 99903,
+        "settlement": {
+          "complete": true,
+          "exit_code": 0,
+          "exit_signal": null,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": false,
+          "leader_reaped": true
+        }
+      },
+      "controller_killed_after_experiment_created": false,
+      "owned_pids": [
+        99902,
+        99903,
+        99904,
+        99906,
+        99919,
+        99921,
+        99929
+      ],
+      "all_recorded_owned_pids_absent": true
+    },
+    {
+      "scenario": "absence-ambiguous",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-ambiguous",
+        "--scenario",
+        "absence-ambiguous"
+      ],
+      "returncode": 1,
+      "receipt": "runs/guarded-absence-20261010T154058Z/final/absence-ambiguous/cpu-1791647141926-99950/receipt.json",
+      "success": false,
+      "creation_attempted": false,
+      "restored": false,
+      "service_accounting_complete": true,
+      "settlement": null,
+      "experiment_failure": "service enrollment failed: bounded named absence probe unavailable: owned CPU absence probe unavailable (exit 2): mil: ambiguous CPU candidate identity\n",
+      "final_absence_failure": null,
+      "service_enrollment_failure": {
+        "absence": {
+          "private_qualification": "not_applicable",
+          "scope": "bounded named absence only; non-atomic, not whole-host idle",
+          "state": "unavailable"
+        },
+        "actors": [],
+        "evidence": [],
+        "failure": "bounded named absence probe unavailable: owned CPU absence probe unavailable (exit 2): mil: ambiguous CPU candidate identity\n",
+        "gui": null,
+        "inhibited": false,
+        "launch_record": null,
+        "restored": false,
+        "role": "omlx",
+        "root": null
+      },
+      "service_outcomes": [],
+      "fixture": {
+        "created": true,
+        "failure": null,
+        "identity": {
+          "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-ambiguous",
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-ambiguous/absence-bin/startup-actor",
+          "pgid": 99952,
+          "pid": 99952,
+          "ppid": 99950,
+          "sid": 99952,
+          "start_seconds": 1791647142,
+          "start_subseconds": 21510,
+          "state": "running",
+          "uid": 501
+        },
+        "pid": 99952,
+        "settlement": {
+          "complete": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": true,
+          "leader_reaped": true
+        },
+        "uncontrolled_by_guardian": true
+      },
+      "fixture_preparation": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-ambiguous/absence-bin/startup-actor",
+        "failure": null,
+        "kind": "ad_hoc_sign_owned_sleep_copy",
+        "pid": 99951,
+        "settlement": {
+          "complete": true,
+          "exit_code": 0,
+          "exit_signal": null,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": false,
+          "leader_reaped": true
+        }
+      },
+      "controller_killed_after_experiment_created": false,
+      "owned_pids": [
+        99950,
+        99951,
+        99952,
+        99953
+      ],
+      "all_recorded_owned_pids_absent": true
+    },
+    {
+      "scenario": "absence-probe-error",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-probe-error",
+        "--scenario",
+        "absence-probe-error"
+      ],
+      "returncode": 1,
+      "receipt": "runs/guarded-absence-20261010T154058Z/final/absence-probe-error/cpu-1791647142262-99961/receipt.json",
+      "success": false,
+      "creation_attempted": false,
+      "restored": false,
+      "service_accounting_complete": true,
+      "settlement": null,
+      "experiment_failure": "service enrollment failed: bounded named absence probe unavailable: owned CPU absence probe unavailable (exit 2): mil: invalid type: map, expected a sequence at line 1 column 0\n",
+      "final_absence_failure": null,
+      "service_enrollment_failure": {
+        "absence": {
+          "private_qualification": "not_applicable",
+          "scope": "bounded named absence only; non-atomic, not whole-host idle",
+          "state": "unavailable"
+        },
+        "actors": [],
+        "evidence": [],
+        "failure": "bounded named absence probe unavailable: owned CPU absence probe unavailable (exit 2): mil: invalid type: map, expected a sequence at line 1 column 0\n",
+        "gui": null,
+        "inhibited": false,
+        "launch_record": null,
+        "restored": false,
+        "role": "omlx",
+        "root": null
+      },
+      "service_outcomes": [],
+      "fixture": null,
+      "fixture_preparation": null,
+      "controller_killed_after_experiment_created": false,
+      "owned_pids": [
+        99961,
+        99964
+      ],
+      "all_recorded_owned_pids_absent": true
+    },
+    {
+      "scenario": "absence-reused",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-reused",
+        "--scenario",
+        "absence-reused"
+      ],
+      "returncode": 1,
+      "receipt": "runs/guarded-absence-20261010T154058Z/final/absence-reused/cpu-1791647142513-99977/receipt.json",
+      "success": false,
+      "creation_attempted": false,
+      "restored": false,
+      "service_accounting_complete": true,
+      "settlement": null,
+      "experiment_failure": "service enrollment failed: bounded named absence probe unavailable: owned CPU absence probe unavailable (exit 2): mil: CPU candidate PID reused\n",
+      "final_absence_failure": null,
+      "service_enrollment_failure": {
+        "absence": {
+          "private_qualification": "not_applicable",
+          "scope": "bounded named absence only; non-atomic, not whole-host idle",
+          "state": "unavailable"
+        },
+        "actors": [],
+        "evidence": [],
+        "failure": "bounded named absence probe unavailable: owned CPU absence probe unavailable (exit 2): mil: CPU candidate PID reused\n",
+        "gui": null,
+        "inhibited": false,
+        "launch_record": null,
+        "restored": false,
+        "role": "omlx",
+        "root": null
+      },
+      "service_outcomes": [],
+      "fixture": {
+        "created": true,
+        "failure": null,
+        "identity": {
+          "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-reused",
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-reused/absence-bin/startup-actor",
+          "pgid": 99993,
+          "pid": 99993,
+          "ppid": 99977,
+          "sid": 99993,
+          "start_seconds": 1791647142,
+          "start_subseconds": 588826,
+          "state": "running",
+          "uid": 501
+        },
+        "pid": 99993,
+        "settlement": {
+          "complete": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": true,
+          "leader_reaped": true
+        },
+        "uncontrolled_by_guardian": true
+      },
+      "fixture_preparation": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-reused/absence-bin/startup-actor",
+        "failure": null,
+        "kind": "ad_hoc_sign_owned_sleep_copy",
+        "pid": 99992,
+        "settlement": {
+          "complete": true,
+          "exit_code": 0,
+          "exit_signal": null,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": false,
+          "leader_reaped": true
+        }
+      },
+      "controller_killed_after_experiment_created": false,
+      "owned_pids": [
+        99977,
+        99992,
+        99993,
+        99994
+      ],
+      "all_recorded_owned_pids_absent": true
+    },
+    {
+      "scenario": "absence-controller-loss",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected",
+        "--scenario",
+        "absence-controller-loss"
+      ],
+      "returncode": -9,
+      "receipt": "runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected/cpu-1791647217667-3671/receipt.json",
+      "success": false,
+      "creation_attempted": true,
+      "restored": true,
+      "service_accounting_complete": true,
+      "settlement": {
+        "complete": true,
+        "exit_code": null,
+        "exit_signal": 15,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": true,
+        "leader_reaped": true
+      },
+      "experiment_failure": "controller authority revoked: controller EOF",
+      "final_absence_failure": null,
+      "service_outcomes": [
+        {
+          "role": "studio",
+          "root": {
+            "pid": 3705,
+            "ppid": 3678,
+            "pgid": 3705,
+            "sid": 3705,
+            "uid": 501,
+            "start_seconds": 1791647218,
+            "start_subseconds": 170101,
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected",
+            "state": "running"
+          },
+          "gui": null,
+          "inhibited": false,
+          "restored": true,
+          "failure": null,
+          "evidence": [
+            "owned backend settled and reaped; group absent",
+            "owned replacement launch PID 3705",
+            "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence"
+          ],
+          "launch_record": {
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "args": [
+              "maintenance-participant",
+              "--mode",
+              "service",
+              "--duration-ms",
+              "30000"
+            ],
+            "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected",
+            "environment": {}
+          },
+          "actors": [
+            {
+              "kind": "CPU fixture disposal",
+              "pid": 3705,
+              "identity": {
+                "pid": 3705,
+                "ppid": 3678,
+                "pgid": 3705,
+                "sid": 3705,
+                "uid": 501,
+                "start_seconds": 1791647218,
+                "start_subseconds": 170101,
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected",
+                "state": "running"
+              },
+              "intermediate_pid": null,
+              "intermediate_identity": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "launch_record": {
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "args": [
+                  "maintenance-participant",
+                  "--mode",
+                  "service",
+                  "--duration-ms",
+                  "30000"
+                ],
+                "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected",
+                "environment": {}
+              },
+              "settlement": {
+                "complete": true,
+                "leader_reaped": true,
+                "group_absent": true,
+                "group_signalled": true,
+                "exit_code": null,
+                "exit_signal": 15,
+                "failure": null
+              },
+              "complete": true,
+              "known_absent": true,
+              "failure": null,
+              "descendant_uncertainty": null
+            }
+          ],
+          "absence": null
+        },
+        {
+          "role": "omlx",
+          "root": null,
+          "gui": null,
+          "inhibited": false,
+          "restored": false,
+          "failure": null,
+          "evidence": [],
+          "launch_record": null,
+          "actors": [
+            {
+              "kind": "CPU fixture disposal",
+              "pid": 3705,
+              "identity": {
+                "pid": 3705,
+                "ppid": 3678,
+                "pgid": 3705,
+                "sid": 3705,
+                "uid": 501,
+                "start_seconds": 1791647218,
+                "start_subseconds": 170101,
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected",
+                "state": "running"
+              },
+              "intermediate_pid": null,
+              "intermediate_identity": null,
+              "intermediate_reaped": true,
+              "intermediate_status": null,
+              "launch_record": {
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "args": [
+                  "maintenance-participant",
+                  "--mode",
+                  "service",
+                  "--duration-ms",
+                  "30000"
+                ],
+                "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected",
+                "environment": {}
+              },
+              "settlement": {
+                "complete": true,
+                "leader_reaped": true,
+                "group_absent": true,
+                "group_signalled": true,
+                "exit_code": null,
+                "exit_signal": 15,
+                "failure": null
+              },
+              "complete": true,
+              "known_absent": true,
+              "failure": null,
+              "descendant_uncertainty": null
+            }
+          ],
+          "absence": {
+            "state": "absent",
+            "private_qualification": "not_applicable",
+            "scope": "bounded named absence only; non-atomic, not whole-host idle"
+          }
+        }
+      ],
+      "controller_killed_after_experiment_created": true,
+      "owned_pids": [
+        3671,
+        3678,
+        3684,
+        3704,
+        3705
+      ],
+      "all_recorded_owned_pids_absent": true
+    }
+  ]
+}

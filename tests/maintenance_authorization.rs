@@ -3,7 +3,7 @@ use media_inference_lab::{
     maintenance::{self, Authorization, Budgets, Experiment, Transaction},
     native_guard::{self, ScopePurpose},
     process_scope::CommandSpec,
-    service_lifecycle::{ServiceRole, ServiceSpec},
+    service_lifecycle::{AbsenceBinding, ServiceRole, ServiceSpec},
 };
 use std::{collections::BTreeMap, fs};
 
@@ -120,4 +120,47 @@ fn cpu_scope_cannot_select_shared_gpu_lease_or_borrow_phase_time() {
     transaction.budgets.total_ms = 8999;
     assert!(transaction.validate().is_err());
     assert!(!transaction.evidence_root.exists() && !transaction.lease_path.exists());
+}
+
+#[test]
+fn absence_mode_requires_exact_grant_and_cannot_cross_purposes() {
+    let temporary = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(temporary.path()).unwrap();
+    let (mut transaction, authorization) = fixture(&root);
+    let Experiment::Cpu { command } = &transaction.experiment else { unreachable!() };
+    let mut probe = command.clone();
+    probe.args = ["maintenance-participant", "--mode", "absence-probe", "--duration-ms", "1"]
+        .map(String::from).to_vec();
+    transaction.services[1] = ServiceSpec::OmlxAbsent {
+        binding: AbsenceBinding::Cpu { probe, executable_root: root.join("absence-bin") },
+    };
+    transaction.validate().unwrap();
+    assert!(maintenance::run_controller(transaction.clone(), authorization.clone()).is_err());
+    assert!(!transaction.evidence_root.exists());
+    let absent = &transaction.services[1];
+    assert!(absent.validate(ScopePurpose::Native).is_err());
+    let native = ServiceSpec::OmlxAbsent { binding: AbsenceBinding::Native };
+    assert!(native.validate(ScopePurpose::Cpu).is_err());
+    native.validate(ScopePurpose::Native).unwrap();
+    transaction.services[1] = native;
+    assert!(transaction.validate().is_err());
+    assert!(!transaction.lease_path.exists());
+}
+
+#[test]
+fn absent_validation_never_opens_fixture_paths() {
+    let temporary = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(temporary.path()).unwrap();
+    let (mut transaction, _) = fixture(&root);
+    let Experiment::Cpu { command } = &transaction.experiment else { unreachable!() };
+    let mut probe = command.clone();
+    probe.executable = root.join("does-not-exist");
+    probe.cwd = root.join("missing-directory");
+    probe.args = ["maintenance-participant", "--mode", "absence-probe", "--duration-ms", "1"]
+        .map(String::from).to_vec();
+    transaction.services[1] = ServiceSpec::OmlxAbsent {
+        binding: AbsenceBinding::Cpu { executable_root: probe.cwd.join("absence-bin"), probe },
+    };
+    transaction.validate().unwrap();
+    assert!(!root.join("missing-directory").exists());
 }
