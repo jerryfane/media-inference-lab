@@ -1,0 +1,34 @@
+{
+  "status": "VERIFIED_TYPE_ALIAS_FOLLOWUP_BEFORE_ENUMERATION_HARDENING",
+  "base_commit": "b416344",
+  "new_regressions_total": 6,
+  "additional_command": [
+    "cargo",
+    "test",
+    "--offline",
+    "--lib",
+    "restore_qualification::tests::manifest_timing_nonregular_types_and_unsafe_aliases_deny",
+    "--",
+    "--exact"
+  ],
+  "additional_exit_code": 0,
+  "additional_log": "type-alias-regression.txt",
+  "production_functions_unchanged": true,
+  "prior_smoke_retained_not_repeated": true,
+  "build_argv": [
+    "cargo",
+    "build",
+    "--offline",
+    "--lib",
+    "--bin",
+    "mil"
+  ],
+  "build_exit_code": 0,
+  "build_log": "final-binding-build.txt",
+  "guardian_path": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+  "guardian_sha256": "2d053912f4d5c8551cc2a5c652f507ad13f5e4e30fad4e2e33f1130d90c899fb",
+  "cargo_toml_sha256": "b5c681c426ab547fea9370a71497203de93e820dd76d542cfd4250fbd828977b",
+  "production_module_sha256": "99930aec3cdfdcd130e27e9123a27aca929e50eeecdc083a2b06eac054082242",
+  "enumeration_residual": "Still path-based at this commit; descriptor enumeration is a separately commissioned in-progress change, not claimed eliminated here.",
+  "runtime_grant": false
+}

@@ -3352,4 +3352,41 @@ mod tests {
             ).is_err());
         }
     }
+
+    #[test]
+    fn manifest_timing_nonregular_types_and_unsafe_aliases_deny() {
+        for case in ["fifo", "cycle", "outside-file", "outside-directory"] {
+            let temp = tempfile::tempdir().unwrap();
+            let base = fs::canonicalize(temp.path()).unwrap();
+            let root = base.join("bundle");
+            let outside = base.join("outside");
+            fs::create_dir(&root).unwrap();
+            fs::create_dir(&outside).unwrap();
+            fs::write(outside.join("code"), b"outside code root").unwrap();
+            let entry = root.join("entry");
+            match case {
+                "fifo" => {
+                    let name = std::ffi::CString::new(entry.as_os_str().as_encoded_bytes()).unwrap();
+                    assert_eq!(unsafe { libc::mkfifo(name.as_ptr(), 0o600) }, 0);
+                }
+                "cycle" => std::os::unix::fs::symlink(".", &entry).unwrap(),
+                "outside-file" => std::os::unix::fs::symlink(outside.join("code"), &entry).unwrap(),
+                "outside-directory" => std::os::unix::fs::symlink(&outside, &entry).unwrap(),
+                _ => unreachable!(),
+            }
+            assert!(timing_manifest(&root, &QualificationLimits::default()).is_err());
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(temp.path()).unwrap();
+        let path = root.join("code");
+        fs::write(&path, b"regular code").unwrap();
+        let expected = reference_metadata(&path).unwrap();
+        let parent = open_path(&root, true).unwrap();
+        fs::remove_file(&path).unwrap();
+        fs::create_dir(&path).unwrap();
+        assert!(hash_regular_from(
+            &path, &expected, &QualificationLimits::default(), &mut 0,
+            Instant::now() + Duration::from_secs(5), &mut || Ok(()), Some(&parent),
+        ).is_err());
+    }
 }
