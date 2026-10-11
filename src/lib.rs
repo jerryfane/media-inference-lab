@@ -4,6 +4,7 @@ pub mod comparison;
 pub mod frame_sequence;
 pub mod guards;
 pub mod h3;
+pub mod h3_owned;
 pub mod image_comparison;
 pub mod image_inspection;
 pub mod maintenance;

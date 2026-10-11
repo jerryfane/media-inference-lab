@@ -7,6 +7,7 @@ use media_inference_lab::{
     frame_sequence::{self, SequenceAssessment, SequenceInput, SequenceSource},
     guards::{GuardConfig, GuardMonitor, Lease},
     h3::{self, InspectOptions as H3InspectOptions, PrepareOptions as H3PrepareOptions},
+    h3_owned,
     image_comparison::{self, ImageAssessment, Tolerance},
     image_inspection::{self, ImageInspectionOptions},
     maintenance,
@@ -179,6 +180,25 @@ enum Command {
         output_dir: PathBuf,
         #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
         inspection_seconds: u64,
+    },
+    /// Qualify guardian-owned H3 codec IPC using finite CPU fixtures, never native inference.
+    H3QualifyOwned {
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "success")]
+        scenario: String,
+    },
+    #[command(hide = true)]
+    H3CpuFixture {
+        #[arg(long)]
+        scenario: String,
+        #[arg(long)]
+        output_dir: PathBuf,
+    },
+    #[command(hide = true)]
+    H3CpuCodec {
+        #[arg(last = true)]
+        args: Vec<String>,
     },
     /// Supervise a trusted CPU-only process without platform guards.
     Supervise(ProcessArguments),
@@ -725,6 +745,19 @@ fn compare_frames(
 
 fn run(cli: Cli) -> Result<bool> {
     match cli.command {
+        Command::H3QualifyOwned {
+            output_dir,
+            scenario,
+        } => {
+            let succeeded = h3_owned::qualify(&output_dir, &scenario)?;
+            println!("{}", output_dir.join("report.json").display());
+            Ok(succeeded)
+        }
+        Command::H3CpuFixture {
+            scenario,
+            output_dir,
+        } => std::process::exit(h3_owned::cpu_fixture(&scenario, &output_dir)?),
+        Command::H3CpuCodec { args } => std::process::exit(h3_owned::cpu_codec(&args)?),
         Command::Validate { workload } => {
             let workload: Workload = load(&workload)?;
             workload.validate()?;
@@ -772,7 +805,10 @@ fn run(cli: Cli) -> Result<bool> {
             output_dir,
         } => {
             let workload_path = std::path::absolute(&workload)?;
-            let input_dir = workload_path.parent().context("workload path has no parent")?.to_path_buf();
+            let input_dir = workload_path
+                .parent()
+                .context("workload path has no parent")?
+                .to_path_buf();
             let workload: Workload = load_regular_json(&workload, 1024 * 1024)?;
             let report_path = output_dir.join("report.json");
             let valid = h3::prepare(H3PrepareOptions {

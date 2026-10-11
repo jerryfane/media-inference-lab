@@ -138,6 +138,25 @@ pub struct Settlement {
     pub failure: Option<String>,
 }
 
+/// Borrowed pipe or Unix stream socket to install at an explicit child descriptor.
+/// The guardian duplicates the source; ownership and flags on `file` do not change.
+pub struct InheritedFd<'a> {
+    pub file: &'a File,
+    pub target: i32,
+}
+
+/// Pre-exec ownership receipt, not execution identity or signal authority.
+#[derive(Clone, Debug, Serialize)]
+pub struct ProcessEnrollment {
+    pub pid: u32,
+    pub ppid: u32,
+    pub pgid: u32,
+    pub sid: i32,
+    pub uid: u32,
+    pub start_seconds: u64,
+    pub start_subseconds: u64,
+}
+
 /// Once fork succeeds, the caller always receives the child ownership, including
 /// failed enrollment or exec. `Err` from a spawn means no child was created.
 ///
@@ -417,25 +436,30 @@ mod darwin {
         tick()?;
         ensure!(Instant::now() < deadline, "named executable probe expired");
         let mut ids = [0_i32; MAX_MEMBERS];
-        let bytes = unsafe {
-            libc::proc_listpids(1, 0, ids.as_mut_ptr().cast(), size_of_val(&ids) as i32)
-        };
+        let bytes =
+            unsafe { libc::proc_listpids(1, 0, ids.as_mut_ptr().cast(), size_of_val(&ids) as i32) };
         ensure!(
-            bytes > 0 && (bytes as usize) < size_of_val(&ids)
+            bytes > 0
+                && (bytes as usize) < size_of_val(&ids)
                 && (bytes as usize).is_multiple_of(size_of::<i32>()),
             "named executable enumeration incomplete"
         );
         let count = bytes as usize / size_of::<i32>();
         ids[..count].sort_unstable();
         for (index, pid) in ids[..count].iter().enumerate() {
-            if index.is_multiple_of(32) { tick()?; }
+            if index.is_multiple_of(32) {
+                tick()?;
+            }
             ensure!(Instant::now() < deadline, "named executable probe expired");
             // PID 0 is the kernel. launchd (PID 1) cannot be an installed app actor.
             if *pid <= 1 {
                 ensure!(*pid >= 0, "invalid enumerated PID");
                 continue;
             }
-            ensure!(index == 0 || ids[index - 1] != *pid, "ambiguous PID enumeration");
+            ensure!(
+                index == 0 || ids[index - 1] != *pid,
+                "ambiguous PID enumeration"
+            );
             if executable_matches_prefix(*pid as u32, prefix)? {
                 return Ok(false);
             }
@@ -452,16 +476,27 @@ mod darwin {
             return Ok(false);
         };
         let mut path = [0_u8; 4096];
-        let length = unsafe {
-            libc::proc_pidpath(pid as i32, path.as_mut_ptr().cast(), path.len() as u32)
-        };
+        let length =
+            unsafe { libc::proc_pidpath(pid as i32, path.as_mut_ptr().cast(), path.len() as u32) };
         let Some(after) = basic(pid)? else {
             return Ok(false);
         };
-        ensure!(before.same_birth(after), "PID reused during executable observation");
-        ensure!(length > 0 && (length as usize) < path.len(), "executable observation unavailable");
-        let end = path.iter().position(|byte| *byte == 0).context("truncated executable path")?;
-        ensure!(end > 0 && end < MAX_PATH_BYTES, "unavailable executable path");
+        ensure!(
+            before.same_birth(after),
+            "PID reused during executable observation"
+        );
+        ensure!(
+            length > 0 && (length as usize) < path.len(),
+            "executable observation unavailable"
+        );
+        let end = path
+            .iter()
+            .position(|byte| *byte == 0)
+            .context("truncated executable path")?;
+        ensure!(
+            end > 0 && end < MAX_PATH_BYTES,
+            "unavailable executable path"
+        );
         let path = Path::new(std::ffi::OsStr::from_bytes(&path[..end]));
         ensure!(path.is_absolute(), "ambiguous executable path");
         Ok(path.starts_with(prefix))
@@ -636,6 +671,104 @@ mod darwin {
         Ok(original)
     }
 
+    fn duplicate_above(fd: RawFd, minimum: RawFd) -> Result<File> {
+        let duplicate = unsafe { libc::fcntl(fd, libc::F_DUPFD_CLOEXEC, minimum) };
+        ensure!(
+            duplicate >= 0,
+            "promoting inherited process descriptor: {}",
+            io::Error::last_os_error()
+        );
+        Ok(unsafe { File::from_raw_fd(duplicate) })
+    }
+
+    fn promote(file: File, minimum: RawFd) -> Result<File> {
+        if file.as_raw_fd() < minimum {
+            duplicate_above(file.as_raw_fd(), minimum)
+        } else {
+            Ok(file)
+        }
+    }
+
+    fn mapping_floor(mappings: &[InheritedFd<'_>], lease: Option<RawFd>) -> Result<RawFd> {
+        ensure!(
+            mappings.len() <= 5,
+            "too many inherited descriptor mappings"
+        );
+        if let Some(fd) = lease {
+            ensure!(
+                fd >= 3 && unsafe { libc::fcntl(fd, libc::F_GETFD) } >= 0,
+                "invalid owned project lease descriptor"
+            );
+        }
+        // The open lease already reserves its number; no mapping may replace it.
+        let mut highest = 2;
+        for (index, mapping) in mappings.iter().enumerate() {
+            ensure!(
+                (0..=1023).contains(&mapping.target),
+                "inherited descriptor target is outside 0..1023"
+            );
+            ensure!(
+                Some(mapping.target) != lease,
+                "inherited descriptor target collides with project lease"
+            );
+            ensure!(
+                !mappings[..index]
+                    .iter()
+                    .any(|prior| prior.target == mapping.target),
+                "duplicate inherited descriptor target"
+            );
+            highest = highest.max(mapping.target);
+        }
+        Ok(highest + 1)
+    }
+
+    fn validate_mapping_source(file: &File) -> Result<()> {
+        let fd = file.as_raw_fd();
+        let mut stat: libc::stat = unsafe { std::mem::zeroed() };
+        ensure!(
+            unsafe { libc::fstat(fd, &mut stat) } == 0,
+            "reading inherited descriptor type: {}",
+            io::Error::last_os_error()
+        );
+        match stat.st_mode & libc::S_IFMT {
+            libc::S_IFIFO => Ok(()),
+            libc::S_IFSOCK => {
+                let mut address: libc::sockaddr_storage = unsafe { std::mem::zeroed() };
+                let mut length = size_of_val(&address) as libc::socklen_t;
+                ensure!(
+                    unsafe {
+                        libc::getsockname(
+                            fd,
+                            (&mut address as *mut libc::sockaddr_storage).cast(),
+                            &mut length,
+                        )
+                    } == 0
+                        && length as usize > size_of::<libc::sa_family_t>()
+                        && address.ss_family as i32 == libc::AF_UNIX,
+                    "inherited socket must use AF_UNIX"
+                );
+                let mut kind: i32 = 0;
+                let mut length = size_of_val(&kind) as libc::socklen_t;
+                ensure!(
+                    unsafe {
+                        libc::getsockopt(
+                            fd,
+                            libc::SOL_SOCKET,
+                            libc::SO_TYPE,
+                            (&mut kind as *mut i32).cast(),
+                            &mut length,
+                        )
+                    } == 0
+                        && length as usize == size_of_val(&kind)
+                        && kind == libc::SOCK_STREAM,
+                    "inherited Unix socket must be a stream"
+                );
+                Ok(())
+            }
+            _ => bail!("inherited descriptor source must be a pipe or Unix stream socket"),
+        }
+    }
+
     fn pipe() -> Result<(File, File)> {
         let mut fds = [-1; 2];
         ensure!(
@@ -712,9 +845,8 @@ mod darwin {
 
     unsafe fn child_exec(
         prepared: &mut Prepared,
-        stdin: RawFd,
-        stdout: RawFd,
-        stderr: RawFd,
+        stdio: [RawFd; 3],
+        mappings: &[(RawFd, RawFd)],
         barrier: RawFd,
         status: RawFd,
         lease: Option<RawFd>,
@@ -740,8 +872,18 @@ mod darwin {
             if libc::setsid() < 0 || libc::chdir(prepared.cwd.as_ptr()) != 0 {
                 child_error(status, *libc::__error());
             }
-            if libc::dup2(stdin, 0) < 0 || libc::dup2(stdout, 1) < 0 || libc::dup2(stderr, 2) < 0 {
-                child_error(status, *libc::__error());
+            // Every source and both control endpoints were promoted above all
+            // destinations before fork. Neither stdio nor arbitrary mapping
+            // order can overwrite a later source, the lease, or the barrier.
+            for (target, source) in stdio.iter().enumerate() {
+                if *source >= 0 && libc::dup2(*source, target as RawFd) < 0 {
+                    child_error(status, *libc::__error());
+                }
+            }
+            for &(source, target) in mappings {
+                if libc::dup2(source, target) < 0 {
+                    child_error(status, *libc::__error());
+                }
             }
             // Snapshot the SINGLE-THREADED CHILD's inherited descriptor table,
             // not the parent's racy/high-watermark approximation. Reject full
@@ -763,7 +905,12 @@ mod darwin {
             let mut index = 0;
             while index < bytes as usize / size_of::<libc::proc_fdinfo>() {
                 let fd = (*prepared.fds.as_ptr().add(index)).proc_fd;
-                if fd > 2 && fd != barrier && fd != status && Some(fd) != lease {
+                if fd > 2
+                    && fd != barrier
+                    && fd != status
+                    && Some(fd) != lease
+                    && !mappings.iter().any(|&(_, target)| fd == target)
+                {
                     libc::close(fd);
                 }
                 index += 1;
@@ -823,7 +970,7 @@ mod darwin {
             deadline: Instant,
             tick: &mut dyn FnMut() -> Result<()>,
         ) -> Result<SpawnAttempt> {
-            Self::spawn_inner(spec, deadline, tick, None)
+            Self::spawn_inner(spec, deadline, tick, &[], None)
         }
 
         /// Inherit ONLY the caller's explicitly owned project lease. The child
@@ -834,32 +981,90 @@ mod darwin {
             tick: &mut dyn FnMut() -> Result<()>,
             lease_fd: i32,
         ) -> Result<SpawnAttempt> {
-            ensure!(
-                lease_fd >= 3 && unsafe { libc::fcntl(lease_fd, libc::F_GETFD) } >= 0,
-                "invalid owned project lease descriptor"
-            );
-            Self::spawn_inner(spec, deadline, tick, Some(lease_fd))
+            Self::spawn_inner(spec, deadline, tick, &[], Some(lease_fd))
+        }
+
+        /// Install at most five borrowed pipe/Unix-stream descriptors in the
+        /// direct child. Explicit stdout/stderr mappings disable their captures.
+        /// `Err` still means no child; every post-fork failure retains custody.
+        pub fn spawn_with_io(
+            spec: &CommandSpec,
+            deadline: Instant,
+            tick: &mut dyn FnMut() -> Result<()>,
+            mappings: &[InheritedFd<'_>],
+            lease_fd: Option<i32>,
+        ) -> Result<SpawnAttempt> {
+            Self::spawn_inner(spec, deadline, tick, mappings, lease_fd)
+        }
+
+        /// Receipt captured behind the enrollment barrier, even if the child
+        /// has since exited. This never asserts which executable actually ran.
+        pub fn enrollment(&self) -> Option<ProcessEnrollment> {
+            if !self.session_ready {
+                return None;
+            }
+            self.anchor.map(|anchor| ProcessEnrollment {
+                pid: anchor.pid,
+                ppid: anchor.ppid,
+                pgid: anchor.pgid,
+                sid: anchor.pid as i32,
+                uid: anchor.uid,
+                start_seconds: anchor.seconds,
+                start_subseconds: anchor.subseconds,
+            })
         }
 
         fn spawn_inner(
             spec: &CommandSpec,
             deadline: Instant,
             tick: &mut dyn FnMut() -> Result<()>,
+            mappings: &[InheritedFd<'_>],
             lease: Option<RawFd>,
         ) -> Result<SpawnAttempt> {
+            let minimum = mapping_floor(mappings, lease)?;
             let mut prepared = Prepared::new(spec)?;
             checkpoint(deadline, tick)?;
             // Resolve/validate libproc before fork as well as in the child.
             basic(unsafe { libc::getpid() } as u32)?.context("guardian identity unavailable")?;
-            let stdin = owned_fd(unsafe {
-                libc::open(c"/dev/null".as_ptr(), libc::O_RDONLY | libc::O_CLOEXEC)
-            })?;
-            let (stdout_read, stdout_write) = pipe()?;
-            let (stderr_read, stderr_write) = pipe()?;
+            // Keep parent-owned duplicates alive through fork, then release
+            // them on every parent path. Borrowed caller sources are untouched.
+            let mut inherited: [Option<File>; 5] = [const { None }; 5];
+            let mut redirects = [(-1, -1); 5];
+            for (index, mapping) in mappings.iter().enumerate() {
+                let source = duplicate_above(mapping.file.as_raw_fd(), minimum)?;
+                validate_mapping_source(&source)?;
+                redirects[index] = (source.as_raw_fd(), mapping.target);
+                inherited[index] = Some(source);
+            }
+            let mapped = |target| mappings.iter().any(|mapping| mapping.target == target);
+            let stdin = if mapped(0) {
+                None
+            } else {
+                Some(promote(
+                    owned_fd(unsafe {
+                        libc::open(c"/dev/null".as_ptr(), libc::O_RDONLY | libc::O_CLOEXEC)
+                    })?,
+                    minimum,
+                )?)
+            };
+            let (stdout_read, stdout_write) = if mapped(1) {
+                (None, None)
+            } else {
+                let (read, write) = pipe()?;
+                nonblocking(&read)?;
+                (Some(read), Some(promote(write, minimum)?))
+            };
+            let (stderr_read, stderr_write) = if mapped(2) {
+                (None, None)
+            } else {
+                let (read, write) = pipe()?;
+                nonblocking(&read)?;
+                (Some(read), Some(promote(write, minimum)?))
+            };
             let (barrier_read, barrier_write) = pipe()?;
+            let barrier_read = promote(barrier_read, minimum)?;
             let (mut status_read, status_write) = pipe()?;
-            nonblocking(&stdout_read)?;
-            nonblocking(&stderr_read)?;
+            let status_write = promote(status_write, minimum)?;
             nonblocking(&status_read)?;
             let events = owned_fd(unsafe { libc::kqueue() })?;
             checkpoint(deadline, tick)?;
@@ -873,9 +1078,12 @@ mod darwin {
                 unsafe {
                     child_exec(
                         &mut prepared,
-                        stdin.as_raw_fd(),
-                        stdout_write.as_raw_fd(),
-                        stderr_write.as_raw_fd(),
+                        [
+                            stdin.as_ref().map_or(-1, AsRawFd::as_raw_fd),
+                            stdout_write.as_ref().map_or(-1, AsRawFd::as_raw_fd),
+                            stderr_write.as_ref().map_or(-1, AsRawFd::as_raw_fd),
+                        ],
+                        &redirects[..mappings.len()],
                         barrier_read.as_raw_fd(),
                         status_write.as_raw_fd(),
                         lease,
@@ -883,6 +1091,7 @@ mod darwin {
                 }
             }
             drop(stdin);
+            drop(inherited);
             drop(stdout_write);
             drop(stderr_write);
             drop(barrier_read);
@@ -898,8 +1107,8 @@ mod darwin {
                 known: BTreeMap::new(),
                 failure: None,
                 settlement: None,
-                stdout: Some(stdout_read),
-                stderr: Some(stderr_read),
+                stdout: stdout_read,
+                stderr: stderr_read,
             };
             #[cfg(test)]
             super::tests::SPAWN_PHASE.set(Some((owned.pid, false)));
@@ -1425,6 +1634,99 @@ mod darwin {
     }
 
     #[cfg(test)]
+    mod io_tests {
+        use super::*;
+        use std::io::{Read, Write};
+
+        fn spec() -> CommandSpec {
+            CommandSpec {
+                executable: "/bin/true".into(),
+                args: Vec::new(),
+                cwd: "/".into(),
+                environment: BTreeMap::new(),
+            }
+        }
+
+        #[test]
+        fn invalid_mapping_targets_and_lease_are_rejected_before_spawn() {
+            let (read, write) = pipe().unwrap();
+            let cases: &[(&[i32], Option<i32>)] = &[
+                (&[-1], None),
+                (&[1024], None),
+                (&[1, 1], None),
+                (&[0, 1, 2, 3, 4, 5], None),
+                (&[read.as_raw_fd()], Some(read.as_raw_fd())),
+                (&[], Some(-1)),
+            ];
+            for &(targets, lease) in cases {
+                let mappings: Vec<_> = targets
+                    .iter()
+                    .map(|&target| InheritedFd {
+                        file: &write,
+                        target,
+                    })
+                    .collect();
+                super::super::tests::SPAWN_PHASE.set(None);
+                let mut tick_called = false;
+                let result = OwnedProcess::spawn_with_io(
+                    &spec(),
+                    Instant::now() + Duration::from_secs(1),
+                    &mut || {
+                        tick_called = true;
+                        bail!("unexpected execution checkpoint");
+                    },
+                    &mappings,
+                    lease,
+                );
+                assert!(result.is_err());
+                assert!(!tick_called);
+                assert_eq!(super::super::tests::SPAWN_PHASE.get(), None);
+                assert!(unsafe { libc::fcntl(write.as_raw_fd(), libc::F_GETFD) } >= 0);
+            }
+        }
+
+        #[test]
+        fn rejected_source_closes_duplicates_but_preserves_borrowed_pipe() {
+            let (mut read, mut write) = pipe().unwrap();
+            nonblocking(&read).unwrap();
+            let regular = tempfile::tempfile().unwrap();
+            let mappings = [
+                InheritedFd {
+                    file: &write,
+                    target: 10,
+                },
+                InheritedFd {
+                    file: &regular,
+                    target: 11,
+                },
+            ];
+            super::super::tests::SPAWN_PHASE.set(None);
+            let mut checkpoints = 0;
+            let result = OwnedProcess::spawn_with_io(
+                &spec(),
+                Instant::now() + Duration::from_secs(1),
+                &mut || {
+                    checkpoints += 1;
+                    ensure!(checkpoints == 1, "unexpected fork checkpoint");
+                    Ok(())
+                },
+                &mappings,
+                None,
+            );
+            assert!(result.is_err());
+            assert_eq!(super::super::tests::SPAWN_PHASE.get(), None);
+            assert!(unsafe { libc::fcntl(regular.as_raw_fd(), libc::F_GETFD) } >= 0);
+            write.write_all(b"x").unwrap();
+            let mut byte = [0];
+            read.read_exact(&mut byte).unwrap();
+            assert_eq!(byte, *b"x");
+            drop(write);
+            // A leaked duplicate writer would return WouldBlock instead of EOF.
+            assert_eq!(read.read(&mut byte).unwrap(), 0);
+        }
+    }
+
+    #[cfg(test)]
     mod metadata_tests {
         use super::*;
 
@@ -1515,6 +1817,18 @@ impl OwnedProcess {
         _lease_fd: i32,
     ) -> Result<SpawnAttempt> {
         Self::spawn_with_deadline(spec, deadline, tick)
+    }
+    pub fn spawn_with_io(
+        spec: &CommandSpec,
+        deadline: Instant,
+        tick: &mut dyn FnMut() -> Result<()>,
+        _mappings: &[InheritedFd<'_>],
+        _lease_fd: Option<i32>,
+    ) -> Result<SpawnAttempt> {
+        Self::spawn_with_deadline(spec, deadline, tick)
+    }
+    pub fn enrollment(&self) -> Option<ProcessEnrollment> {
+        None
     }
     pub fn pid(&self) -> u32 {
         unreachable!("no supported constructor on this platform")
@@ -1987,12 +2301,19 @@ mod tests {
                 std::thread::sleep(Duration::from_millis(2));
             }
             let zombie_absent = bound_absent(&identity)?;
-            Ok((identity, live_absent, reuse_rejected, zombie_absent, executable_matched))
+            Ok((
+                identity,
+                live_absent,
+                reuse_rejected,
+                zombie_absent,
+                executable_matched,
+            ))
         })();
         // Cleanup precedes assertions, including failed observation assertions.
         let settlement = process.settle(deadline, Duration::ZERO, &mut tick).unwrap();
         assert!(failure.is_none(), "{failure:?}");
-        let (identity, live_absent, reuse_rejected, zombie_absent, executable_matched) = observations.unwrap();
+        let (identity, live_absent, reuse_rejected, zombie_absent, executable_matched) =
+            observations.unwrap();
         assert!(settlement.complete, "{settlement:?}");
         assert!(!live_absent && !zombie_absent);
         assert!(reuse_rejected);

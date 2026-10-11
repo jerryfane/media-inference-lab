@@ -1,0 +1,1129 @@
+{
+  "schema_version": 1,
+  "kind": "h3_guardian_owned_bridge_cpu_qualification",
+  "date_utc": "2026-10-11T20:00:22.949471+00:00",
+  "base_commit": "bb9c8c8",
+  "scope": "Project-local H3 POSIX helper bridge/build contract, explicit descriptor custody through existing OwnedProcess, CPU-only guardian broker and genuine raw media fixtures. Not native H3 execution or actual FFmpeg encoding.",
+  "owner_approved_architecture": "Guardian-owned codec integration; native checkout/binary unchanged. Fork denial and strict original settlement retained.",
+  "owner_boundaries": {
+    "studio": "KEEP OPEN; no probes/control",
+    "omlx": "unchanged; no probes/control",
+    "powerpoint_owner": "powerpoint-vm",
+    "resource_coordinator": "mac-studio",
+    "gpu_lease": false,
+    "native_runtime_invoked": false,
+    "model_imports_or_loads": false,
+    "permission_changes": false,
+    "scheduling_hold": false,
+    "old_grant_reuse": false
+  },
+  "prior_accepted_checks_rerun": false,
+  "historical_eperm_diagnostics_rerun": false,
+  "native_execution_attested": false,
+  "capture_eligible": false,
+  "restoration_authority": false,
+  "verification": {
+    "new_distinct_tests_passed": 6,
+    "wire_custody_status_tests": 4,
+    "prefork_descriptor_tests": 2,
+    "full_suite_run": false,
+    "checks": [
+      {
+        "label": "wire-tests",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--lib",
+          "h3_owned::tests::",
+          "--",
+          "--test-threads=1"
+        ],
+        "returncode": 0
+      },
+      {
+        "label": "descriptor-tests",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--lib",
+          "process_scope::darwin::io_tests::",
+          "--",
+          "--test-threads=1"
+        ],
+        "returncode": 0
+      },
+      {
+        "label": "clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--lib",
+          "--bin",
+          "mil",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "returncode": 101
+      },
+      {
+        "label": "focused-clippy",
+        "command": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--lib",
+          "--bin",
+          "mil",
+          "--",
+          "-D",
+          "warnings",
+          "-A",
+          "clippy::manual_is_multiple_of"
+        ],
+        "returncode": 0
+      },
+      {
+        "label": "final-build",
+        "command": [
+          "cargo",
+          "build",
+          "--locked",
+          "--bin",
+          "mil"
+        ],
+        "returncode": 0
+      }
+    ],
+    "clippy_note": "Initial strict clippy failed on six new-code lints (corrected) plus pre-existing src/video_inspection.rs:469 manual_is_multiple_of. Final lib/bin lint passed with only that lint category explicitly allowed; unrelated source unchanged.",
+    "isolated_target": "$EVIDENCE/cargo-target",
+    "initial_matrix_binary_sha256": "519e2b01dabea6bc8aaf8b035fbb5424a9d328d8e0fa764be5f4af3af33435d8",
+    "final_binary_sha256": "c9176e0c7fed96f4558001e33d6ccb66caa8c9e5225b44157685b8f000285e75",
+    "initial_matrix": "Eight scenarios all qualified; success exit0, seven negative outcomes exit1. Original settlement complete for every actor.",
+    "final_binary_smoke": "Success plus strict unknown-tool/root-fork/helper-fork denial predicates, and actual SIGINT before the internal 200ms cancellation trigger.",
+    "external_sigint": {
+      "command": [
+        "$EVIDENCE/cargo-target/debug/mil",
+        "h3-qualify-owned",
+        "--output-dir",
+        "$EVIDENCE/external-sigint",
+        "--scenario",
+        "cancel"
+      ],
+      "guardian_pid": 16452,
+      "signal": "SIGINT",
+      "signal_at_harness_ms": 129.75554200238548,
+      "returncode": 1,
+      "output": "$EVIDENCE/external-sigint/report.json\n",
+      "outcome": "cancelled",
+      "qualification_passed": true,
+      "settlement_complete": true,
+      "guardian_elapsed_ms": 110,
+      "root_settlement": {
+        "complete": true,
+        "exit_code": 70,
+        "exit_signal": null,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": false,
+        "leader_reaped": true
+      },
+      "helper_settlements": [
+        {
+          "complete": true,
+          "exit_code": 0,
+          "exit_signal": null,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": false,
+          "leader_reaped": true
+        },
+        {
+          "complete": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": true,
+          "leader_reaped": true
+        }
+      ]
+    },
+    "run_summaries": [
+      {
+        "run": "success-first",
+        "scenario": "success",
+        "outcome": "completed",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": true,
+        "elapsed_ms": 142,
+        "binary_sha256": "519e2b01dabea6bc8aaf8b035fbb5424a9d328d8e0fa764be5f4af3af33435d8",
+        "root": {
+          "pid": 2926,
+          "enrollment": {
+            "pgid": 2926,
+            "pid": 2926,
+            "ppid": 2867,
+            "sid": 2926,
+            "start_seconds": 1791748399,
+            "start_subseconds": 322614,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 0,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [
+          {
+            "role": "ffprobe_cpu_fixture",
+            "pid": 2927,
+            "token": 1,
+            "enrollment": {
+              "pgid": 2927,
+              "pid": 2927,
+              "ppid": 2867,
+              "sid": 2927,
+              "start_seconds": 1791748399,
+              "start_subseconds": 345330,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          },
+          {
+            "role": "ffmpeg_cpu_fixture",
+            "pid": 2928,
+            "token": 2,
+            "enrollment": {
+              "pgid": 2928,
+              "pid": 2928,
+              "ppid": 2867,
+              "sid": 2928,
+              "start_seconds": 1791748399,
+              "start_subseconds": 390258,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          }
+        ],
+        "report_sha256": "73c378d0ed72b92a1480d1f56f1dc5fbfd56cb2efa823d33df56c6aa4a58a271",
+        "artifact_sha256": {
+          "stderr.log": "6f1d48e04631c9ff94d68ee2135e6b034d8a92b3fbdd4f04ae79a42b21bffb65",
+          "streams.json": "64ca410f29149715d39b0c43e3f3fb39c2c1c6d796c65fa9360eac4536191d4b",
+          "report.json": "73c378d0ed72b92a1480d1f56f1dc5fbfd56cb2efa823d33df56c6aa4a58a271",
+          "first-frame.png": "46f0a47c2ddda5de965f3139012b87257d65dfaf64fdc26d6f89f61e57407c51",
+          "stdout.log": "8f7da0df473bb50385565d57a105a0300d83b64ee3ffab8a1b62949acfc240ca",
+          "events.jsonl": "89dcabe834d718ff185d9e29866556d6105237b5bacd14dfb5f773b51b650027",
+          "audio.f32le": "3c0ecdf2f06903a24f21e27005893410d4f32b9a5676ab0a7dea89495e5dd40b"
+        }
+      },
+      {
+        "run": "codec-failure",
+        "scenario": "codec-failure",
+        "outcome": "failed",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": false,
+        "elapsed_ms": 132,
+        "binary_sha256": "519e2b01dabea6bc8aaf8b035fbb5424a9d328d8e0fa764be5f4af3af33435d8",
+        "root": {
+          "pid": 3293,
+          "enrollment": {
+            "pgid": 3293,
+            "pid": 3293,
+            "ppid": 3283,
+            "sid": 3293,
+            "start_seconds": 1791748409,
+            "start_subseconds": 147383,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 7,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [
+          {
+            "role": "ffprobe_cpu_fixture",
+            "pid": 3303,
+            "token": 1,
+            "enrollment": {
+              "pgid": 3303,
+              "pid": 3303,
+              "ppid": 3283,
+              "sid": 3303,
+              "start_seconds": 1791748409,
+              "start_subseconds": 167955,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          },
+          {
+            "role": "ffmpeg_cpu_fixture",
+            "pid": 3313,
+            "token": 2,
+            "enrollment": {
+              "pgid": 3313,
+              "pid": 3313,
+              "ppid": 3283,
+              "sid": 3313,
+              "start_seconds": 1791748409,
+              "start_subseconds": 212842,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 7,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          }
+        ],
+        "report_sha256": "685e8acd6219c15a8f9d342fab7d988d6d17dfd485259f747e751872185c1e99",
+        "artifact_sha256": {
+          "stderr.log": "86ff5881b3176a5c1d1f3b0fe6a72eae1963ca7a3c242e7359fe15d1d82c1759",
+          "report.json": "685e8acd6219c15a8f9d342fab7d988d6d17dfd485259f747e751872185c1e99",
+          "stdout.log": "8f7da0df473bb50385565d57a105a0300d83b64ee3ffab8a1b62949acfc240ca",
+          "events.jsonl": "4b57535d5c4b9f17be282461881988d2f4cab2ac859d740824031327bf19fb29"
+        }
+      },
+      {
+        "run": "cancel",
+        "scenario": "cancel",
+        "outcome": "cancelled",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": false,
+        "elapsed_ms": 331,
+        "binary_sha256": "519e2b01dabea6bc8aaf8b035fbb5424a9d328d8e0fa764be5f4af3af33435d8",
+        "root": {
+          "pid": 3323,
+          "enrollment": {
+            "pgid": 3323,
+            "pid": 3323,
+            "ppid": 3322,
+            "sid": 3323,
+            "start_seconds": 1791748409,
+            "start_subseconds": 344128,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 70,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [
+          {
+            "role": "ffprobe_cpu_fixture",
+            "pid": 3324,
+            "token": 1,
+            "enrollment": {
+              "pgid": 3324,
+              "pid": 3324,
+              "ppid": 3322,
+              "sid": 3324,
+              "start_seconds": 1791748409,
+              "start_subseconds": 373010,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          },
+          {
+            "role": "ffmpeg_cpu_fixture",
+            "pid": 3325,
+            "token": 2,
+            "enrollment": {
+              "pgid": 3325,
+              "pid": 3325,
+              "ppid": 3322,
+              "sid": 3325,
+              "start_seconds": 1791748409,
+              "start_subseconds": 428765,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": null,
+              "exit_signal": 15,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": true,
+              "leader_reaped": true
+            }
+          }
+        ],
+        "report_sha256": "4695b129bae922e7207c9312445104a9a1442b4928a104ac9c5c19f31db4589b",
+        "artifact_sha256": {
+          "stderr.log": "b63d513654f35afe4d6c4d0fcb551732a1ce4f02b0a172ed18250b60e3554674",
+          "report.json": "4695b129bae922e7207c9312445104a9a1442b4928a104ac9c5c19f31db4589b",
+          "stdout.log": "8f7da0df473bb50385565d57a105a0300d83b64ee3ffab8a1b62949acfc240ca",
+          "events.jsonl": "21316efa1edb1e610abe116577323ecbf792d3356e2e906da05cb7426f92c37b"
+        }
+      },
+      {
+        "run": "guard-denial",
+        "scenario": "guard-denial",
+        "outcome": "guard_denied",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": false,
+        "elapsed_ms": 321,
+        "binary_sha256": "519e2b01dabea6bc8aaf8b035fbb5424a9d328d8e0fa764be5f4af3af33435d8",
+        "root": {
+          "pid": 3333,
+          "enrollment": {
+            "pgid": 3333,
+            "pid": 3333,
+            "ppid": 3332,
+            "sid": 3333,
+            "start_seconds": 1791748409,
+            "start_subseconds": 760892,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 70,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [
+          {
+            "role": "ffprobe_cpu_fixture",
+            "pid": 3334,
+            "token": 1,
+            "enrollment": {
+              "pgid": 3334,
+              "pid": 3334,
+              "ppid": 3332,
+              "sid": 3334,
+              "start_seconds": 1791748409,
+              "start_subseconds": 791502,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          },
+          {
+            "role": "ffmpeg_cpu_fixture",
+            "pid": 3335,
+            "token": 2,
+            "enrollment": {
+              "pgid": 3335,
+              "pid": 3335,
+              "ppid": 3332,
+              "sid": 3335,
+              "start_seconds": 1791748409,
+              "start_subseconds": 837209,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": null,
+              "exit_signal": 15,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": true,
+              "leader_reaped": true
+            }
+          }
+        ],
+        "report_sha256": "22a639bdaf9e96837e2df09cd4729035ad07590d1ef7dca8b28c0721c0219cde",
+        "artifact_sha256": {
+          "stderr.log": "6f931d880a2eec82d8168c2fc91846c338098037cca753471e003a1619034b87",
+          "report.json": "22a639bdaf9e96837e2df09cd4729035ad07590d1ef7dca8b28c0721c0219cde",
+          "stdout.log": "8f7da0df473bb50385565d57a105a0300d83b64ee3ffab8a1b62949acfc240ca",
+          "events.jsonl": "01e554f1c6b3a22f5c7688f7ee43eb00b3e456caf99052ed2d270b65b964f4c9"
+        }
+      },
+      {
+        "run": "root-failure",
+        "scenario": "root-failure",
+        "outcome": "failed",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": false,
+        "elapsed_ms": 142,
+        "binary_sha256": "519e2b01dabea6bc8aaf8b035fbb5424a9d328d8e0fa764be5f4af3af33435d8",
+        "root": {
+          "pid": 3349,
+          "enrollment": {
+            "pgid": 3349,
+            "pid": 3349,
+            "ppid": 3343,
+            "sid": 3349,
+            "start_seconds": 1791748410,
+            "start_subseconds": 163697,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 74,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [
+          {
+            "role": "ffprobe_cpu_fixture",
+            "pid": 3357,
+            "token": 1,
+            "enrollment": {
+              "pgid": 3357,
+              "pid": 3357,
+              "ppid": 3343,
+              "sid": 3357,
+              "start_seconds": 1791748410,
+              "start_subseconds": 184359,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          },
+          {
+            "role": "ffmpeg_cpu_fixture",
+            "pid": 3367,
+            "token": 2,
+            "enrollment": {
+              "pgid": 3367,
+              "pid": 3367,
+              "ppid": 3343,
+              "sid": 3367,
+              "start_seconds": 1791748410,
+              "start_subseconds": 230167,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          }
+        ],
+        "report_sha256": "bd7a38d2c02c6eae7695f06e72027b13625f1a8a32b2713c9cad9ab22e016910",
+        "artifact_sha256": {
+          "stderr.log": "7a90998089f570e5548cc5513e1d1570a003679c3540a1dd0e28a9f18c91df65",
+          "streams.json": "64ca410f29149715d39b0c43e3f3fb39c2c1c6d796c65fa9360eac4536191d4b",
+          "report.json": "bd7a38d2c02c6eae7695f06e72027b13625f1a8a32b2713c9cad9ab22e016910",
+          "first-frame.png": "46f0a47c2ddda5de965f3139012b87257d65dfaf64fdc26d6f89f61e57407c51",
+          "stdout.log": "8f7da0df473bb50385565d57a105a0300d83b64ee3ffab8a1b62949acfc240ca",
+          "events.jsonl": "661f46498b735dcf46122d3f2e30f51c8c37ec3341bf2111e83b88076768216a",
+          "audio.f32le": "3c0ecdf2f06903a24f21e27005893410d4f32b9a5676ab0a7dea89495e5dd40b"
+        }
+      },
+      {
+        "run": "unknown-tool",
+        "scenario": "unknown-tool",
+        "outcome": "failed",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": false,
+        "elapsed_ms": 29,
+        "binary_sha256": "519e2b01dabea6bc8aaf8b035fbb5424a9d328d8e0fa764be5f4af3af33435d8",
+        "root": {
+          "pid": 3373,
+          "enrollment": {
+            "pgid": 3373,
+            "pid": 3373,
+            "ppid": 3372,
+            "sid": 3373,
+            "start_seconds": 1791748410,
+            "start_subseconds": 362331,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 77,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [],
+        "report_sha256": "df0244cbfc4eb6ef40ece6af6f6d690067057b4d14e27da18099040f028e9b2a",
+        "artifact_sha256": {
+          "stderr.log": "c2fb2f2c94b46b68e4acfcb5e08569dc8ede9c6e18cbad7852b9c70af5afe671",
+          "report.json": "df0244cbfc4eb6ef40ece6af6f6d690067057b4d14e27da18099040f028e9b2a",
+          "stdout.log": "ad3f16bf4a8039425717fffef042141740a4d48d758144bf5967f132d8328c9d",
+          "events.jsonl": "8a3dfef286bb69db9fe62a1ab02ac6fd77da3c9ba85d728f811805a801124d57"
+        }
+      },
+      {
+        "run": "direct-fork",
+        "scenario": "direct-fork",
+        "outcome": "failed",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": false,
+        "elapsed_ms": 28,
+        "binary_sha256": "519e2b01dabea6bc8aaf8b035fbb5424a9d328d8e0fa764be5f4af3af33435d8",
+        "root": {
+          "pid": 3375,
+          "enrollment": {
+            "pgid": 3375,
+            "pid": 3375,
+            "ppid": 3374,
+            "sid": 3375,
+            "start_seconds": 1791748410,
+            "start_subseconds": 442621,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 77,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [],
+        "report_sha256": "308a53d8ec1b1ddb28e686051a9c01a07d8a76a218b4f63a9973ca007ee63418",
+        "artifact_sha256": {
+          "stderr.log": "965dda0144dcba8cbffdf51051e829c8082e5ebfae866665277dbfa383ffa750",
+          "report.json": "308a53d8ec1b1ddb28e686051a9c01a07d8a76a218b4f63a9973ca007ee63418",
+          "stdout.log": "38273e7c9636ca0c23c617c485d84f5531d0bfbfe9bb7d6527dd1dfba074e83a",
+          "events.jsonl": "ce03417780c16519e540e485fff9bfbe4e7d10c5c8c5505dc27302c2346bf5f9"
+        }
+      },
+      {
+        "run": "helper-fork",
+        "scenario": "helper-fork",
+        "outcome": "failed",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": false,
+        "elapsed_ms": 132,
+        "binary_sha256": "519e2b01dabea6bc8aaf8b035fbb5424a9d328d8e0fa764be5f4af3af33435d8",
+        "root": {
+          "pid": 3378,
+          "enrollment": {
+            "pgid": 3378,
+            "pid": 3378,
+            "ppid": 3376,
+            "sid": 3378,
+            "start_seconds": 1791748410,
+            "start_subseconds": 520488,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 13,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [
+          {
+            "role": "ffprobe_cpu_fixture",
+            "pid": 3379,
+            "token": 1,
+            "enrollment": {
+              "pgid": 3379,
+              "pid": 3379,
+              "ppid": 3376,
+              "sid": 3379,
+              "start_seconds": 1791748410,
+              "start_subseconds": 542313,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          },
+          {
+            "role": "ffmpeg_cpu_fixture",
+            "pid": 3380,
+            "token": 2,
+            "enrollment": {
+              "pgid": 3380,
+              "pid": 3380,
+              "ppid": 3376,
+              "sid": 3380,
+              "start_seconds": 1791748410,
+              "start_subseconds": 587235,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 13,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          }
+        ],
+        "report_sha256": "b1b306ff601b6b8158762615690e07f421ad0794a74c185659c0e443295d3a10",
+        "artifact_sha256": {
+          "stderr.log": "5fbee7d118fb666e73185456740c48dce845802dd78dc26a67214bda219f9c06",
+          "report.json": "b1b306ff601b6b8158762615690e07f421ad0794a74c185659c0e443295d3a10",
+          "stdout.log": "bf5df1b48ed093fbc843e7315a87005e1d1e12b1bffec82a1b5432212afe8022",
+          "events.jsonl": "5241cdb6af62ea04ad46fe2cbd8baebe23c399c16d3a246530d002070e73d592"
+        }
+      },
+      {
+        "run": "final-success",
+        "scenario": "success",
+        "outcome": "completed",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": true,
+        "elapsed_ms": 152,
+        "binary_sha256": "c9176e0c7fed96f4558001e33d6ccb66caa8c9e5225b44157685b8f000285e75",
+        "root": {
+          "pid": 16414,
+          "enrollment": {
+            "pgid": 16414,
+            "pid": 16414,
+            "ppid": 16367,
+            "sid": 16414,
+            "start_seconds": 1791748747,
+            "start_subseconds": 769479,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 0,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [
+          {
+            "role": "ffprobe_cpu_fixture",
+            "pid": 16415,
+            "token": 1,
+            "enrollment": {
+              "pgid": 16415,
+              "pid": 16415,
+              "ppid": 16367,
+              "sid": 16415,
+              "start_seconds": 1791748747,
+              "start_subseconds": 798084,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          },
+          {
+            "role": "ffmpeg_cpu_fixture",
+            "pid": 16416,
+            "token": 2,
+            "enrollment": {
+              "pgid": 16416,
+              "pid": 16416,
+              "ppid": 16367,
+              "sid": 16416,
+              "start_seconds": 1791748747,
+              "start_subseconds": 843957,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          }
+        ],
+        "report_sha256": "19f00d793e06dfd2bfe82e4ca0d79a8549d41a630ba4eff36ed46ad3fd58729f",
+        "artifact_sha256": {
+          "stderr.log": "6f1d48e04631c9ff94d68ee2135e6b034d8a92b3fbdd4f04ae79a42b21bffb65",
+          "streams.json": "64ca410f29149715d39b0c43e3f3fb39c2c1c6d796c65fa9360eac4536191d4b",
+          "report.json": "19f00d793e06dfd2bfe82e4ca0d79a8549d41a630ba4eff36ed46ad3fd58729f",
+          "first-frame.png": "46f0a47c2ddda5de965f3139012b87257d65dfaf64fdc26d6f89f61e57407c51",
+          "stdout.log": "8f7da0df473bb50385565d57a105a0300d83b64ee3ffab8a1b62949acfc240ca",
+          "events.jsonl": "cf7060da50d473d63af0373ad78ba5d554e7344ab58864194448b1748cdc442c",
+          "audio.f32le": "3c0ecdf2f06903a24f21e27005893410d4f32b9a5676ab0a7dea89495e5dd40b"
+        }
+      },
+      {
+        "run": "final-unknown-tool",
+        "scenario": "unknown-tool",
+        "outcome": "failed",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": false,
+        "elapsed_ms": 28,
+        "binary_sha256": "c9176e0c7fed96f4558001e33d6ccb66caa8c9e5225b44157685b8f000285e75",
+        "root": {
+          "pid": 16421,
+          "enrollment": {
+            "pgid": 16421,
+            "pid": 16421,
+            "ppid": 16417,
+            "sid": 16421,
+            "start_seconds": 1791748747,
+            "start_subseconds": 983109,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 77,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [],
+        "report_sha256": "e32fd119e21cb793c8926176f5979d1306d3cca57f161d725cbedce4b5c6505d",
+        "artifact_sha256": {
+          "stderr.log": "c2fb2f2c94b46b68e4acfcb5e08569dc8ede9c6e18cbad7852b9c70af5afe671",
+          "report.json": "e32fd119e21cb793c8926176f5979d1306d3cca57f161d725cbedce4b5c6505d",
+          "stdout.log": "ad3f16bf4a8039425717fffef042141740a4d48d758144bf5967f132d8328c9d",
+          "events.jsonl": "5ea4df38363bb29ac49119ec6006bcd265d3e35e7c3a72f32170715865f3de42"
+        }
+      },
+      {
+        "run": "final-direct-fork",
+        "scenario": "direct-fork",
+        "outcome": "failed",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": false,
+        "elapsed_ms": 27,
+        "binary_sha256": "c9176e0c7fed96f4558001e33d6ccb66caa8c9e5225b44157685b8f000285e75",
+        "root": {
+          "pid": 16427,
+          "enrollment": {
+            "pgid": 16427,
+            "pid": 16427,
+            "ppid": 16423,
+            "sid": 16427,
+            "start_seconds": 1791748748,
+            "start_subseconds": 64008,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 77,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [],
+        "report_sha256": "de2ce30fd15a5c1ff7fe17ee7e3a97ab4585301b9c9e69a5e7f1cce80839edee",
+        "artifact_sha256": {
+          "stderr.log": "965dda0144dcba8cbffdf51051e829c8082e5ebfae866665277dbfa383ffa750",
+          "report.json": "de2ce30fd15a5c1ff7fe17ee7e3a97ab4585301b9c9e69a5e7f1cce80839edee",
+          "stdout.log": "38273e7c9636ca0c23c617c485d84f5531d0bfbfe9bb7d6527dd1dfba074e83a",
+          "events.jsonl": "317f0fe2af1d399fc9d2ee0a326cfad8208e176c65424e960c1b817ea7b1ae17"
+        }
+      },
+      {
+        "run": "final-helper-fork",
+        "scenario": "helper-fork",
+        "outcome": "failed",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": false,
+        "elapsed_ms": 132,
+        "binary_sha256": "c9176e0c7fed96f4558001e33d6ccb66caa8c9e5225b44157685b8f000285e75",
+        "root": {
+          "pid": 16446,
+          "enrollment": {
+            "pgid": 16446,
+            "pid": 16446,
+            "ppid": 16431,
+            "sid": 16446,
+            "start_seconds": 1791748748,
+            "start_subseconds": 146019,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 13,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [
+          {
+            "role": "ffprobe_cpu_fixture",
+            "pid": 16450,
+            "token": 1,
+            "enrollment": {
+              "pgid": 16450,
+              "pid": 16450,
+              "ppid": 16431,
+              "sid": 16450,
+              "start_seconds": 1791748748,
+              "start_subseconds": 169048,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          },
+          {
+            "role": "ffmpeg_cpu_fixture",
+            "pid": 16451,
+            "token": 2,
+            "enrollment": {
+              "pgid": 16451,
+              "pid": 16451,
+              "ppid": 16431,
+              "sid": 16451,
+              "start_seconds": 1791748748,
+              "start_subseconds": 214871,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 13,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          }
+        ],
+        "report_sha256": "cbfdd6028df7339ccf563567576626c55cb3d221f7f240836e877d833bd2381d",
+        "artifact_sha256": {
+          "stderr.log": "5fbee7d118fb666e73185456740c48dce845802dd78dc26a67214bda219f9c06",
+          "report.json": "cbfdd6028df7339ccf563567576626c55cb3d221f7f240836e877d833bd2381d",
+          "stdout.log": "bf5df1b48ed093fbc843e7315a87005e1d1e12b1bffec82a1b5432212afe8022",
+          "events.jsonl": "208228b02f6e375bc0ea41d787fd2a882d2f85b83a743bcb38fbfd280449ec25"
+        }
+      },
+      {
+        "run": "external-sigint",
+        "scenario": "cancel",
+        "outcome": "cancelled",
+        "qualification_passed": true,
+        "settlement_complete": true,
+        "media_verified": false,
+        "elapsed_ms": 110,
+        "binary_sha256": "c9176e0c7fed96f4558001e33d6ccb66caa8c9e5225b44157685b8f000285e75",
+        "root": {
+          "pid": 16453,
+          "enrollment": {
+            "pgid": 16453,
+            "pid": 16453,
+            "ppid": 16452,
+            "sid": 16453,
+            "start_seconds": 1791748748,
+            "start_subseconds": 331128,
+            "uid": 501
+          },
+          "settlement": {
+            "complete": true,
+            "exit_code": 70,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          }
+        },
+        "helpers": [
+          {
+            "role": "ffprobe_cpu_fixture",
+            "pid": 16454,
+            "token": 1,
+            "enrollment": {
+              "pgid": 16454,
+              "pid": 16454,
+              "ppid": 16452,
+              "sid": 16454,
+              "start_seconds": 1791748748,
+              "start_subseconds": 354051,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            }
+          },
+          {
+            "role": "ffmpeg_cpu_fixture",
+            "pid": 16455,
+            "token": 2,
+            "enrollment": {
+              "pgid": 16455,
+              "pid": 16455,
+              "ppid": 16452,
+              "sid": 16455,
+              "start_seconds": 1791748748,
+              "start_subseconds": 399934,
+              "uid": 501
+            },
+            "settlement": {
+              "complete": true,
+              "exit_code": null,
+              "exit_signal": 15,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": true,
+              "leader_reaped": true
+            }
+          }
+        ],
+        "report_sha256": "7327ef7550b5c02ce9a073f5c371708d58d48eff4e06d0459ef5c98ca72637c9",
+        "artifact_sha256": {
+          "stderr.log": "b63d513654f35afe4d6c4d0fcb551732a1ce4f02b0a172ed18250b60e3554674",
+          "report.json": "7327ef7550b5c02ce9a073f5c371708d58d48eff4e06d0459ef5c98ca72637c9",
+          "stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "events.jsonl": "bdbe86bbe7746b6a8a9f2795512c32bc109ce317fba13b4b3954375d6ffb95be"
+        }
+      }
+    ]
+  },
+  "source_sha256": {
+    "src/h3_owned.rs": "d45c726603e1f1e8c6b080b08e0cbd41888aa4732659a61634d1a7a410e219be",
+    "src/process_scope.rs": "c620f251e32e6c479b8244759362302cdba8d9b139fa7cf33b70a6fb542107ce",
+    "src/main.rs": "e814cb6d9da21087f9eda80ff3f572c30fc697c12cb971e2af8af083bccd8fab",
+    "src/lib.rs": "47d107b1a5ffbb4ec3dff752b79e9f2fde5c7945ad21045ac4a833bd1021a79a",
+    "build.rs": "df84d9fa3d421002a14eaca76796e2f0077a0a3920bc68420dcb6717080df226",
+    "adapters/h3_owned_helpers.h": "3cb5f278857ba23870c256d8a65ae517bb21f93b22126f39b9a8b72ce233499d",
+    "adapters/h3_owned_helpers.c": "b01e798a7e5e65b4e1e6eb673f686b366b1185a0c094ef4a790bb35661104c47",
+    "adapters/h3_cpu_fixture.c": "faf6e6120da3e876ac3ef482f004d4bc766dc70ce85a4dbd5a867931a8dbd2dd"
+  },
+  "protected_artifacts": {
+    "before": {
+      "$REPOSITORY/target/debug/mil": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1",
+      "$REPOSITORY/target/debug/libmedia_inference_lab.rlib": "b8a8dded1c3ffe4931559c41a993bc2f469a0283d816d4b8b28d6f5ac9369dd3",
+      "$HOME/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/fresh-preparation/transaction.candidate.json": "13cb9ce5283f7a3150b76624bedec5207ff412cd7b4aef54ed1dc0fa59531524"
+    },
+    "after": {
+      "$REPOSITORY/target/debug/mil": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1",
+      "$REPOSITORY/target/debug/libmedia_inference_lab.rlib": "b8a8dded1c3ffe4931559c41a993bc2f469a0283d816d4b8b28d6f5ac9369dd3",
+      "$HOME/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/fresh-preparation/transaction.candidate.json": "13cb9ce5283f7a3150b76624bedec5207ff412cd7b4aef54ed1dc0fa59531524"
+    },
+    "byte_identical": true
+  },
+  "limitations": [
+    "Current CLI only admits CPU fixture root/helper argument contracts; no production H3 launch path is exposed.",
+    "Project-local modified native H3 build and transaction-bound real FFmpeg/ffprobe registry integration require separate review and authorization.",
+    "No real H3 draft, model readiness, native runtime/source attestation, generation performance or visual/audiovisual quality evidence.",
+    "CPU guard-denial is a purpose-built control event, not measurement of memory/swap/GPU or workload idleness. Existing native resource guards and service restoration policy unchanged.",
+    "Previously retained live-member killpg EPERM remains unresolved. CPU successful settlement does not clear the original incomplete evidence.",
+    "#15 and #11 native acceptance remains open; no merge/release."
+  ],
+  "local_evidence_directory_name": "h3-owned-cpu-20261011T195209977441Z"
+}
