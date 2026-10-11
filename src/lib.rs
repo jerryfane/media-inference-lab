@@ -20,3 +20,4 @@ pub mod sequence_report;
 pub mod service_lifecycle;
 pub mod study;
 pub mod study_report;
+pub mod video_inspection;

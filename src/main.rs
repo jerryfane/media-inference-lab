@@ -16,6 +16,7 @@ use media_inference_lab::{
     sequence_report,
     study::{StudyInput, StudyPlan},
     study_report,
+    video_inspection::{self, VideoInspectionOptions},
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -109,6 +110,23 @@ enum Command {
         tolerance_rationale: Option<String>,
         #[arg(long)]
         assessment: Option<PathBuf>,
+    },
+    /// Fully decode a local H3-compatible MP4 offline; no inference or GPU authorization.
+    InspectVideo {
+        #[arg(long)]
+        workload: PathBuf,
+        #[arg(long)]
+        video: PathBuf,
+        /// Explicit existing FFmpeg executable; software decoding only.
+        #[arg(long)]
+        ffmpeg: PathBuf,
+        /// Explicit existing FFprobe executable; no PATH lookup or installation.
+        #[arg(long)]
+        ffprobe: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
+        inspection_seconds: u64,
     },
     /// Supervise a trusted CPU-only process without platform guards.
     Supervise(ProcessArguments),
@@ -672,6 +690,27 @@ fn run(cli: Cli) -> Result<bool> {
             let record = capture::inspect(&run_dir)?;
             println!("{}", serde_json::to_string_pretty(&record)?);
             Ok(record.is_success())
+        }
+        Command::InspectVideo {
+            workload,
+            video,
+            ffmpeg,
+            ffprobe,
+            output_dir,
+            inspection_seconds,
+        } => {
+            let workload: Workload = load_regular_json(&workload, 1024 * 1024)?;
+            let report_path = output_dir.join("report.json");
+            let valid = video_inspection::inspect(VideoInspectionOptions {
+                workload,
+                input: video,
+                ffmpeg,
+                ffprobe,
+                output_dir,
+                timeout: Duration::from_secs(inspection_seconds),
+            })?;
+            println!("{}", report_path.display());
+            Ok(valid)
         }
         Command::StudyPlan { plan, output } => {
             let plan: StudyPlan = load_regular_json(&plan, 1024 * 1024)?;
