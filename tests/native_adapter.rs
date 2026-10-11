@@ -495,3 +495,52 @@ assert not any(name.split('.')[0] in ('mlx', 'mflux') for name in sys.modules)
 "#,
     );
 }
+
+#[test]
+fn native_resolved_compute_override_preserves_null_and_rejects_mismatch() {
+    python_case(
+        r#"
+import ast
+from types import SimpleNamespace
+
+# Execute the adapter's actual metadata-validation/resolution block only.
+# No runtime imports, model constructor, generation mock, or native result claim.
+function = next(node for node in ast.parse(adapter.read_text()).body
+                if isinstance(node, ast.FunctionDef) and node.name == 'execute')
+start = next(index for index, node in enumerate(function.body)
+             if isinstance(node, ast.Assign)
+             and any(isinstance(target, ast.Name) and target.id == 'parameters' for target in node.targets))
+end = next(index for index, node in enumerate(function.body[start:], start)
+           if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
+           and isinstance(node.value.func, ast.Attribute) and node.value.func.attr == 'journal'
+           and node.value.args and isinstance(node.value.args[0], ast.Constant)
+           and node.value.args[0].value == 'serialization')
+metadata = compile(ast.Module(body=function.body[start:end], type_ignores=[]), str(adapter), 'exec')
+workload['settings']['generation'].update(
+    resolution={'width': 1536, 'height': 864}, steps=40)
+for override in (None, 'float16'):
+    requested = copy.deepcopy(workload)
+    generation = requested['settings']['generation']
+    generation['compute_precision'] = override
+    before = copy.deepcopy(requested)
+    parameters = {'compute_precision': override, 'step_cache_ratio': None, 'scheduler': 'linear'}
+    generated = SimpleNamespace(
+        generation_parameters=parameters, seed=17, prompt=generation['prompt'],
+        negative_prompt=None, steps=40, guidance=4.0, width=1536, height=864)
+    scope = dict(api, requested=requested, generation=generation, generated=generated,
+                 model=SimpleNamespace(compute_precision=SimpleNamespace(dtype=None)),
+                 mx=SimpleNamespace(float16=object()))
+    exec(metadata, scope)
+    destination = root / ('null-metadata.json' if override is None else 'fp16-metadata.json')
+    api['atomic_json'](destination, scope['resolved'])
+    saved = json.loads(destination.read_text())
+    assert saved['settings']['generation']['compute_precision'] == override
+    assert saved == before, 'resolved metadata silently changed requested settings'
+    assert requested == before, 'resolution mutated the original request'
+
+    parameters['compute_precision'] = 'float16' if override is None else None
+    reject(lambda: exec(metadata, scope), 'returned compute_precision mismatch')
+assert not any(name.split('.')[0] in ('mlx', 'mflux') for name in sys.modules)
+"#,
+    );
+}

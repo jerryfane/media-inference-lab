@@ -441,7 +441,7 @@ def execute(args, report, session):
     resolved_generation = resolved["settings"]["generation"]
     resolved_generation.update({"seed": generated.seed, "prompt": generated.prompt, "negative_prompt": generated.negative_prompt,
                                 "steps": generated.steps, "guidance": generated.guidance, "precision": "bfloat16",
-                                "compute_precision": "float16" if model.compute_precision.dtype == mx.float16 else "bfloat16",
+                                "compute_precision": parameters.get("compute_precision"),
                                 "resolution": {"width": generated.width, "height": generated.height}})
     session.journal("serialization")
     artifacts_dir = session.root / "artifacts"
