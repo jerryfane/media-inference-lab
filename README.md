@@ -58,7 +58,7 @@ Begin with the evidence schema and capture lifecycle, then resource guards and a
 
 ## Implementation status
 
-The Rust CLI implements versioned image/video evidence contracts, CPU subprocess supervision, offline comparisons/reports, macOS resource guards, and a named Studio/oMLX maintenance guardian integrated with the native Qwen runner. **A second authorized unchanged Qwen attempt saved a valid, visually inspected 1536×864 PNG, but capture acceptance failed: the shared result validator incorrectly rejected equal null/no-override compute precision.** Native exit was zero, original root settlement and service accounting completed, and Studio restoration succeeded. That immutable transaction remains `success: false` / `restored: true`; accepting its image independently does not rewrite it into a successful capture or performance result. The earlier pre-PNG failure and `restored: false` receipt remain unchanged. No fully accepted real capture exists yet. Every subsequent native attempt needs a fresh exact grant and coordinated window; consumed grants cannot be reused. Native forced-cancellation and saved-application-fidelity acceptance remain unproven. `supervise` and `supervise-guarded` remain CPU-only; real-runtime issues and H3 integration remain open.
+The Rust CLI implements versioned image/video evidence contracts, CPU subprocess supervision, offline comparisons/reports, macOS resource guards, and a named Studio/oMLX maintenance guardian integrated with the native Qwen runner. **An authorized unchanged Qwen Image 2.1 run now completes end to end: accepted capture, fully decoded and visually inspected 1536×864 PNG, complete original root/service accounting, and restored Studio with separately observed listener/health readiness.** The successful implementation snapshot is `8dbf5d3`; reproducible usage and private artifact references are below. Earlier pre-PNG and null-contract failures remain immutable, including their distinct restoration outcomes. This single sample is not an optimization result, whole-host-exclusive baseline, general reproducibility proof, native forced-cancellation qualification or saved-application-fidelity test. Every new native attempt still requires a fresh exact grant and coordinated window; consumed grants cannot be reused. `supervise` and `supervise-guarded` remain CPU-only. H3 integration and remaining issue acceptance criteria stay open.
 
 **Current owner decision: bounded Studio maintenance is permitted for scoped tests.** This supersedes KEEP STUDIO OPEN for those tests only; earlier receipts and historical continuation notes retain their original policy. The owner accepts temporary Studio interruption and restart. Prioritize the first unchanged Qwen Image 2.1 capture through the existing image path; H3 integration is not its prerequisite. Do not implement shared keep-open admission coordination. A fresh exact runtime/guardian/model/workload/Studio transaction and `mac-studio` scheduling grant are still required before native imports, weight loading, GPU lease acquisition or Studio stop/restart. Avoid interrupting active owner/brother generations; preserve saved outputs/configuration. oMLX remains untouched and explicitly unmanaged/unverified—no whole-host exclusivity claim. No old-grant reuse, unrelated service/session/VM control, downloads or permission/guard weakening. PowerPoint remains entirely with `powerpoint-vm`.
 
@@ -315,7 +315,7 @@ CPU verification for this slice: `cargo test --test guards --test guard_capture 
 PR28 review correction: the earlier `14d31bb` reader was buffered. Its reported 37,509,546 bytes were logical accounting, not verified physical read volume; the earlier “no tensor payload reads” claim is withdrawn for those historical reports. They are preserved unchanged. Corrected verification used only generated toy metadata: `cargo test --test preflight review_` passed two new regressions (the original ten were filtered out), followed by Clippy/build. A 76-byte toy checkpoint left descriptor offsets/accounting at 8 then 72, before its four payload bytes. Actual `mil validate`/`mflux-preflight` accepted eleven explicit-null/omitted-option forms with identical identities and resolved arguments; three missing-required-field controls still failed. No real weight files were reread for this correction.
 
 
-### Native Qwen runner: preparation and blocked launch
+### Native Qwen runner: preparation and authorized capture
 
 `adapters/mflux_native.py` calls the actual `QwenImage21` constructor and `generate_image`, synchronizes MLX, and serializes the returned PIL image. It does not emulate inference or shell out to the MFLUX CLI. Use an existing isolated venv, explicit editable-package root, expected Python-source-tree hash, and existing local snapshot:
 
@@ -349,9 +349,42 @@ Each JSON publication uses a fresh random-named, exclusively created mode-0600 t
 
 Provenance separates installed distribution metadata from actual imported module paths/hashes and source-tree identity. It records returned settings, host import/constructor/synchronized-generation timing boundaries, process RSS and available MLX allocator readings; native tqdm duration is not substituted for complete generation time. Lazy constructor timing does not assert completed weight evaluation. Device identity, actual cache warmth, unattested revisions and full weight-payload fingerprint remain explicitly unavailable; metadata/header hashes and stat stability are **not** payload integrity. Native ABI/parameter compatibility and resource APIs require a real authorized run. These unknowns cannot establish strict same-work identity or a controlled speedup. Generated PNG evidence remains unassessed until separately compared; numerical differences are not quality verdicts.
 
-Historical pre-integration CPU verification: five adapter safety/validation cases, two CLI denial/retention cases and four former native-guard cases passed; Clippy/build passed. That check-only smoke used the selected existing venv/source/snapshot and unchanged full workload, with native identity unavailable and readiness denied. The named-maintenance cutover at `b576449` passed `cargo test --all-targets` (188 tests across 21 suites), built the CLI and exercised the historical CPU lifecycle cases above; that count does not describe the acceptance correction. Native execution remains unexercised; #11/#12 remain open.
+Historical pre-integration CPU verification: five adapter safety/validation cases, two CLI denial/retention cases and four former native-guard cases passed; Clippy/build passed. That check-only smoke used the selected existing venv/source/snapshot and unchanged full workload, with native identity unavailable and readiness denied. The named-maintenance cutover at `b576449` passed `cargo test --all-targets` (188 tests across 21 suites), built the CLI and exercised the historical CPU lifecycle cases above; that count does not describe later acceptance corrections. The real image milestone below does not close remaining #11/#12 acceptance gaps.
 
 PR34 review corrections: four new deterministic CPU regressions passed across focused runs, covering endpoint/interior/null ratios through Python and the real CLI, atomic rename during a byte scan, real over-limit and unavailable/unstable scans, and cancellation/fsync failure recovery with retained partials and non-overwriting final publication. New-test failures exposed Python 3.9 temporary-wrapper/audit incompatibility and non-roundtrip JSON parsing; exclusive path-based creation and Serde's `float_roundtrip` feature corrected those without weakening audit policy or changing schemas. Clippy all-targets/build passed offline. A sandboxed stdlib-only smoke retained a cancelled journal and interrupted publication; an enumeration/rename interleaving measured 752 bytes under a 1 MiB bound without requesting a signal. Refreshed full-shape check-only preparation passed; actual endpoint commands returned `1` before the Python check. Prior accepted checks/repros were not rerun. Updated identities/proposals are CPU preparation evidence only, not native acceptance or authorization.
+
+#### Observed successful image invocation
+
+The coherent `8dbf5d3` snapshot was built offline into a new private target. An internally reviewed transaction bound that exact guardian SHA, unchanged adapter/helper and selected venv/source/model, full workload, current Studio identity, resource policy and phase budgets. Execution used the actual `maintenance-run` command below with a **fresh one-use authorization supplied by `mac-studio`**, after scheduling:
+
+```sh
+"$EXACT_REVIEWED_GUARDIAN" maintenance-run \
+  --transaction "$EXACT_REVIEWED_TRANSACTION" \
+  --authorization "$FRESH_EXACT_AUTHORIZATION"
+```
+
+Do not rerun the recorded authorization: it is consumed historical evidence. Prepare/review a new transaction and receive a new exact grant for another sample. No owner approval round-trip is needed under standing authorization, but internal admission and coordinated native scheduling remain mandatory.
+
+Private successful evidence root: `$HOME/.local/share/media-inference-lab/qwen-contract-proposal-20261011T214921071694Z`. `image-milestone.json` records the exact executed argv, artifact, timing boundaries, startup observation and original settlement. `transaction-evidence/receipt.json` has `success: true`, `restored: true`, native exit zero and complete original root/service accounting; SHA-256 `71d74cb7d93e672d04af7220e07daaf8e6db737085b88fd344b9049eb35ffe88`. These saved-output commands require no new native grant:
+
+```sh
+EVIDENCE="$HOME/.local/share/media-inference-lab/qwen-contract-proposal-20261011T214921071694Z"
+MIL="$EVIDENCE/cargo-target/debug/mil"
+CAPTURE="$EVIDENCE/captures/run-1791755549615-90976-0"
+"$MIL" inspect "$CAPTURE"
+"$MIL" inspect-images \
+  --workload "$EVIDENCE/preparation/workload.json" \
+  --image "$CAPTURE/artifacts/image.png" \
+  --output-dir /absolute/new-private-image-inspection \
+  --inspection-seconds 60
+```
+
+Both checks passed on the actual output. PNG: 1536×864, RGB uint8, 1,268,341 bytes; SHA-256 `f70b78f9ac4ad6b87d9d86833038a0465a83153d533974b8548afb76dfe90355`. The actual image was opened: beige geometric folded-paper sculpture, triangular facets and visible folds, plain near-white background, soft contact shadow; no obvious blank/corrupt rendering. This observation is not an aesthetic score.
+
+Measured host phases: imports 0.827765 s; constructor 2.811127 s, without asserting completed lazy weight evaluation; generation through `mx.synchronize` 40.011071 s, including prompt/denoise/VAE/native PIL materialization and excluding PNG serialization/provenance hashing. Capture host elapsed 45.264 s, artifact inspection 110 ms, cleanup 0 ms at millisecond resolution, guardian transaction 45.994 s. These are not GPU-event timings or a controlled speed comparison.
+
+One Studio bootstrap qualified the same replacement's `/bin/bash` → selected Python transition in 22.068 ms (two observations), with no final identity mismatches. A correctly rebound, separately authorized per-PID libproc listener check and one bounded health GET returned HTTP 200 / `ok: true` / `video_enabled: true`, with unchanged bracketing identity. Both original observation helpers exited zero, reaped with absent groups and no signals. See `post-attempt-readiness-20261011T215355493380Z/observation.json`; no accepted fixture replay, stale-scope invocation, global scan, lsof retry or extra restart. Availability remains point-in-time, not atomic socket/HTTP-response certification or saved-output/configuration fidelity.
+
 
 ### Bounded offline baseline/candidate/control studies
 
