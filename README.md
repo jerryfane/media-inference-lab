@@ -669,6 +669,32 @@ The real-codec fixture uses the selected native codec callsites and real softwar
 
 Observed CPU integration evidence: `/Users/jerry/.local/share/media-inference-lab/h3-native-integration-20261011T220117461929Z`. Reviewed isolated C build succeeded (two bridge integer-conversion and three fixture enum/float warnings retained); Rust build and five native enrollment regressions passed. All six real-codec scenarios passed their expectations with original settlement complete. Original audio decoded 96,000 frames, with channel RMSE 0.001432366/0.000903545; native two-second reader RMSE 0.001761611/0.001108832, below the explicit 0.025 fixture limit. Actual native enrollment succeeded using the complete original compiler log; an earlier receipt parsed from truncated presentation text failed closed and remains preserved. **These are CPU/build/enrollment results, not real H3 generation, quality or performance evidence.**
 
+#### Observed first native draft
+
+The frozen `f3286da` guardian completed the first real H3 draft on 2026-10-11 under a fresh exact grant. No profile reduction or second invocation: prompt `"A geometric folded-paper sculpture slowly rotates on a plain light background. Static camera, soft studio lighting."`, seed 17, and the exact draft settings above.
+
+Historical successful command (the authorization is consumed; **do not replay it**):
+
+```sh
+H3_ROOT=/Users/jerry/.local/share/media-inference-lab/h3-native-integration-20261011T220117461929Z
+PROPOSAL="$H3_ROOT/proposal-20261011T222414621679Z"
+"$PROPOSAL/cargo-target/debug/mil" maintenance-run \
+  --transaction "$PROPOSAL/preparation/transaction.candidate.json" \
+  --authorization "$PROPOSAL/preparation/mac-studio-grant-1791757874626-81653bb3/authorization.json"
+
+# Saved-evidence inspection only; does not launch the model:
+"$PROPOSAL/cargo-target/debug/mil" inspect \
+  "$H3_ROOT/captures/run-1791757884549-87194-0"
+```
+
+Both commands exited 0. The original transaction receipt reports `success:true`, `restored:true`, complete native/helper/service accounting, and no experiment/recovery failure. Root PID 87260, encoding helper 91017 and inspection helpers 91252/91340/91459/91569/92449 all naturally exited 0, were reaped and had absent groups; no cleanup signals were needed. Receipt SHA-256: `707a566b3f8c00fbb5bc8c4cea94f0db1b26c63ddfb656463c39ceab7958d691`.
+
+Actual output: `$H3_ROOT/captures/run-1791757884549-87194-0/h3-output.mp4`, 213,932 bytes, SHA-256 `938e6980920e364f0c49b1041ae68d72070dbcce3f859703b696f5270e5f53e0`. Full guarded validation decoded all 56 frames at 864×480/24 FPS (69,672,960 RGB bytes) and 74,400 stereo sample frames at 32 kHz (595,200 PCM bytes, 2.325 seconds, A/V duration ratio 0.9964285714). Selected previews are `inspection/first.png`, `inspection/middle.png` and `inspection/last.png` beneath the capture. All three were opened: a light angular folded-paper-like sculpture on a plain light background, with orientation/fold-silhouette changes across the selected times. This sampled visual/temporal inspection does not establish rigid rotation, whole-clip temporal quality or acoustic quality; audio was decoded, not listened to.
+
+Timing boundaries: transaction 94.233 s; capture wall 92.995 s; guardian-owned native interval 63.765 s from root creation to exit/stop decision, including native encoding/helpers and their in-loop settlement but excluding terminal root cleanup and subsequent inspection. Artifact inspection was 26.557 s (inner full-stream inspection 26.547554208 s, including helper cleanup); terminal root cleanup 4 ms. Rounded native context counters remain in `native-profile.json`; overlapping spans are not summed or treated as complete independent phases. These timings are not pure inference latency, an isolated performance baseline or a speedup.
+
+Studio was restored as PID 92669, birth `1791757977.611929`, with the exact Python/cwd identity. The already-qualified observer was rebound before invocation: `$PROPOSAL/post-attempt-readiness-20261011T223346112920Z/observation.json` records positive per-PID LISTEN 7860, HTTP 200/`ok:true`/`video_enabled:true`, unchanged bracketing identity and complete original settlement of both observer helpers, in 363,563 μs. No fixture/global scan/lifecycle replay; oMLX remained unmanaged, untouched and unverified. Standard-profile generation, controlled repeatability, acoustic assessment and broader quality/performance comparisons remain unverified.
+
 
 ### Image-output validation
 
