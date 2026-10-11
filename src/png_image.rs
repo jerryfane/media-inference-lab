@@ -67,6 +67,10 @@ impl DecodedPng {
         &self.identity
     }
 
+    pub(crate) fn into_identity(self) -> PngIdentity {
+        self.identity
+    }
+
     pub fn samples(&self) -> &[u8] {
         &self.samples
     }
@@ -76,7 +80,7 @@ impl DecodedPng {
     }
 }
 
-fn regular_file(path: &Path) -> Result<File> {
+pub(crate) fn regular_file(path: &Path) -> Result<File> {
     let metadata = fs::symlink_metadata(path)?;
     ensure!(
         metadata.is_file() && !metadata.file_type().is_symlink(),
@@ -289,7 +293,11 @@ fn validate_envelope(encoded: &[u8]) -> Result<Header> {
 // png's raster decoder deliberately discards data after the expected rows and
 // allows bytes after the zlib stream. Validate the stream separately, with fixed
 // scratch space, so truncated checksums and excess raster/compressed data fail.
-fn validate_image_data(encoded: &[u8], expected: u64) -> Result<()> {
+fn validate_image_data(
+    encoded: &[u8],
+    expected: u64,
+    checkpoint: &mut impl FnMut() -> Result<()>,
+) -> Result<()> {
     let mut inflater = Decompress::new(true);
     let mut scratch = [0u8; 32 * 1024];
     let mut ended = false;
@@ -300,6 +308,7 @@ fn validate_image_data(encoded: &[u8], expected: u64) -> Result<()> {
         if &encoded[offset + 4..offset + 8] == b"IDAT" {
             let mut input = &encoded[offset + 8..end - 4];
             while !input.is_empty() {
+                checkpoint()?;
                 ensure!(!ended, "trailing compressed data in PNG IDAT");
                 let before_in = inflater.total_in();
                 let before_out = inflater.total_out();
@@ -324,6 +333,7 @@ fn validate_image_data(encoded: &[u8], expected: u64) -> Result<()> {
         offset = end;
     }
     while !ended {
+        checkpoint()?;
         let before = inflater.total_out();
         let status = inflater
             .decompress(&[], &mut scratch, FlushDecompress::Finish)
@@ -345,13 +355,18 @@ fn validate_image_data(encoded: &[u8], expected: u64) -> Result<()> {
     Ok(())
 }
 
-fn validate_chunks(encoded: &[u8], options: png::DecodeOptions) -> Result<()> {
+fn validate_chunks(
+    encoded: &[u8],
+    options: png::DecodeOptions,
+    checkpoint: &mut impl FnMut() -> Result<()>,
+) -> Result<()> {
     // The high-level Reader ignores BadAncillaryChunk events. Inspect them here
     // rather than silently accepting malformed recognized metadata. With no
     // image buffer this pass checks chunks/CRCs but does not inflate IDAT.
     let mut decoder = png::StreamingDecoder::new_with_options(options);
     let mut remaining = encoded;
     while !remaining.is_empty() {
+        checkpoint()?;
         let (consumed, event) = decoder.update(remaining, None)?;
         ensure!(
             !matches!(event, png::Decoded::BadAncillaryChunk(_)),
@@ -365,29 +380,79 @@ fn validate_chunks(encoded: &[u8], options: png::DecodeOptions) -> Result<()> {
 /// Decode unchanged sample codes from a bounded static PNG snapshot. Sixteen-bit
 /// samples are big-endian. No color management, alpha expansion, or orientation
 /// transform is applied; original encoded bytes retain all source metadata.
-/// Accepted files contain at most 32 MiB; the bounded read permits one additional
-/// oversize-sentinel byte to detect a file growing after its metadata was checked.
+/// Accepted files contain at most 32 MiB; reads check the bound after each
+/// fixed-size block, including when a file grows after its metadata was checked.
 pub fn decode(path: &Path) -> Result<DecodedPng> {
-    let file = regular_file(path)?;
+    decode_open_file(
+        path, regular_file(path)?, MAX_ENCODED_BYTES, MAX_DECODED_BYTES, &mut || Ok(())
+    )
+}
+
+pub(crate) fn read_open_file(
+    mut file: File,
+    max_bytes: u64,
+    checkpoint: &mut impl FnMut() -> Result<()>,
+) -> Result<Vec<u8>> {
+    checkpoint()?;
+    let metadata = file.metadata()?;
+    let limit = max_bytes.min(MAX_ENCODED_BYTES);
+    ensure!(metadata.is_file(), "PNG input is not a regular file");
+    ensure!(metadata.len() <= limit, "PNG exceeds encoded byte limit");
+    let mut encoded = Vec::with_capacity(metadata.len() as usize);
+    let mut buffer = [0u8; 64 * 1024];
+    loop {
+        checkpoint()?;
+        let next = (limit - encoded.len() as u64 + 1).min(buffer.len() as u64) as usize;
+        let count = file.read(&mut buffer[..next])?;
+        if count == 0 {
+            break;
+        }
+        ensure!(
+            (encoded.len() as u64).saturating_add(count as u64) <= limit,
+            "PNG exceeds encoded byte limit"
+        );
+        encoded.extend_from_slice(&buffer[..count]);
+    }
+    Ok(encoded)
+}
+
+pub(crate) fn decode_open_file(
+    path: &Path,
+    file: File,
+    max_bytes: u64,
+    max_decoded_bytes: usize,
+    checkpoint: &mut impl FnMut() -> Result<()>,
+) -> Result<DecodedPng> {
+    let encoded = read_open_file(file, max_bytes, checkpoint)?;
+    decode_encoded(path, encoded, None, max_decoded_bytes, checkpoint)
+}
+
+pub(crate) fn decode_encoded(
+    path: &Path,
+    encoded: Vec<u8>,
+    encoded_sha256: Option<String>,
+    max_decoded_bytes: usize,
+    checkpoint: &mut impl FnMut() -> Result<()>,
+) -> Result<DecodedPng> {
+    checkpoint()?;
     ensure!(
-        file.metadata()?.len() <= MAX_ENCODED_BYTES,
-        "PNG exceeds encoded byte limit"
-    );
-    let mut encoded = Vec::new();
-    file.take(MAX_ENCODED_BYTES + 1).read_to_end(&mut encoded)?;
-    ensure!(
-        encoded.len() as u64 <= MAX_ENCODED_BYTES,
-        "PNG exceeds encoded byte limit"
+        encoded.starts_with(SIGNATURE),
+        "unsupported image format: only static PNG stored rasters are supported"
     );
     let header =
         validate_envelope(&encoded).with_context(|| format!("invalid PNG {}", path.display()))?;
+    ensure!(
+        header.decoded_bytes() <= max_decoded_bytes,
+        "aggregate decoded image byte limit exceeded"
+    );
     let mut options = png::DecodeOptions::default();
     options.set_ignore_checksums(false);
     options.set_skip_ancillary_crc_failures(false);
     options.set_ignore_text_chunk(true);
     options.set_ignore_iccp_chunk(true);
-    validate_chunks(&encoded, options.clone())?;
-    validate_image_data(&encoded, header.filtered_bytes())?;
+    validate_chunks(&encoded, options.clone(), checkpoint)?;
+    validate_image_data(&encoded, header.filtered_bytes(), checkpoint)?;
+    checkpoint()?;
     // These exact retained bytes have already passed strict CRC and zlib checks.
     options.set_ignore_checksums(true);
     let mut decoder = png::Decoder::new_with_options(Cursor::new(&encoded), options);
@@ -406,6 +471,7 @@ pub fn decode(path: &Path) -> Result<DecodedPng> {
     let output = reader
         .next_frame(&mut samples)
         .context("invalid PNG image data")?;
+    checkpoint()?;
     ensure!(
         output.width == header.width
             && output.height == header.height
@@ -417,7 +483,7 @@ pub fn decode(path: &Path) -> Result<DecodedPng> {
     reader.finish().context("invalid trailing PNG chunks")?;
     let identity = PngIdentity {
         source_path: path.to_path_buf(),
-        sha256: format!("{:x}", Sha256::digest(&encoded)),
+        sha256: encoded_sha256.unwrap_or_else(|| format!("{:x}", Sha256::digest(&encoded))),
         bytes: encoded.len() as u64,
         decoded_sha256: format!("{:x}", Sha256::digest(&samples)),
         width: header.width,
@@ -425,6 +491,7 @@ pub fn decode(path: &Path) -> Result<DecodedPng> {
         color: header.color,
         bit_depth: header.depth,
     };
+    checkpoint()?;
     Ok(DecodedPng {
         identity,
         samples,

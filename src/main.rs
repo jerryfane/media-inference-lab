@@ -6,7 +6,9 @@ use media_inference_lab::{
     comparison,
     frame_sequence::{self, SequenceAssessment, SequenceInput, SequenceSource},
     guards::{GuardConfig, GuardMonitor, Lease},
+    h3::{self, InspectOptions as H3InspectOptions, PrepareOptions as H3PrepareOptions},
     image_comparison::{self, ImageAssessment, Tolerance},
+    image_inspection::{self, ImageInspectionOptions},
     maintenance,
     native::{self, NativeOptions},
     png_image::{self, DecodedPng},
@@ -110,6 +112,56 @@ enum Command {
         tolerance_rationale: Option<String>,
         #[arg(long)]
         assessment: Option<PathBuf>,
+    },
+    /// Validate every requested PNG image offline, including batch count and stored sample type.
+    InspectImages {
+        #[arg(long)]
+        workload: PathBuf,
+        #[arg(long = "image", required = true)]
+        images: Vec<PathBuf>,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
+        inspection_seconds: u64,
+    },
+    /// Prepare explicit H3 profile arguments and file identities; never import or launch H3.
+    H3Prepare {
+        #[arg(long)]
+        workload: PathBuf,
+        #[arg(long, value_parser = ["draft", "standard", "detailed"])]
+        profile: String,
+        #[arg(long)]
+        binary: PathBuf,
+        #[arg(long)]
+        model_dir: PathBuf,
+        #[arg(long)]
+        shader_cwd: PathBuf,
+        /// Selected source snapshot; not proof that the binary was compiled from it.
+        #[arg(long)]
+        source_dir: PathBuf,
+        #[arg(long)]
+        ffmpeg: PathBuf,
+        #[arg(long)]
+        ffprobe: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+    },
+    /// Inspect supplied H3 logs/media offline; reported exit is not owned-execution attestation.
+    H3InspectResult {
+        #[arg(long)]
+        plan: PathBuf,
+        #[arg(long)]
+        stdout: PathBuf,
+        #[arg(long)]
+        stderr: PathBuf,
+        #[arg(long, allow_hyphen_values = true)]
+        exit_code: i32,
+        #[arg(long)]
+        video: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
+        inspection_seconds: u64,
     },
     /// Fully decode a local H3-compatible MP4 offline; no inference or GPU authorization.
     InspectVideo {
@@ -690,6 +742,75 @@ fn run(cli: Cli) -> Result<bool> {
             let record = capture::inspect(&run_dir)?;
             println!("{}", serde_json::to_string_pretty(&record)?);
             Ok(record.is_success())
+        }
+        Command::InspectImages {
+            workload,
+            images,
+            output_dir,
+            inspection_seconds,
+        } => {
+            let workload: Workload = load_regular_json(&workload, 1024 * 1024)?;
+            let report_path = output_dir.join("report.json");
+            let valid = image_inspection::inspect(ImageInspectionOptions {
+                workload,
+                inputs: images,
+                output_dir,
+                timeout: Duration::from_secs(inspection_seconds),
+            })?;
+            println!("{}", report_path.display());
+            Ok(valid)
+        }
+        Command::H3Prepare {
+            workload,
+            profile,
+            binary,
+            model_dir,
+            shader_cwd,
+            source_dir,
+            ffmpeg,
+            ffprobe,
+            output_dir,
+        } => {
+            let workload_path = std::path::absolute(&workload)?;
+            let input_dir = workload_path.parent().context("workload path has no parent")?.to_path_buf();
+            let workload: Workload = load_regular_json(&workload, 1024 * 1024)?;
+            let report_path = output_dir.join("report.json");
+            let valid = h3::prepare(H3PrepareOptions {
+                workload,
+                profile: profile.parse()?,
+                binary,
+                model_dir,
+                shader_cwd,
+                source_dir,
+                input_dir,
+                ffmpeg,
+                ffprobe,
+                output_dir,
+            })?;
+            println!("{}", report_path.display());
+            Ok(valid)
+        }
+        Command::H3InspectResult {
+            plan,
+            stdout,
+            stderr,
+            exit_code,
+            video,
+            output_dir,
+            inspection_seconds,
+        } => {
+            let report_path = output_dir.join("report.json");
+            let valid = h3::inspect_saved(H3InspectOptions {
+                plan,
+                stdout,
+                stderr,
+                exit_code,
+                video,
+                output_dir,
+                timeout: Duration::from_secs(inspection_seconds),
+            })?;
+            println!("{}", report_path.display());
+            Ok(valid)
         }
         Command::InspectVideo {
             workload,

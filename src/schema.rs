@@ -53,6 +53,7 @@ pub enum MediaSettings {
         frames: u32,
         layers: u32,
         playback_fps: f64,
+        /// Optional internal model canvas; generation.resolution remains the output raster.
         render_resolution: Option<Resolution>,
         reuse: ReusePolicy,
         audio: AudioConfiguration,

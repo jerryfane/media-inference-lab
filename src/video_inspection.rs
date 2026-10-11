@@ -152,7 +152,6 @@ fn expected(workload: &Workload) -> Result<Expected> {
         generation,
         frames,
         playback_fps,
-        render_resolution,
         audio,
         ..
     } = &workload.settings
@@ -171,7 +170,8 @@ fn expected(workload: &Workload) -> Result<Expected> {
         playback_fps.is_finite() && *playback_fps > 0.0 && *playback_fps <= 120.0,
         "playback FPS must be positive and at most 120"
     );
-    let resolution = render_resolution.as_ref().unwrap_or(&generation.resolution);
+    // H3's optional render canvas is internal; width/height name the output raster.
+    let resolution = &generation.resolution;
     ensure!(
         resolution.width > 0
             && resolution.height > 0

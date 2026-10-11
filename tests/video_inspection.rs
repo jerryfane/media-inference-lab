@@ -294,6 +294,35 @@ fn ffmpeg_command(ffmpeg: &Path) -> Command {
     command
 }
 
+#[test]
+#[ignore = "requires explicit MIL_FFMPEG and MIL_FFPROBE; CPU-only codec regression"]
+fn internal_canvas_does_not_replace_output_dimensions() {
+    let root = TempDir::new().unwrap();
+    let ffmpeg = PathBuf::from(std::env::var_os("MIL_FFMPEG").expect("MIL_FFMPEG"));
+    let ffprobe = PathBuf::from(std::env::var_os("MIL_FFPROBE").expect("MIL_FFPROBE"));
+    let source = source_fixture(root.path(), &ffmpeg);
+    let mut request = workload();
+    request["settings"]["render_resolution"] = json!({"width": 16, "height": 8});
+    let mut command = inspection(
+        root.path(), "internal-canvas", &request, &source, &ffmpeg, &ffprobe,
+    );
+    expect_exit(&mut command, root.path(), 0);
+    let observed = report(&root.path().join("internal-canvas"), true);
+    assert_eq!(observed["expected_output"]["width"], 32);
+    assert_eq!(observed["expected_output"]["height"], 16);
+    assert_eq!(observed["video"]["width"], 32);
+    assert_eq!(observed["video"]["height"], 16);
+
+    // A stream that matches only the internal canvas must not pass as the output.
+    request["settings"]["generation"]["resolution"] = json!({"width": 64, "height": 32});
+    request["settings"]["render_resolution"] = json!({"width": 32, "height": 16});
+    let mut command = inspection(
+        root.path(), "internal-only-stream", &request, &source, &ffmpeg, &ffprobe,
+    );
+    expect_exit(&mut command, root.path(), 1);
+    report(&root.path().join("internal-only-stream"), false);
+}
+
 fn source_fixture(root: &Path, ffmpeg: &Path) -> PathBuf {
     let path = root.join("fixture.mp4");
     let mut command = ffmpeg_command(ffmpeg);
@@ -478,16 +507,6 @@ fn real_mp4_full_decode_evidence_and_invalid_media_cases() {
             fs::canonicalize(path).unwrap()
         );
     }
-
-    // A declared render size, not a draft's internal generation size, is the
-    // consumer-visible size that the encoded stream must actually contain.
-    let mut rendered = workload();
-    rendered["settings"]["generation"]["resolution"] = json!({"width": 16, "height": 16});
-    rendered["settings"]["render_resolution"] = json!({"width": 32, "height": 16});
-    let mut command = inspection(root, "rendered", &rendered, &source, &ffmpeg, &ffprobe);
-    expect_exit(&mut command, root, 0);
-    let rendered_report = report(&root.join("rendered"), true);
-    assert_eq!(rendered_report["video"]["decoded_rgb_sha256"], digest(&rgb));
 
     // Display rotation must not silently reinterpret the raw decoded raster.
     let rotated = root.join("rotated.mp4");

@@ -1,8 +1,10 @@
 use crate::{
     guards::{GuardConfig, GuardMonitor, GuardReport, Lease},
+    image_inspection::{MAX_BATCH, MAX_BATCH_DECODED_BYTES, MAX_BATCH_ENCODED_BYTES, validate_raster},
     native_guard::{NativeBinding, SANDBOX_EXECUTABLE, SANDBOX_PROFILE},
+    png_image,
     process_scope::{CommandSpec, OwnedProcess, Settlement},
-    schema::{AdapterResult, ProcessPolicy, Workload},
+    schema::{AdapterResult, MediaSettings, ProcessPolicy, Workload},
     service_lifecycle::UnmanagedAcknowledgement,
 };
 use anyhow::{Context, Result, bail, ensure};
@@ -741,8 +743,31 @@ fn verify_artifacts(
     limit: u64,
     deadline: Instant,
     cancelled: Option<&AtomicBool>,
+    native_result: bool,
 ) -> Result<()> {
     let mut total = 0_u64;
+    let generated_count = result.artifacts.iter()
+        .filter(|artifact| artifact.role == "generated-image").count();
+    let require_images = generated_count > 0
+        || (matches!(result.resolved.settings, MediaSettings::Image { .. })
+            && (native_result || result.runtime.name == "MFLUX QwenImage21 / MLX"));
+    let generation = if require_images {
+        let MediaSettings::Image { generation } = &result.resolved.settings else {
+            bail!("generated-image artifacts require image modality");
+        };
+        ensure!(
+            generated_count == generation.batch_size as usize,
+            "generated-image artifact batch count mismatch: expected {}, found {}",
+            generation.batch_size, generated_count
+        );
+        ensure!(generated_count <= MAX_BATCH, "generated-image batch exceeds inspection limit");
+        Some(generation)
+    } else {
+        None
+    };
+    let mut image_layout = None;
+    let mut image_encoded_bytes = 0u64;
+    let mut image_decoded_bytes = 0u64;
     #[cfg(unix)]
     let mut identities = std::collections::HashSet::new();
     for artifact in &result.artifacts {
@@ -762,7 +787,33 @@ fn verify_artifacts(
         let remaining = limit
             .checked_sub(total)
             .context("artifact bytes exceed capture limit")?;
-        let (hash, bytes) = hash_open_file(file, &metadata, remaining, deadline, cancelled)?;
+        let (hash, bytes) = if artifact.role == "generated-image" {
+            let mut checkpoint = || -> Result<()> {
+                ensure!(Instant::now() < deadline, "artifact inspection deadline exceeded");
+                ensure!(
+                    !cancelled.is_some_and(|flag| flag.load(Ordering::Relaxed)),
+                    "cancelled during artifact inspection"
+                );
+                Ok(())
+            };
+            // Decode and hash the exact descriptor already identity-checked above.
+            // Never reopen a generated path or accept its header/hash alone.
+            let image = png_image::decode_open_file(
+                &path, file, remaining.min(MAX_BATCH_ENCODED_BYTES - image_encoded_bytes),
+                (MAX_BATCH_DECODED_BYTES - image_decoded_bytes) as usize, &mut checkpoint,
+            )?;
+            let identity = image.identity();
+            validate_raster(
+                identity, generation.context("missing image generation settings")?,
+                &mut image_layout,
+            )?;
+            image_encoded_bytes += identity.bytes;
+            image_decoded_bytes += image.samples().len() as u64;
+            let identity = image.into_identity();
+            (identity.sha256, identity.bytes)
+        } else {
+            hash_open_file(file, &metadata, remaining, deadline, cancelled)?
+        };
         ensure!(
             bytes == artifact.bytes,
             "artifact byte count mismatch: {}",
@@ -834,6 +885,7 @@ pub fn inspect(run_dir: &Path) -> Result<CaptureRecord> {
             record.limits.max_output_bytes,
             Instant::now() + INSPECTION_LIMIT,
             None,
+            record.invocation.native.is_some(),
         )?;
         ensure!(
             regular_file(&directory.join("stdout.log"))?
@@ -1733,6 +1785,7 @@ pub(crate) mod unix {
                             options.max_output_bytes,
                             native_cleanup_deadline.unwrap_or(inspection_start + INSPECTION_LIMIT),
                             Some(&cancelled),
+                            record.invocation.native.is_some(),
                         )?;
                         Ok(result)
                     })();

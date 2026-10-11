@@ -62,6 +62,8 @@ The Rust CLI implements versioned image/video evidence contracts, CPU subprocess
 
 **Current owner decision: KEEP STUDIO OPEN.** Independent image/video implementation and read-only preparation have resumed, but Local Image Studio and oMLX must remain running and unchanged. The existing Qwen execution path requires Studio `bootout`/`bootstrap`, so the first native image attempt remains pending—not awaiting an answer to the same interruption question. No bypass, old authorization, GPU lease, heavy run, or scheduling hold is permitted by implementation work. The separate FlashNext benchmark is finished and is not rerun. CPU codec validation below is not model generation or model-speedup evidence. `mac-studio` remains resource coordinator; Windows/PowerPoint work belongs to the dedicated `powerpoint-vm` seat.
 
+The current CPU-only continuation adds H3 command preparation/saved-result inspection and workload-bound image decoding. It adds **no H3 launch path or execution authority**. The approved guardian, rlib and transaction candidate remain byte-identical; the new validator is in the isolated current build, not retroactively in the approved guardian. Any eventual native attempt needs freshly prepared/qualified current binaries and exact authorization.
+
 ### Build and CPU verification
 
 Use a Rust toolchain supporting edition 2024 and an existing Python 3 for metadata-fixture tests. Observed checks used Rust/Cargo 1.98.0 on Darwin arm64. The generic CPU supervisor implements macOS/Linux ownership; Linux has not been exercised. The named maintenance guardian and native collectors require Darwin and fail closed elsewhere. Default checks require no models, MLX/MFLUX installation, GPU, or model downloads.
@@ -510,7 +512,7 @@ cargo build --offline --locked --bin mil \
   --inspection-seconds 60
 ```
 
-The workload is the existing version-1 contract. This H3-compatible inspection slice requires video, batch one, **56–362 frames with `5 + 17n` spacing**, and explicit generated-audio sample rate/channels. Disabled/reference audio is rejected, not assigned invented parameters. Expected stored-raster dimensions come from `render_resolution` when supplied, otherwise generation resolution. Requested playback FPS must be positive and at most 120. This is media-output validation, not validation that a native H3 profile supports every representable workload.
+The workload is the existing version-1 contract. This H3-compatible inspection slice requires video, batch one, **56–362 frames with `5 + 17n` spacing**, and explicit generated-audio sample rate/channels. Disabled/reference audio is rejected, not assigned invented parameters. Expected stored-raster dimensions always come from `generation.resolution`; `render_resolution` is H3's optional internal model canvas, not its output size. Requested playback FPS must be positive and at most 120. This is media-output validation, not validation that a native H3 profile supports every representable workload.
 
 The command snapshots and hashes the source into its new private bundle, records tool paths/hashes/versions, restricts input to the local MOV/MP4 demuxer without external data references, and uses software decoding with bounded subprocess capture. It examines **every decoded video/audio frame** with FFprobe, checking exactly one video and one audio stream, frame count/dimensions/FPS/timeline, sample rate/channels, and coherent start timestamps. Separate full FFmpeg decodes hash RGB24 and little-endian float32 PCM, cross-check decoded frame/sample counts, and require audio duration within **75–125%** of video duration. No output FPS, scaling, audio-rate, or channel override repairs mismatches. Autorotation is disabled; hashes describe converted stored-raster RGB/PCM, not native tensors, encoded equality, color-managed rendering, or quality.
 
@@ -520,6 +522,79 @@ Bounds: source and each tool binary at most 256 MiB; each image axis at most 409
 
 `inspection_wall_seconds` covers validation and owned helper cleanup, excluding final report publication. Native model-load/text/denoise/audio-VAE/video-VAE/mux boundaries, native host time, seconds/generated clip and generation throughput remain **unavailable**. Encoded playback FPS is never reported as generation speed.
 
-Focused verification used `cargo test --offline --locked --target-dir "$ISOLATED_TARGET" --test video_inspection -- --include-ignored --test-threads=1` with explicit `MIL_FFMPEG`/`MIL_FFPROBE` paths: **3 tests passed**, including the opt-in real-codec suite. Default tests need no codecs; the ignored suite generates small CPU media and exercises full hashes/selected-frame pixels, render-size precedence, rotation, wrong count/size/FPS/audio rate/channels, missing audio, malformed/truncated media, and overwrite refusal. A separate retained actual CLI smoke validated a synthetic **56-frame, 64×48, 24 FPS** clip with **32 kHz stereo** audio: 516,096 decoded RGB bytes and 73,728 PCM sample frames (2.304 seconds; audio/video ratio 0.98743), exit 0. The poster was inspected. This is not an H3 generation or a reduced substitute for the approved Qwen workload. Real draft/standard H3 captures, native phase timing, longer clips, first native Qwen generation, and baseline/candidate/control model comparisons remain unexercised; #11–#13 and #15–#17 remain open.
+Historical `cbada58` verification is retained [in its original receipt](runs/validation-resume-20261011T183430016619Z/receipt.json), without rerunning its accepted checks: three focused tests and a separate synthetic **56-frame, 64×48, 24 FPS, 32 kHz stereo** CLI smoke passed. The smoke decoded 516,096 RGB bytes and 73,728 PCM sample frames; its poster was inspected. That milestone's render-size precedence assertion incorrectly treated the internal canvas as output size. The continuation below replaces it with a failing-before/passing-after output-canvas regression; it does not rewrite the historical receipt. Neither milestone is H3 generation or a reduced substitute for the approved Qwen workload.
+
+### H3 command preparation and saved-result inspection
+
+`h3-prepare` validates and fingerprints a selected local runtime without executing it—not even `--help` or `--info`. It creates private `report.json` and, on valid preparation, `plan.json`. The plan records shell-free argv, shader working directory, cleared environment with explicit `H3_FFMPEG`/`H3_FFPROBE`, selected source/binary/shader/configuration hashes, and an absolute future MP4 path **inside the preparation directory**, never the shader/model directory.
+
+| Profile | Output raster | Steps | Layers | Denoiser reuse | Core reuse |
+| --- | --- | --- | --- | --- | --- |
+| `draft` | 864×480 | 8 | 50 | 1 | 1 |
+| `standard` | 1344×768 | 20 | 50 | 2 | 1 |
+| `detailed` | 1344×768 | 20 | 50 | 1 | 1 |
+
+The version-1 workload must match the profile; nothing is silently overridden. Other required settings: `scheduler: "euler"`, guidance 1, batch 1, 56–362 aligned frames, 24 playback FPS, generated 32 kHz stereo audio, fresh process and unspecified cache state. Precision is `auto` or BF16 checkpoint storage, with `compute_precision: null` and no requested weight quantization; the selected native source uses device-selected mixed BF16/FP32/int8 kernels, **not guaranteed BF16-only compute**. Negative prompts, strength and explicit cache optimizations are unsupported. The generic `examples/video-workload.json` is a schema fixture, not an H3 profile.
+
+An explicit internal render canvas must be same-aspect multiples of 32, no larger than the output. A reduced canvas is recorded as a modified workload, not an equivalent-work baseline. First/last-frame RGB8 PNG anchors are supported with exact hashes/lengths and a recorded selected-source transformation recipe; reference paths resolve **relative to the workload file's directory**, cannot escape it, and become absolute pinned argv entries. These transformations are described, not executed or claimed as observed latent evidence. Other reference roles/combinations not represented by this interface are rejected.
+
+```sh
+"$ISOLATED_TARGET/debug/mil" h3-prepare \
+  --workload /absolute/h3-draft-workload.json --profile draft \
+  --binary /absolute/existing/h3 --model-dir /absolute/local/MiniMax-H3 \
+  --shader-cwd /absolute/existing/shader-directory \
+  --source-dir /absolute/selected/h3-source \
+  --ffmpeg /absolute/existing/ffmpeg --ffprobe /absolute/existing/ffprobe \
+  --output-dir /absolute/new-private-preparation
+
+"$ISOLATED_TARGET/debug/mil" h3-inspect-result \
+  --plan /absolute/new-private-preparation/plan.json \
+  --stdout /absolute/saved.stdout --stderr /absolute/saved.stderr \
+  --exit-code 0 --video /absolute/saved.mp4 \
+  --output-dir /absolute/new-private-result-inspection --inspection-seconds 60
+```
+
+Preparation reads bounded configuration/source files and directory metadata, **never weight payloads**. Metadata inventory is not model readiness, a caller-declared revision is not verified model identity, and source hashes do not prove how the selected binary was compiled. Each metadata/source file is capped at 16 MiB, each executable at 256 MiB, and each model-component enumeration at 4096 entries. Missing inputs retain the selected paths, request and error in a failed preparation report.
+
+`h3-inspect-result` snapshots the supplied plan and raw stdout/stderr, revalidates the plan against the still-present selected paths/hashes, and performs full video/audio inspection. Logs are capped at 8 MiB each. Parser `mil-h3-saved-profile-v1` translates only recognized profiling grammar into common timing/resource structures. Unknown, malformed, duplicate or ambiguous records leave measurements unavailable; overlapping spans are never summed, lifetime high-water allocations are not phase deltas, and GPU command timing is not total generation time.
+
+The report explicitly sets **`execution_attested: false` and `capture_eligible: false`**. A supplied exit code is only a caller report, not an observed child outcome. Nonzero exit fails even when the MP4 validates. No trusted `AdapterResult`, `result.json`, native host duration, generation throughput or native success is manufactured. Missing/mismatched media and invalid plans retain failures. This is a complete offline inspection operation, **not a working native H3 executor or fulfillment of #15's real draft-generation criterion**. The inspection deadline is cooperative; static metadata/file operations cannot be hard-cancelled by it.
+
+### Image-output validation
+
+`inspect-images` fully decodes every supplied static PNG against the image workload, including exact batch count, dimensions and consistent stored color/sample type. It retains unchanged originals, per-input failures, encoded/decoded hashes, declared seed/settings, and observed raster metadata. Corrupt IDAT/checksums, missing files, wrong size, duplicate physical files and mixed batch layouts fail. PNG `uint8`/`uint16` samples are distinct from requested model BF16 precision; no color management, orientation correction, alpha expansion or transcoding is performed.
+
+```sh
+"$ISOLATED_TARGET/debug/mil" inspect-images \
+  --workload /absolute/image-workload.json \
+  --image /absolute/output-0.png --image /absolute/output-1.png \
+  --output-dir /absolute/new-private-image-inspection --inspection-seconds 60
+```
+
+Repeat `--image` exactly as many times as the declared batch requires. The new private bundle contains `report.json` and bounded original snapshots, including corrupt supported-size inputs. Exit 0 means output validation passed, 1 means retained input/batch failure, and 2 means an invalid/unbounded request or an infrastructure error; existing bundles are never overwritten. Bounds: 64 inputs, 32 MiB encoded/input, existing 16-million-pixel/128-MiB raster limits, 256 MiB aggregate snapshots and 512 MiB aggregate decoded rasters. The 1–120 second deadline is cooperative between bounded reads/inflate/decode stages; report persistence is outside that deadline.
+
+Capture acceptance and saved-capture inspection now use the same strict decoder on the **already opened, identity-checked descriptor** for `generated-image` artifacts. Exact resolved batch count, dimensions, color/dtype consistency, hash/byte limits and cancellation checks are required. Native image captures cannot evade validation by omitting the generated-image role. Generic CPU schema fixtures without generated media remain supported. Native import/generation/saving timing boundaries and lifecycle/guard/settlement policy are unchanged.
+
+### Observed continuation verification
+
+The [continuation receipt](runs/h3-image-integration-20261011T185654008268Z/receipt.json) retains exact commands/results and the initial failures corrected during verification. **18 distinct new tests passed**: 11 H3 tests, six image tests (including actual CPU capture acceptance/rejection), and one new codec regression. Commands used the isolated target, two Cargo jobs and no downloads:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --offline --locked --target-dir "$ISOLATED_TARGET" \
+  --test h3 --test image_inspection -- --test-threads=1
+CARGO_BUILD_JOBS=2 MIL_FFMPEG=/absolute/existing/ffmpeg MIL_FFPROBE=/absolute/existing/ffprobe \
+  cargo test --offline --locked --target-dir "$ISOLATED_TARGET" --test video_inspection \
+  internal_canvas_does_not_replace_output_dimensions -- --exact --ignored --test-threads=1
+CARGO_BUILD_JOBS=2 cargo test --offline --locked --target-dir "$ISOLATED_TARGET" --test h3 \
+  missing_selected_inputs_identify_the_failed_path_and_preserve_request -- --exact --test-threads=1
+```
+
+Actual CLI observations:
+- H3 draft preparation against selected existing local binary/source/model metadata passed without invoking H3; a relative first-frame preparation also passed. A missing binary retained its exact failing path and request.
+- Two synthetic 96×64 RGB8 images passed as a batch, with decoded hashes matching independently generated samples. A 95×64 second image failed while preserving both input outcomes.
+- Saved-result inspection passed for a **synthetic FFmpeg** 864×480, 56-frame, 24-FPS clip with 32-kHz stereo audio: 69,672,960 RGB bytes and 73,728 PCM sample frames. All five codec helpers exited 0 and completed cleanup. Supplied exit 7 failed despite valid media. Synthetic image/video surfaces were opened; these are not model-quality evidence.
+- The distinct internal/output-canvas scenario failed on the prior CPU binary and passed after correction. The accepted prior suite was not rerun.
+
+No full suite, Clippy, accepted native/static/lifecycle diagnostics, native imports or model execution ran. The approved guardian/rlib/candidate hashes were unchanged before/after. Real Qwen output, real H3 draft/standard captures, owned native timing/outcomes, longer model clips and baseline/candidate/control comparisons remain pending; #11–#13 and #15–#17 remain open. H3 still needs an authorized, guarded owned-process integration compatible with its FFmpeg children. Qwen remains blocked by the mandatory Studio interruption conflicting with the settled **KEEP STUDIO OPEN** decision; no bypass or repeated interruption request is introduced.
 
 The repository is private initially. Public release, licensing, and sharing local artifacts require an explicit owner decision; this repository does not grant rights to third-party runtimes, model weights, or unpublished patches.

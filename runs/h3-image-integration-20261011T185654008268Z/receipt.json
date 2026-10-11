@@ -1,0 +1,730 @@
+{
+  "schema_version": 1,
+  "kind": "cpu_only_h3_image_integration_validation",
+  "date_utc": "2026-10-11T19:20:24.782809+00:00",
+  "scope": "H3 command/profile preparation and caller-supplied saved-result inspection; complete image-output validation; no native executor/model launch or speedup",
+  "owner_decision": {
+    "studio": "KEEP STUDIO OPEN; settled, no repeat interruption question",
+    "omlx": "running and unchanged",
+    "gpu_lease": false,
+    "scheduling_hold": false,
+    "old_grant_reuse": false,
+    "powerpoint_owner": "powerpoint-vm",
+    "resource_coordinator": "mac-studio"
+  },
+  "accepted_prior_evidence": {
+    "commit": "cbada58",
+    "receipt": "runs/validation-resume-20261011T183430016619Z/receipt.json",
+    "rerun": false,
+    "note": "Only a distinct new internal/output-canvas failing-before scenario used the previous CPU binary and a retained synthetic clip. Original accepted suite and native/static/lifecycle diagnostics were not rerun."
+  },
+  "verification": {
+    "new_distinct_tests_passed": 18,
+    "h3": 11,
+    "image_inspection": 6,
+    "new_video_inspection_regression": 1,
+    "full_suite_run": false,
+    "clippy_run": false,
+    "isolated_target": "$EVIDENCE/target",
+    "checks_in_order": [
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--offline",
+          "--locked",
+          "--target-dir",
+          "$EVIDENCE/target",
+          "--test",
+          "h3",
+          "--test",
+          "image_inspection",
+          "--",
+          "--test-threads=1"
+        ],
+        "environment_overrides": {
+          "CARGO_BUILD_JOBS": "2"
+        },
+        "exit_code": 101,
+        "wall_seconds": 11.433316042006481,
+        "stdout": "",
+        "stderr": "   Compiling libc v0.2.190\n   Compiling proc-macro2 v1.0.107\n   Compiling cfg-if v1.0.5\n   Compiling quote v1.0.47\n   Compiling version_check v0.9.5\n   Compiling unicode-ident v1.0.26\n   Compiling generic-array v0.14.7\n   Compiling typenum v1.20.1\n   Compiling simd-adler32 v0.3.10\n   Compiling syn v3.0.6\n   Compiling errno v0.3.14\n   Compiling adler2 v2.0.1\n   Compiling serde_core v1.0.229\n   Compiling crc32fast v1.5.2\n   Compiling bitflags v2.13.2\n   Compiling utf8parse v0.2.2\n   Compiling anstyle-parse v1.0.0\n   Compiling anstyle v1.0.14\n   Compiling colorchoice v1.0.5\n   Compiling anstyle-query v1.1.5\n   Compiling zmij v1.0.23\n   Compiling is_terminal_polyfill v1.70.2\n   Compiling anstream v1.0.0\n   Compiling miniz_oxide v0.9.1\n   Compiling crypto-common v0.1.7\n   Compiling block-buffer v0.10.4\n   Compiling serde_json v1.0.151\n   Compiling memchr v2.8.3\n   Compiling strsim v0.11.1\n   Compiling signal-hook v0.3.18\n   Compiling serde v1.0.229\n   Compiling anyhow v1.0.104\n   Compiling heck v0.5.0\n   Compiling clap_lex v1.1.1\n   Compiling clap_derive v4.6.7\n   Compiling clap_builder v4.6.7\n   Compiling digest v0.10.7\n   Compiling flate2 v1.1.10\n   Compiling serde_derive v1.0.229\n   Compiling miniz_oxide v0.8.9\n   Compiling signal-hook-registry v1.4.8\n   Compiling fdeflate v0.3.7\n   Compiling cpufeatures v0.2.17\n   Compiling tinyvec v1.13.3\n   Compiling parking_lot_core v0.9.12\n   Compiling rustix v1.1.5\n   Compiling getrandom v0.4.3\n   Compiling itoa v1.0.18\n   Compiling unicode-normalization v0.1.25\n   Compiling sha2 v0.10.9\n   Compiling png v0.18.1\n   Compiling clap v4.6.7\n   Compiling scopeguard v1.2.0\n   Compiling smallvec v1.16.2\n   Compiling pulldown-cmark v0.13.4\n   Compiling media-inference-lab v0.1.0 ($REPOSITORY)\n   Compiling lock_api v0.4.14\n   Compiling unicase v2.10.0\nerror[E0689]: can't call method `is_finite` on ambiguous numeric type `{float}`\n   --> src/h3.rs:617:27\n    |\n617 |             values[index].is_finite() && values[index] >= 0.0,\n    |                           ^^^^^^^^^\n\nerror[E0689]: can't call method `is_finite` on ambiguous numeric type `{float}`\n   --> src/h3.rs:621:57\n    |\n621 |             index < 4 || (values[index] * 1073741824.0).is_finite(),\n    |                                                         ^^^^^^^^^\n\n   Compiling once_cell v1.21.4\n   Compiling fastrand v2.5.0\n   Compiling tempfile v3.27.0\n   Compiling parking_lot v0.12.5\nFor more information about this error, try `rustc --explain E0689`.\nerror: could not compile `media-inference-lab` (lib) due to 2 previous errors\n"
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--offline",
+          "--locked",
+          "--target-dir",
+          "$EVIDENCE/target",
+          "--test",
+          "h3",
+          "--test",
+          "image_inspection",
+          "--",
+          "--test-threads=1"
+        ],
+        "environment_overrides": {
+          "CARGO_BUILD_JOBS": "2"
+        },
+        "exit_code": 101,
+        "wall_seconds": 6.633621832996141,
+        "stdout": "\nrunning 10 tests\ntest explicit_internal_canvas_is_separate_from_output ... ok\ntest first_last_anchors_require_exact_png_hashes_and_supported_roles ... FAILED\ntest missing_assets_and_invalid_metadata_leave_failed_preparation ... ok\ntest native_binary_alias_cannot_be_used_as_offline_media_tool ... ok\ntest nonzero_exit_and_missing_video_retain_raw_unattested_failure ... ok\ntest profiles_preserve_exact_request_and_shell_free_prompt ... ok\ntest rejects_hidden_overrides_and_unsupported_requests ... ok\ntest saved_profiles_keep_overlapping_spans_separate_without_inference_total ... ok\ntest tampered_saved_plan_is_rejected_before_any_tool_execution ... ok\ntest unknown_malformed_partial_and_duplicate_profiles_fail_closed ... ok\n\nfailures:\n\n---- first_last_anchors_require_exact_png_hashes_and_supported_roles stdout ----\n\nthread 'first_last_anchors_require_exact_png_hashes_and_supported_roles' (13046135) panicked at tests/h3.rs:297:41:\ncalled `Result::unwrap()` on an `Err` value: reference input path\n\nCaused by:\n    artifact path must use nonempty relative components without dot or parent traversal: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpjOiUaC/frame.png\"\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    first_last_anchors_require_exact_png_hashes_and_supported_roles\n\ntest result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s\n\n",
+        "stderr": "   Compiling media-inference-lab v0.1.0 ($REPOSITORY)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.84s\n     Running tests/h3.rs ($EVIDENCE/target/debug/deps/h3-f2dd334df1808569)\nerror: test failed, to rerun pass `--test h3`\n",
+        "change_since_first_attempt": "Explicit f64 parser array type after compiler E0689; no native execution"
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--offline",
+          "--locked",
+          "--target-dir",
+          "$EVIDENCE/target",
+          "--test",
+          "h3",
+          "--test",
+          "image_inspection",
+          "--",
+          "--test-threads=1"
+        ],
+        "environment_overrides": {
+          "CARGO_BUILD_JOBS": "2"
+        },
+        "exit_code": 0,
+        "wall_seconds": 5.761834499993711,
+        "stdout": "\nrunning 10 tests\ntest explicit_internal_canvas_is_separate_from_output ... ok\ntest first_last_anchors_require_exact_png_hashes_and_supported_roles ... ok\ntest missing_assets_and_invalid_metadata_leave_failed_preparation ... ok\ntest native_binary_alias_cannot_be_used_as_offline_media_tool ... ok\ntest nonzero_exit_and_missing_video_retain_raw_unattested_failure ... ok\ntest profiles_preserve_exact_request_and_shell_free_prompt ... ok\ntest rejects_hidden_overrides_and_unsupported_requests ... ok\ntest saved_profiles_keep_overlapping_spans_separate_without_inference_total ... ok\ntest tampered_saved_plan_is_rejected_before_any_tool_execution ... ok\ntest unknown_malformed_partial_and_duplicate_profiles_fail_closed ... ok\n\ntest result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s\n\n\nrunning 6 tests\ntest absent_inputs_batch_mismatch_and_physical_duplicates_fail_without_overwrite ... ok\ntest actual_cpu_capture_rejects_corrupt_matching_hashes_and_wrong_image_contracts ... ok\ntest batch_requires_consistent_stored_color_and_bit_depth ... ok\ntest corrupt_full_idat_wrong_dimensions_and_unsupported_format_retain_failed_snapshots ... ok\ntest full_decode_retains_originals_and_distinguishes_bf16_from_png_sample_dtype ... ok\ntest video_workload_is_not_accepted_as_an_image_batch ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.51s\n\n",
+        "stderr": "   Compiling media-inference-lab v0.1.0 ($REPOSITORY)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.35s\n     Running tests/h3.rs ($EVIDENCE/target/debug/deps/h3-f2dd334df1808569)\n     Running tests/image_inspection.rs ($EVIDENCE/target/debug/deps/image_inspection-f97af1c8b70fb315)\n",
+        "change_since_prior_attempt": "Conditioning references resolve schema-required relative paths under recorded workload directory; canonical escape rejected"
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--offline",
+          "--locked",
+          "--target-dir",
+          "$EVIDENCE/target",
+          "--test",
+          "video_inspection",
+          "internal_canvas_does_not_replace_output_dimensions",
+          "--",
+          "--exact",
+          "--ignored",
+          "--test-threads=1"
+        ],
+        "environment_overrides": {
+          "CARGO_BUILD_JOBS": "2",
+          "MIL_FFMPEG": "$FFMPEG",
+          "MIL_FFPROBE": "$FFPROBE"
+        },
+        "exit_code": 0,
+        "stdout": "\nrunning 1 test\ntest internal_canvas_does_not_replace_output_dimensions ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 2.23s\n\n",
+        "stderr": "   Compiling media-inference-lab v0.1.0 ($REPOSITORY)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.34s\n     Running tests/video_inspection.rs ($EVIDENCE/target/debug/deps/video_inspection-c795f42bae8c7ace)\n",
+        "accepted_existing_tests": "not executed; only new exact test selected"
+      },
+      {
+        "command": [
+          "cargo",
+          "test",
+          "--offline",
+          "--locked",
+          "--target-dir",
+          "$EVIDENCE/target",
+          "--test",
+          "h3",
+          "missing_selected_inputs_identify_the_failed_path_and_preserve_request",
+          "--",
+          "--exact",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "stdout": "\nrunning 1 test\ntest missing_selected_inputs_identify_the_failed_path_and_preserve_request ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.05s\n\n",
+        "stderr": "   Compiling media-inference-lab v0.1.0 ($REPOSITORY)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.52s\n     Running tests/h3.rs ($EVIDENCE/target/debug/deps/h3-f2dd334df1808569)\n"
+      }
+    ]
+  },
+  "cli_invocations": [
+    {
+      "name": "h3-prepare",
+      "command": [
+        "$EVIDENCE/target/debug/mil",
+        "h3-prepare",
+        "--workload",
+        "$EVIDENCE/smoke/h3-workload.json",
+        "--profile",
+        "draft",
+        "--binary",
+        "$H3_BINARY",
+        "--model-dir",
+        "$H3_MODEL",
+        "--shader-cwd",
+        "$H3_SOURCE",
+        "--source-dir",
+        "$H3_SOURCE",
+        "--ffmpeg",
+        "$FFMPEG",
+        "--ffprobe",
+        "$FFPROBE",
+        "--output-dir",
+        "$EVIDENCE/smoke/h3-prepared"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.46004024999274407,
+      "stdout": "$EVIDENCE/smoke/h3-prepared/report.json\n",
+      "stderr": ""
+    },
+    {
+      "name": "images-valid",
+      "command": [
+        "$EVIDENCE/target/debug/mil",
+        "inspect-images",
+        "--workload",
+        "$EVIDENCE/smoke/images-workload.json",
+        "--image",
+        "$EVIDENCE/smoke/image-a.png",
+        "--image",
+        "$EVIDENCE/smoke/image-b.png",
+        "--output-dir",
+        "$EVIDENCE/smoke/images-valid",
+        "--inspection-seconds",
+        "30"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.018120875000022352,
+      "stdout": "$EVIDENCE/smoke/images-valid/report.json\n",
+      "stderr": ""
+    },
+    {
+      "name": "images-wrong-size",
+      "command": [
+        "$EVIDENCE/target/debug/mil",
+        "inspect-images",
+        "--workload",
+        "$EVIDENCE/smoke/images-workload.json",
+        "--image",
+        "$EVIDENCE/smoke/image-a.png",
+        "--image",
+        "$EVIDENCE/smoke/wrong-size.png",
+        "--output-dir",
+        "$EVIDENCE/smoke/images-wrong-size",
+        "--inspection-seconds",
+        "30"
+      ],
+      "exit_code": 1,
+      "wall_seconds": 0.017613541989703663,
+      "stdout": "$EVIDENCE/smoke/images-wrong-size/report.json\n",
+      "stderr": ""
+    },
+    {
+      "name": "h3-missing-before",
+      "command": [
+        "$EVIDENCE/target/debug/mil",
+        "h3-prepare",
+        "--workload",
+        "$EVIDENCE/smoke/h3-workload.json",
+        "--profile",
+        "draft",
+        "--binary",
+        "$EVIDENCE/smoke/absent-h3-binary",
+        "--model-dir",
+        "$H3_MODEL",
+        "--shader-cwd",
+        "$H3_SOURCE",
+        "--source-dir",
+        "$H3_SOURCE",
+        "--ffmpeg",
+        "$FFMPEG",
+        "--ffprobe",
+        "$FFPROBE",
+        "--output-dir",
+        "$EVIDENCE/smoke/h3-missing-before"
+      ],
+      "exit_code": 1,
+      "wall_seconds": 0.016176874996745028,
+      "stdout": "$EVIDENCE/smoke/h3-missing-before/report.json\n",
+      "stderr": ""
+    },
+    {
+      "name": "h3-missing-after",
+      "command": [
+        "$EVIDENCE/target/debug/mil",
+        "h3-prepare",
+        "--workload",
+        "$EVIDENCE/smoke/h3-workload.json",
+        "--profile",
+        "draft",
+        "--binary",
+        "$EVIDENCE/smoke/absent-h3-binary",
+        "--model-dir",
+        "$H3_MODEL",
+        "--shader-cwd",
+        "$H3_SOURCE",
+        "--source-dir",
+        "$H3_SOURCE",
+        "--ffmpeg",
+        "$FFMPEG",
+        "--ffprobe",
+        "$FFPROBE",
+        "--output-dir",
+        "$EVIDENCE/smoke/h3-missing-after"
+      ],
+      "exit_code": 1,
+      "wall_seconds": 0.5786762089992408,
+      "stdout": "$EVIDENCE/smoke/h3-missing-after/report.json\n",
+      "stderr": ""
+    },
+    {
+      "name": "h3-anchor-prepare",
+      "command": [
+        "$EVIDENCE/target/debug/mil",
+        "h3-prepare",
+        "--workload",
+        "$EVIDENCE/smoke/h3-anchor-workload.json",
+        "--profile",
+        "draft",
+        "--binary",
+        "$H3_BINARY",
+        "--model-dir",
+        "$H3_MODEL",
+        "--shader-cwd",
+        "$H3_SOURCE",
+        "--source-dir",
+        "$H3_SOURCE",
+        "--ffmpeg",
+        "$FFMPEG",
+        "--ffprobe",
+        "$FFPROBE",
+        "--output-dir",
+        "$EVIDENCE/smoke/h3-anchor-prepared"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.4689939579984639,
+      "stdout": "$EVIDENCE/smoke/h3-anchor-prepared/report.json\n",
+      "stderr": ""
+    },
+    {
+      "name": "h3-saved-result",
+      "command": [
+        "$EVIDENCE/target/debug/mil",
+        "h3-inspect-result",
+        "--plan",
+        "$EVIDENCE/smoke/h3-prepared/plan.json",
+        "--stdout",
+        "$EVIDENCE/smoke/synthetic.stdout",
+        "--stderr",
+        "$EVIDENCE/smoke/synthetic.stderr",
+        "--exit-code",
+        "0",
+        "--video",
+        "$EVIDENCE/smoke/synthetic-draft-size.mp4",
+        "--output-dir",
+        "$EVIDENCE/smoke/h3-inspection",
+        "--inspection-seconds",
+        "30"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 1.9354415419948054,
+      "stdout": "$EVIDENCE/smoke/h3-inspection/report.json\n",
+      "stderr": ""
+    },
+    {
+      "name": "h3-reported-failure",
+      "command": [
+        "$EVIDENCE/target/debug/mil",
+        "h3-inspect-result",
+        "--plan",
+        "$EVIDENCE/smoke/h3-prepared/plan.json",
+        "--stdout",
+        "$EVIDENCE/smoke/synthetic.stdout",
+        "--stderr",
+        "$EVIDENCE/smoke/synthetic.stderr",
+        "--exit-code",
+        "7",
+        "--video",
+        "$EVIDENCE/smoke/synthetic-draft-size.mp4",
+        "--output-dir",
+        "$EVIDENCE/smoke/h3-reported-failure",
+        "--inspection-seconds",
+        "30"
+      ],
+      "exit_code": 1,
+      "wall_seconds": 1.9537494999967748,
+      "stdout": "$EVIDENCE/smoke/h3-reported-failure/report.json\n",
+      "stderr": ""
+    },
+    {
+      "name": "render-boundary-after",
+      "command": [
+        "$EVIDENCE/target/debug/mil",
+        "inspect-video",
+        "--workload",
+        "$EVIDENCE/render-boundary/workload.json",
+        "--video",
+        "$PRIOR_EVIDENCE/smoke/fixture.mp4",
+        "--ffmpeg",
+        "$FFMPEG",
+        "--ffprobe",
+        "$FFPROBE",
+        "--output-dir",
+        "$EVIDENCE/render-boundary/after",
+        "--inspection-seconds",
+        "30"
+      ],
+      "exit_code": 0,
+      "wall_seconds": 0.9280204579990823,
+      "stdout": "$EVIDENCE/render-boundary/after/report.json\n",
+      "stderr": ""
+    }
+  ],
+  "video_fixture_generation": {
+    "command": [
+      "$FFMPEG",
+      "-nostdin",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-nostats",
+      "-n",
+      "-threads",
+      "1",
+      "-filter_threads",
+      "1",
+      "-filter_complex_threads",
+      "1",
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=size=864x480:rate=24:duration=2.333333333",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=440:sample_rate=32000:duration=2.333333333",
+      "-map",
+      "0:v:0",
+      "-map",
+      "1:a:0",
+      "-frames:v",
+      "56",
+      "-c:v",
+      "mpeg4",
+      "-q:v",
+      "4",
+      "-pix_fmt",
+      "yuv420p",
+      "-threads",
+      "1",
+      "-c:a",
+      "aac",
+      "-ac",
+      "2",
+      "-b:a",
+      "64k",
+      "-t",
+      "2.333333333",
+      "-movflags",
+      "+faststart",
+      "$EVIDENCE/smoke/synthetic-draft-size.mp4"
+    ],
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "",
+    "scope": "CPU FFmpeg testsrc2/sine; not H3/model generation; one software encode thread"
+  },
+  "image_fixture_generation": {
+    "method": "Python standard-library PNG: RGB8 samples r=(x*255//(width-1)+shift)%256,g=y*255//(height-1),b=(x+y+shift)%256; filter0,zlib compression, PNG chunk CRC32. No model executed.",
+    "fixtures": [
+      {
+        "path": "image-a.png",
+        "width": 96,
+        "height": 64,
+        "color": "rgb",
+        "bit_depth": 8,
+        "sha256": "049e00d1a75b1451ead0dafff30a6de7f3d05cdab7b2f713af7bd6af81d7afe2",
+        "decoded_sha256": "3b9dbf0a734de720b68e092c7c823105d632dfc4300ed6b9411ba8163a1bb7aa",
+        "encoded_bytes": 17177,
+        "source": "stdlib-generated CPU-only PNG; no model executed"
+      },
+      {
+        "path": "image-b.png",
+        "width": 96,
+        "height": 64,
+        "color": "rgb",
+        "bit_depth": 8,
+        "sha256": "301bb4ec4e0f9c5a569b8d251839fb3cd079070d0b3449c2ac33818b75dd993f",
+        "decoded_sha256": "f042314ec6f0cea5b495faf1302622e73029663e973fef7d25f3fc00c89e6234",
+        "encoded_bytes": 17198,
+        "source": "stdlib-generated CPU-only PNG; no model executed"
+      },
+      {
+        "path": "wrong-size.png",
+        "width": 95,
+        "height": 64,
+        "color": "rgb",
+        "bit_depth": 8,
+        "sha256": "a2aeaab2e1b1a57c9b3afcd72548d62c9d563e8578dbada51d5f473e5463f76b",
+        "decoded_sha256": "f31f6bfdb50003177ff4dceab6a0a2d5083140a1231e4e9a1f564e5fcd535ac1",
+        "encoded_bytes": 17011,
+        "source": "stdlib-generated CPU-only PNG; no model executed"
+      }
+    ]
+  },
+  "observations": {
+    "preparation": {
+      "valid": true,
+      "profile": "draft",
+      "workload_identity": "a091f9ca31c8f73345637278f22b46cca4c3ff9ec61824329a7e2cd3974929cd",
+      "binary_sha256": "0c81f29befac190df79997a934cc2f201c638b7f24ae7a5d2e5962384dd87224",
+      "shader_sha256": "95d665ecad0a19b6864708272b4e0a30d41ea445ecc8a74b8f75dd6de323ddd3",
+      "selected_source_count": 13,
+      "model_metadata_count": 4,
+      "model_scope": "bounded metadata reads and safetensors directory/stat inventory only; no tensor payload compatibility or GPU readiness claimed",
+      "conditioning_relative_path_smoke": true,
+      "conditioning_sha256": "049e00d1a75b1451ead0dafff30a6de7f3d05cdab7b2f713af7bd6af81d7afe2",
+      "execution_attested": false
+    },
+    "images": {
+      "valid_exit": 0,
+      "ok": true,
+      "accepted_count": 2,
+      "inputs": [
+        {
+          "decoded": {
+            "bit_depth": 8,
+            "bytes": 17177,
+            "color": "rgb",
+            "decoded_sha256": "3b9dbf0a734de720b68e092c7c823105d632dfc4300ed6b9411ba8163a1bb7aa",
+            "height": 64,
+            "sha256": "049e00d1a75b1451ead0dafff30a6de7f3d05cdab7b2f713af7bd6af81d7afe2",
+            "source_path": "$EVIDENCE/smoke/image-a.png",
+            "width": 96
+          },
+          "error": null,
+          "input": "$EVIDENCE/smoke/image-a.png",
+          "ok": true,
+          "original": {
+            "bytes": 17177,
+            "path": "original-0000.png",
+            "role": "unchanged-input-snapshot-not-transcoded",
+            "sha256": "049e00d1a75b1451ead0dafff30a6de7f3d05cdab7b2f713af7bd6af81d7afe2"
+          },
+          "stored_sample_dtype": "uint8"
+        },
+        {
+          "decoded": {
+            "bit_depth": 8,
+            "bytes": 17198,
+            "color": "rgb",
+            "decoded_sha256": "f042314ec6f0cea5b495faf1302622e73029663e973fef7d25f3fc00c89e6234",
+            "height": 64,
+            "sha256": "301bb4ec4e0f9c5a569b8d251839fb3cd079070d0b3449c2ac33818b75dd993f",
+            "source_path": "$EVIDENCE/smoke/image-b.png",
+            "width": 96
+          },
+          "error": null,
+          "input": "$EVIDENCE/smoke/image-b.png",
+          "ok": true,
+          "original": {
+            "bytes": 17198,
+            "path": "original-0001.png",
+            "role": "unchanged-input-snapshot-not-transcoded",
+            "sha256": "301bb4ec4e0f9c5a569b8d251839fb3cd079070d0b3449c2ac33818b75dd993f"
+          },
+          "stored_sample_dtype": "uint8"
+        }
+      ],
+      "wrong_size_exit": 1,
+      "wrong_size_accepted_count": 1,
+      "wrong_size_error": "decoded image dimensions 95x64 differ from requested 96x64",
+      "native_phases": {
+        "reason": "CPU-only output inspection observes no native execution, phases, speed, latent tensors or generation timing.",
+        "status": "unavailable"
+      }
+    },
+    "saved_h3_result": {
+      "exit_code": 0,
+      "valid": true,
+      "execution_attested": false,
+      "capture_eligible": false,
+      "profiling": {
+        "diagnostics": [],
+        "dispatch_counts": {},
+        "parser_id": "mil-h3-saved-profile-v1",
+        "resources": [],
+        "status": {
+          "reason": "no recognized saved profiling records",
+          "status": "unavailable"
+        },
+        "timings": []
+      },
+      "native_host_duration": {
+        "reason": "offline caller-supplied evidence; no parent-owned execution receipt",
+        "status": "unavailable"
+      },
+      "video": {
+        "decoded_rgb_bytes": 69672960,
+        "decoded_rgb_sha256": "7bd1cd96588f631e36b93708bce99efc11a1ae6b22bbeaa77a8b2f86b9db13bd",
+        "frames": 56,
+        "height": 480,
+        "playback_fps": 24.0,
+        "poster": "first.png",
+        "width": 864
+      },
+      "audio": {
+        "channels": 2,
+        "decoded_pcm_bytes": 589824,
+        "decoded_pcm_sha256": "dd31370aadb7ea6227e492d7d728d613e3a1b5ae818e0c2b58c7bcfbaf221af3",
+        "duration_seconds": 2.304,
+        "probed_sample_frames": 73728,
+        "sample_frames": 73728,
+        "sample_rate_hz": 32000,
+        "validation": "passed",
+        "video_duration_ratio": 0.9874285714285713
+      },
+      "helpers": [
+        {
+          "cleanup_attempted": true,
+          "cleanup_error": null,
+          "cleanup_seconds": 0.105560334,
+          "cleanup_succeeded": true,
+          "diagnostic_error": null,
+          "diagnostics": "ffprobe-version.stderr",
+          "error": null,
+          "exit_code": 0,
+          "name": "ffprobe-version",
+          "wall_seconds": 0.1252105
+        },
+        {
+          "cleanup_attempted": true,
+          "cleanup_error": null,
+          "cleanup_seconds": 0.105442459,
+          "cleanup_succeeded": true,
+          "diagnostic_error": null,
+          "diagnostics": "ffmpeg-version.stderr",
+          "error": null,
+          "exit_code": 0,
+          "name": "ffmpeg-version",
+          "wall_seconds": 0.124980542
+        },
+        {
+          "cleanup_attempted": true,
+          "cleanup_error": null,
+          "cleanup_seconds": 0.104568209,
+          "cleanup_succeeded": true,
+          "diagnostic_error": null,
+          "diagnostics": "probe.stderr",
+          "error": null,
+          "exit_code": 0,
+          "name": "probe",
+          "wall_seconds": 0.139129041
+        },
+        {
+          "cleanup_attempted": true,
+          "cleanup_error": null,
+          "cleanup_seconds": 0.105630292,
+          "cleanup_succeeded": true,
+          "diagnostic_error": null,
+          "diagnostics": "video-decode.stderr",
+          "error": null,
+          "exit_code": 0,
+          "name": "video-decode",
+          "wall_seconds": 0.345585042
+        },
+        {
+          "cleanup_attempted": true,
+          "cleanup_error": null,
+          "cleanup_seconds": 0.105492833,
+          "cleanup_succeeded": true,
+          "diagnostic_error": null,
+          "diagnostics": "audio-decode.stderr",
+          "error": null,
+          "exit_code": 0,
+          "name": "audio-decode",
+          "wall_seconds": 0.128635917
+        }
+      ],
+      "supplied_exit_7": {
+        "cli_exit": 1,
+        "valid": false,
+        "media_still_valid": true,
+        "errors": [
+          "caller-reported native exit was nonzero: 7"
+        ]
+      }
+    },
+    "canvas_regression": {
+      "before_command": [
+        "$PRIOR_EVIDENCE/target/debug/mil",
+        "inspect-video",
+        "--workload",
+        "$EVIDENCE/render-boundary/workload.json",
+        "--video",
+        "$PRIOR_EVIDENCE/smoke/fixture.mp4",
+        "--ffmpeg",
+        "$FFMPEG",
+        "--ffprobe",
+        "$FFPROBE",
+        "--output-dir",
+        "$EVIDENCE/render-boundary/before",
+        "--inspection-seconds",
+        "30"
+      ],
+      "before_exit": 1,
+      "before_errors": [
+        "video dimensions mismatch"
+      ],
+      "before_expected": {
+        "channels": 2,
+        "frames": 56,
+        "height": 24,
+        "playback_fps": 24.0,
+        "sample_rate_hz": 32000,
+        "width": 32
+      },
+      "after_exit": 0,
+      "after_expected": {
+        "channels": 2,
+        "frames": 56,
+        "height": 48,
+        "playback_fps": 24.0,
+        "sample_rate_hz": 32000,
+        "width": 64
+      }
+    },
+    "missing_binary": {
+      "before_errors": [
+        "No such file or directory (os error 2)"
+      ],
+      "after_errors": [
+        "resolving selected file $EVIDENCE/smoke/absent-h3-binary: No such file or directory (os error 2)"
+      ]
+    },
+    "visual_inspection": "Opened retained RGB gradient PNG and synthetic color-bar/test-pattern video poster. No model quality judgment."
+  },
+  "protected_bytes": {
+    "before": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1  $REPOSITORY/target/debug/mil\nb8a8dded1c3ffe4931559c41a993bc2f469a0283d816d4b8b28d6f5ac9369dd3  $REPOSITORY/target/debug/libmedia_inference_lab.rlib\n13cb9ce5283f7a3150b76624bedec5207ff412cd7b4aef54ed1dc0fa59531524  $APPROVED_PREPARATION/transaction.candidate.json\n",
+    "after": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1  $REPOSITORY/target/debug/mil\nb8a8dded1c3ffe4931559c41a993bc2f469a0283d816d4b8b28d6f5ac9369dd3  $REPOSITORY/target/debug/libmedia_inference_lab.rlib\n13cb9ce5283f7a3150b76624bedec5207ff412cd7b4aef54ed1dc0fa59531524  $APPROVED_PREPARATION/transaction.candidate.json\n",
+    "identical": true,
+    "note": "New image validation is only in isolated current build; approved guardian is not retroactively modified."
+  },
+  "remaining_native_prerequisites": [
+    "Qwen mandatory Studio bootout/bootstrap conflicts with settled KEEP STUDIO OPEN; no bypass and no repeated unchanged interruption question.",
+    "Fresh current-build preparation/qualification and exact native transaction authorization; previous guardian/candidate bytes and earlier grants are not new authority.",
+    "H3 owned-process/guarded execution integration compatible with FFmpeg children; no H3 launch path added in this slice.",
+    "Historical EPERM settlement observations remain unresolved; no source/control fix or diagnostic rerun.",
+    "Future GPU/model scheduling only with mac-studio and fresh explicit authority; no lease/hold requested now.",
+    "Real full Qwen image, real H3 draft/standard/long clips, native timings and controlled baseline/candidate/repeat comparisons remain unexercised."
+  ],
+  "path_aliases": {
+    "EVIDENCE": "owned private continuation evidence root; full exact argv retained locally",
+    "PRIOR_EVIDENCE": "accepted cbada58 CPU-validation root",
+    "APPROVED_PREPARATION": "unchanged approved native preparation",
+    "REPOSITORY": "this checkout",
+    "H3_SOURCE": "selected existing H3 source/shader directory",
+    "H3_BINARY": "selected existing H3 executable; only fingerprinted, not run",
+    "H3_MODEL": "existing local MiniMax-H3 model store; read-only metadata",
+    "FFMPEG": "explicit existing software media executable",
+    "FFPROBE": "explicit existing software probe executable"
+  }
+}
