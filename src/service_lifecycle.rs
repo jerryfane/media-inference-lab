@@ -1053,20 +1053,10 @@ impl ServiceHandle {
                 )?;
                 let new_pid =
                     launchctl_registration(target, plist, None, deadline, tick, recovery)?;
-                let root =
-                    process_scope::observe(new_pid)?.context("restored Studio PID missing")?;
                 let previous = self.root.as_ref().context("missing Studio root")?;
-                ensure!(
-                    root.uid == previous.uid
-                        && root.executable == previous.executable
-                        && root.cwd == previous.cwd
-                        && !root.same_process(previous),
-                    "Studio replacement binding mismatch"
-                );
-                ensure!(
-                    root.state == ProcessState::Running,
-                    "Studio replacement not running"
-                );
+                let root = wait_studio_replacement(
+                    new_pid, previous, deadline, tick, &mut self.evidence,
+                )?;
                 self.root = Some(root);
                 self.evidence.push(
                     "exact launchd target bootstrapped once; fresh bound replacement observed"
@@ -1329,6 +1319,86 @@ fn pause(deadline: Instant, tick: &mut dyn FnMut() -> Result<()>) -> Result<()> 
         deadline.saturating_duration_since(Instant::now()),
     ));
     Ok(())
+}
+
+fn studio_replacement_mismatches(current: &ProcessIdentity, previous: &ProcessIdentity) -> u8 {
+    u8::from(current.uid != previous.uid)
+        | (u8::from(current.executable != previous.executable) << 1)
+        | (u8::from(current.cwd != previous.cwd) << 2)
+        | (u8::from(current.same_process(previous)
+            || (current.pid == previous.pid
+                && current.start_seconds == previous.start_seconds
+                && current.start_subseconds == previous.start_subseconds)) << 3)
+        | (u8::from(current.state != ProcessState::Running) << 4)
+}
+
+/// Observe one registered PID through startup; never relaunch or follow a replacement PID.
+/// Executable/cwd may transition, but the initially observed kernel instance must not drift.
+fn wait_studio_replacement(
+    pid: u32,
+    previous: &ProcessIdentity,
+    deadline: Instant,
+    tick: &mut dyn FnMut() -> Result<()>,
+    evidence: &mut Vec<String>,
+) -> Result<ProcessIdentity> {
+    let started = Instant::now();
+    let mut first: Option<ProcessIdentity> = None;
+    let mut last: Option<ProcessIdentity> = None;
+    let mut observations = 0u32;
+    let result = (|| {
+        loop {
+            check(deadline, tick)?;
+            let current = process_scope::observe(pid)?.context("registered Studio PID unavailable during startup")?;
+            observations += 1;
+            let same_instance = first.as_ref().is_none_or(|anchor| {
+                current.pid == anchor.pid
+                    && current.uid == anchor.uid
+                    && current.pgid == anchor.pgid
+                    && current.sid == anchor.sid
+                    && current.start_seconds == anchor.start_seconds
+                    && current.start_subseconds == anchor.start_subseconds
+            });
+            if first.is_none() {
+                first = Some(current.clone());
+            }
+            let mismatch = studio_replacement_mismatches(&current, previous);
+            last = Some(current);
+            ensure!(same_instance, "Studio startup process birth/owner/group identity changed");
+            ensure!(mismatch & 1 == 0, "Studio replacement UID mismatch");
+            ensure!(mismatch & 8 == 0, "Studio replacement is not a fresh process");
+            let current = last.as_ref().expect("startup identity recorded");
+            ensure!(current.state != ProcessState::Zombie, "Studio replacement exited during startup");
+            if mismatch == 0 {
+                check(deadline, tick)?;
+                return Ok(current.clone());
+            }
+            pause(deadline, tick)?;
+        }
+    })();
+    let mismatch_fields: Vec<_> = match &last {
+        Some(current) => {
+            let mismatch = studio_replacement_mismatches(current, previous);
+            ["uid", "executable", "cwd", "fresh_process", "running"]
+                .into_iter().enumerate()
+                .filter_map(|(bit, name)| (mismatch & (1 << bit) != 0).then_some(name))
+                .collect()
+        }
+        None => vec!["pid_unavailable"],
+    };
+    evidence.push(serde_json::to_string(&serde_json::json!({
+        "kind": "studio_replacement_startup_observation",
+        "registered_pid": pid,
+        "expected_previous": previous,
+        "first_observed": first,
+        "last_observed": last,
+        "last_mismatch_fields": mismatch_fields,
+        "observations": observations,
+        "elapsed_us": started.elapsed().as_micros(),
+        "qualified": result.is_ok(),
+        "failure": result.as_ref().err().map(|error| format!("{error:#}")),
+        "scope": "one registered PID; bounded read-only startup observation; no lifecycle retry",
+    }))?);
+    result
 }
 fn stable_owned(
     actor: &mut OwnedProcess,
@@ -2403,6 +2473,124 @@ mod tests {
         fn control<'a>(&self, tick: &'a mut dyn FnMut() -> Result<()>) -> RecoveryControl<'a> {
             RecoveryControl::new(self.0.clone(), tick)
         }
+    }
+
+    fn studio_startup_case(change_cwd: bool) -> Result<serde_json::Value> {
+        use std::{fs::File, os::{fd::OwnedFd, unix::net::UnixStream}};
+        let directory = tempfile::tempdir()?;
+        let directory = std::fs::canonicalize(directory.path())?;
+        let ready = directory.join("ready");
+        std::fs::create_dir(&ready)?;
+        let scope = TestScope::new();
+        let mut recovery_tick = || Ok(());
+        let mut recovery = scope.control(&mut recovery_tick);
+        let overall = Instant::now() + Duration::from_secs(6);
+        let original = command("/bin/sleep", &["0.3"], &ready);
+        let attempt = OwnedProcess::spawn_with_deadline(&original, overall, &mut || Ok(()))?;
+        let mut actor = attempt.process;
+        let index = recovery.enroll_actor(&actor, &original, "original CPU identity");
+        let previous = (|| -> Result<ProcessIdentity> {
+            ensure!(attempt.failure.is_none(), "original fixture launch failed");
+            actor.identity()
+        })();
+        let natural = (|| -> Result<()> {
+            while !actor.exited_unreaped()? { pause(overall, &mut || Ok(()))?; }
+            Ok(())
+        })();
+        let cleanup = recovery.dispose(actor, index);
+        let previous = previous?;
+        natural?;
+        cleanup?;
+
+        let (reader, mut writer) = UnixStream::pair()?;
+        let reader = File::from(OwnedFd::from(reader));
+        let script = if change_cwd {
+            "IFS= read -r token <&3; cd \"$1\"; exec /bin/sleep 1"
+        } else {
+            "IFS= read -r token <&3; exec /bin/sleep 1"
+        };
+        let replacement = command(
+            "/bin/sh", &["-c", script, "startup-fixture", ready.to_str().context("fixture cwd")?],
+            &directory,
+        );
+        let attempt = OwnedProcess::spawn_with_io(
+            &replacement, overall, &mut || Ok(()),
+            &[process_scope::InheritedFd { file: &reader, target: 3 }], None,
+        )?;
+        let mut actor = attempt.process;
+        let index = recovery.enroll_actor(&actor, &replacement, "startup CPU replacement");
+        drop(reader);
+        let mut evidence = Vec::new();
+        let mut calls = 0;
+        let mut released = false;
+        let observed = (|| -> Result<ProcessIdentity> {
+            ensure!(attempt.failure.is_none(), "replacement fixture launch failed");
+            wait_studio_replacement(
+                actor.pid(), &previous,
+                cap(overall, Duration::from_millis(if change_cwd { 700 } else { 150 })),
+                &mut || {
+                    calls += 1;
+                    if calls == 3 {
+                        writer.write_all(b"exec\n")?;
+                        released = true;
+                    }
+                    Ok(())
+                }, &mut evidence,
+            )
+        })();
+        if !released { let _ = writer.write_all(b"finish\n"); }
+        let natural = (|| -> Result<()> {
+            while !actor.exited_unreaped()? { pause(overall, &mut || Ok(()))?; }
+            Ok(())
+        })();
+        let cleanup = recovery.dispose(actor, index);
+        natural?;
+        cleanup?;
+        ensure!(recovery.complete(), "original CPU actor accounting incomplete");
+        ensure!(observed.is_ok() == change_cwd, "startup qualification outcome differs: {observed:?}");
+        let evidence: serde_json::Value = serde_json::from_str(
+            evidence.last().context("missing specific startup observation")?,
+        )?;
+        let actors = recovery.observations();
+        ensure!(actors.iter().all(|actor| actor.settlement.as_ref().is_some_and(|s|
+            s.complete && s.leader_reaped && s.group_absent && s.exit_code == Some(0)
+                && !s.group_signalled)), "CPU actors lack original natural-exit settlement");
+        eprintln!("{}", serde_json::json!({
+            "kind":"owned_studio_startup_cpu_qualification",
+            "case":if change_cwd {"exec_transition"} else {"persistent_cwd_mismatch"},
+            "observation":evidence,"actors":actors,"native_service_effects":false,
+        }));
+        Ok(evidence)
+    }
+
+    #[test]
+    fn studio_startup_exec_transition_requires_final_strict_binding() -> Result<()> {
+        let evidence = studio_startup_case(true)?;
+        ensure!(evidence["qualified"] == true, "exec transition not qualified");
+        ensure!(evidence["first_observed"]["executable"] != evidence["expected_previous"]["executable"],
+            "fixture did not expose the real startup executable");
+        ensure!(evidence["first_observed"]["cwd"] != evidence["expected_previous"]["cwd"],
+            "fixture did not expose the startup cwd transition");
+        ensure!(evidence["last_observed"]["executable"] == evidence["expected_previous"]["executable"]
+            && evidence["last_observed"]["cwd"] == evidence["expected_previous"]["cwd"]
+            && evidence["last_observed"]["uid"] == evidence["expected_previous"]["uid"]
+            && evidence["last_observed"]["state"] == "running"
+            && evidence["last_observed"]["pid"] != evidence["expected_previous"]["pid"],
+            "strict final replacement predicates were not established");
+        Ok(())
+    }
+
+    #[test]
+    fn studio_startup_persistent_mismatch_retains_exact_diagnostics() -> Result<()> {
+        let evidence = studio_startup_case(false)?;
+        ensure!(evidence["qualified"] == false
+            && evidence["last_mismatch_fields"] == serde_json::json!(["cwd"]),
+            "persistent cwd mismatch was not retained precisely");
+        ensure!(evidence["last_observed"]["cwd"] != evidence["expected_previous"]["cwd"]
+            && evidence["last_observed"]["executable"] == evidence["expected_previous"]["executable"]
+            && evidence["failure"].as_str().is_some_and(|message| message.contains("deadline")),
+            "bounded failure lacks observed mismatch/deadline evidence");
+        Ok(())
     }
     #[test]
     fn unmanaged_callbacks_cannot_control_and_observation_failure_is_sticky() {
