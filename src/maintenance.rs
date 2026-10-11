@@ -103,6 +103,9 @@ pub enum Experiment {
     Native {
         plan: Box<crate::native::PreparedPlan>,
     },
+    NativeH3 {
+        plan: Box<crate::h3_native::PreparedPlan>,
+    },
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -286,10 +289,23 @@ impl Transaction {
                 }
                 validate_cpu_command(command)?;
             }
-            (Experiment::Native { plan }, ScopePurpose::Native) => {
-                plan.validate_enrolled()?;
+            (
+                Experiment::Native { .. } | Experiment::NativeH3 { .. },
+                ScopePurpose::Native,
+            ) => {
+                let timeout_ms = match &self.experiment {
+                    Experiment::Native { plan } => {
+                        plan.validate_enrolled()?;
+                        plan.command.timeout_ms
+                    }
+                    Experiment::NativeH3 { plan } => {
+                        plan.validate_enrolled()?;
+                        plan.command.timeout_ms
+                    }
+                    Experiment::Cpu { .. } => unreachable!(),
+                };
                 ensure!(
-                    self.budgets.experiment_ms == plan.command.timeout_ms,
+                    self.budgets.experiment_ms == timeout_ms,
                     "native phase and invocation deadlines differ"
                 );
                 if let ServiceSpec::Omlx { qualification, .. } = &self.services[1] {
@@ -734,6 +750,8 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
     let mut settlement: Option<Settlement> = None;
     let mut capture_directory = None;
     let mut creation_attempted = false;
+    let mut native_helper_accounting_complete = true;
+    let mut native_helper_dispositions = Vec::new();
     let mut restored = false;
     let mut recovery_failure = None;
     let mut lease = None;
@@ -899,20 +917,29 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                     "CPU experiment failed or ownership incomplete"
                 );
             }
-            Experiment::Native { plan } => {
-                plan.verify_files()?;
+            experiment @ (Experiment::Native { .. } | Experiment::NativeH3 { .. }) => {
+                let invocation_sha256 = match experiment {
+                    Experiment::Native { plan } => {
+                        plan.verify_files()?;
+                        plan.sha256.clone()
+                    }
+                    Experiment::NativeH3 { plan } => {
+                        plan.verify_files()?;
+                        plan.sha256.clone()
+                    }
+                    Experiment::Cpu { .. } => unreachable!(),
+                };
                 runtime.borrow_mut().last_scope_observation = None;
                 runtime.borrow_mut().active_tick()?;
                 ensure!(
                     Instant::now() < prelaunch,
                     "native preparation exceeded prelaunch slot"
                 );
-                let command = &plan.command;
                 let mut tick = || runtime.borrow_mut().active_tick();
                 let mut recovery_tick = || runtime.borrow_mut().recovery_tick();
                 let mut control = NativeCaptureControl {
                     binding: NativeBinding {
-                        invocation_sha256: plan.sha256.clone(),
+                        invocation_sha256,
                         transaction_sha256: identity.clone(),
                         guardian_pid: std::process::id(),
                         omlx_unmanaged: match &transaction.services[1] {
@@ -928,28 +955,40 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
                     creation_attempted: false,
                     directory: None,
                     settlement: None,
+                    helper_accounting_complete: true,
+                    helper_dispositions: Vec::new(),
                 };
-                let result = capture::capture_native_guarded(
-                    command.workload.clone(),
-                    CaptureOptions {
-                        root: command.output_root.clone(),
-                        executable: command.python.selected_path.clone(),
-                        args: command.python_arguments.clone(),
-                        env: BTreeMap::new(),
-                        timeout: Duration::from_millis(transaction.budgets.experiment_ms),
-                        max_output_bytes: command.max_output_bytes,
-                    },
-                    Arc::new(AtomicBool::new(false)),
-                    command
-                        .guard_config
-                        .clone()
-                        .context("resource policy absent")?,
-                    lease.as_ref().context("native lease lost")?,
-                    &mut control,
-                );
+                let result = match experiment {
+                    Experiment::Native { plan } => {
+                        let command = &plan.command;
+                        capture::capture_native_guarded(
+                            command.workload.clone(),
+                            CaptureOptions {
+                                root: command.output_root.clone(),
+                                executable: command.python.selected_path.clone(),
+                                args: command.python_arguments.clone(),
+                                env: BTreeMap::new(),
+                                timeout: Duration::from_millis(transaction.budgets.experiment_ms),
+                                max_output_bytes: command.max_output_bytes,
+                            },
+                            Arc::new(AtomicBool::new(false)),
+                            command.guard_config.clone().context("resource policy absent")?,
+                            lease.as_ref().context("native lease lost")?,
+                            &mut control,
+                        )
+                    }
+                    Experiment::NativeH3 { plan } => crate::h3_capture::run(
+                        plan,
+                        lease.as_ref().context("native lease lost")?,
+                        &mut control,
+                    ),
+                    Experiment::Cpu { .. } => unreachable!(),
+                };
                 creation_attempted = control.creation_attempted;
                 settlement = control.settlement.take();
                 capture_directory = control.directory.take();
+                native_helper_accounting_complete = control.helper_accounting_complete;
+                native_helper_dispositions = std::mem::take(&mut control.helper_dispositions);
                 let directory = result?;
                 let record = capture::inspect(&directory)?;
                 capture_directory = Some(directory);
@@ -978,6 +1017,7 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
     // Authority loss is sticky for the experiment. Recovery is a separately
     // authorized action; it cannot erase failure or run before proven settlement.
     let safe_to_restore = recovery.complete()
+        && native_helper_accounting_complete
         && (!creation_attempted || settlement.as_ref().is_some_and(|value| value.complete));
     if safe_to_restore && runtime.borrow().services.len() == 2 {
         let result = (|| -> Result<()> {
@@ -1029,7 +1069,7 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
             Ok(()) => restored = true,
             Err(error) => recovery_failure = Some(format!("{error:#}")),
         }
-    } else if creation_attempted || !recovery.complete() {
+    } else if creation_attempted || !recovery.complete() || !native_helper_accounting_complete {
         recovery_failure =
             Some("experiment/helper settlement unproved: all restoration withheld".into());
     }
@@ -1090,6 +1130,8 @@ pub fn guardian_main(control_fd: i32) -> Result<()> {
         "service_enrollment_failure":enrollment_failure,
         "service_process_dispositions":recovery.observations(),
         "service_accounting_complete":recovery.complete(),
+        "native_helper_accounting_complete":native_helper_accounting_complete,
+        "native_helper_dispositions":native_helper_dispositions,
         "elapsed_ms":runtime.borrow().clock.elapsed_ms(),"lease_path":transaction.lease_path,
         "scope":if matches!(transaction.services[1], ServiceSpec::OmlxUnmanaged { .. }) {
             "Studio lifecycle and direct guardian experiment only; oMLX unverified and excluded from control; not an isolated or verified-exclusive GPU baseline"

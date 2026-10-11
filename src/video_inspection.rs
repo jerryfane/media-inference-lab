@@ -1,7 +1,13 @@
-//! Offline, bounded CPU decoding of a private MP4 snapshot. Never runs a model.
-use crate::capture::unix::OwnedChild;
+//! Bounded CPU MP4 decoding, with offline and enrolled native ownership boundaries.
+use crate::{
+    capture::{NativeCaptureControl, unix::OwnedChild},
+    guards::Lease,
+    h3_owned::{ActorRecord, PinnedExecutable, sandbox_command},
+    process_scope::OwnedProcess,
+};
 use crate::schema::{Artifact, AudioConfiguration, MediaSettings, Workload};
 use anyhow::{Context, Result, bail, ensure};
+use serde::Serialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
@@ -33,6 +39,132 @@ pub struct VideoInspectionOptions {
     pub ffprobe: PathBuf,
     pub output_dir: PathBuf,
     pub timeout: Duration,
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct NativeInspectionHelper {
+    pub label: String,
+    pub actor: ActorRecord,
+    pub host_elapsed_ms: u64,
+    pub cleanup_elapsed_ms: u64,
+    pub stdout_bytes: u64,
+    pub stderr_bytes: u64,
+    pub diagnostics_truncated: bool,
+    pub failure: Option<String>,
+}
+#[derive(Debug, Serialize)]
+pub(crate) struct NativeVideoInspection {
+    pub valid: bool,
+    pub helpers: Vec<NativeInspectionHelper>,
+    pub complete: bool,
+    pub creation_attempted: bool,
+    pub failure: Option<String>,
+    pub report: Value,
+}
+struct GuardedInspection<'a, 'b> {
+    control: &'a mut NativeCaptureControl<'b>,
+    lease: &'a Lease,
+    ffmpeg: &'a PinnedExecutable,
+    ffprobe: &'a PinnedExecutable,
+    execution_deadline: Instant,
+    cleanup_deadline: Instant,
+    helpers: Vec<NativeInspectionHelper>,
+    creation_attempted: bool,
+    uncreated_attempt_failed: bool,
+}
+impl GuardedInspection<'_, '_> {
+    fn check(&mut self) -> Result<()> {
+        check_deadline(self.execution_deadline)?;
+        (self.control.tick)()?;
+        check_deadline(self.execution_deadline)
+    }
+}
+fn inspection_checkpoint(native: &mut Option<GuardedInspection<'_, '_>>, deadline: Instant) -> Result<()> {
+    check_deadline(deadline)?;
+    if let Some(native) = native { native.check()?; }
+    Ok(())
+}
+
+/// Native authority is borrowed, not reconstructed from a report. Every helper
+/// uses the same parser/decoder arguments as offline inspection, but a different
+/// owned creation/settlement boundary. Post-creation errors retain all receipts.
+pub(crate) fn inspect_guarded(
+    options: VideoInspectionOptions,
+    ffmpeg: &PinnedExecutable,
+    ffprobe: &PinnedExecutable,
+    execution_deadline: Instant,
+    cleanup_deadline: Instant,
+    control: &mut NativeCaptureControl<'_>,
+    lease: &Lease,
+) -> Result<NativeVideoInspection> {
+    ensure!(cfg!(target_os = "macos"), "guarded media inspection requires Darwin");
+    let start = Instant::now();
+    let execution_deadline = execution_deadline.min(
+        start.checked_add(options.timeout).context("inspection timeout overflow")?,
+    );
+    ensure!(start < execution_deadline && execution_deadline < cleanup_deadline
+        && cleanup_deadline <= control.automation_deadline
+        && execution_deadline.checked_add(control.cleanup_budget).is_some_and(|at| at <= cleanup_deadline),
+        "inspection deadlines lack the enrolled cleanup reserve");
+    ensure!(options.ffmpeg == ffmpeg.path && options.ffprobe == ffprobe.path, "inspection tools differ from enrollment");
+    ensure!(lease.raw_fd() > 2, "invalid inspection lease descriptor");
+    ensure!(options.output_dir.is_absolute()
+        && options.output_dir.parent().context("inspection output lacks parent")?.canonicalize()?
+            == options.output_dir.parent().unwrap(), "inspection directory must have a canonical parent");
+    (control.tick)()?;
+    ffmpeg.verify()?;
+    ffprobe.verify()?;
+    DirBuilder::new().mode(0o700).create(&options.output_dir)
+        .context("creating new private guarded inspection directory")?;
+    let mut native = Some(GuardedInspection { control, lease, ffmpeg, ffprobe, execution_deadline,
+        cleanup_deadline, helpers: Vec::new(), creation_attempted: false, uncreated_attempt_failed: false });
+    let mut report = json!({
+        "schema_version":1,"kind":"guarded_h3_video_inspection","valid":false,
+        "errors":[],"workload_identity":null,"source":null,"tools":[],
+        "video":null,"audio":null,"artifacts":[],"helpers":[],"timings":{},
+        "limitations":[
+            "CPU media validation under borrowed native transaction authority; no model or generation-quality claim.",
+            "Converted RGB24/float32 PCM hashes identify decoded samples, not native model tensors.",
+            "Original helper settlements remain final and separate from media validity."
+        ]
+    });
+    let result = inspect_inner(&options, start, &mut report, &mut native);
+    let mut failure = result.err().map(|error| bounded_failure(&error));
+    let scope = native.as_mut().expect("guarded inspection scope retained");
+    if failure.is_none() {
+        if let Err(error) = scope.check() { failure = Some(bounded_failure(&error)); }
+    }
+    let complete = !scope.uncreated_attempt_failed
+        && scope.helpers.iter().all(|helper| helper.actor.settlement.as_ref().is_some_and(|s| s.complete));
+    report["valid"] = json!(failure.is_none() && complete);
+    report["timings"] = json!({"inspection_wall_seconds":start.elapsed().as_secs_f64(),
+        "inspection_includes_owned_cleanup":true,"native_generation_timing":"unavailable"});
+    if let Some(error) = &failure { report["errors"].as_array_mut().unwrap().push(json!(error)); }
+    let saved = (|| -> Result<()> {
+        let mut file = private_file(&options.output_dir.join("report.json"))?;
+        serde_json::to_writer_pretty(&mut file, &report)?;
+        file.write_all(b"\n")?;
+        file.sync_all()?;
+        Ok(())
+    })();
+    if let Err(error) = saved {
+        failure.get_or_insert_with(|| bounded_failure(&error));
+        report["valid"] = json!(false);
+        report["report_write_failure"] = json!(bounded_failure(&error));
+    }
+    let scope = native.take().expect("guarded inspection scope retained");
+    Ok(NativeVideoInspection { valid: failure.is_none() && complete, complete,
+        creation_attempted: scope.creation_attempted, helpers: scope.helpers, failure, report })
+}
+
+fn bounded_failure(error: &anyhow::Error) -> String {
+    let mut text = format!("{error:#}");
+    if text.len() > 8192 {
+        let mut end = 8192;
+        while !text.is_char_boundary(end) { end -= 1; }
+        text.truncate(end);
+    }
+    text
 }
 
 #[derive(Debug)]
@@ -109,7 +241,7 @@ pub fn inspect(options: VideoInspectionOptions) -> Result<bool> {
             "Inspection deadline is cooperative for local file I/O and CPU work; owned process-group cleanup has its existing additional TERM/KILL allowance."
         ]
     });
-    let result = inspect_inner(&options, start, &mut report);
+    let result = inspect_inner(&options, start, &mut report, &mut None);
     if let Err(error) = &result {
         if error.downcast_ref::<OutputFailure>().is_some() {
             return result.map(|_| true);
@@ -208,19 +340,20 @@ fn inspect_inner(
     options: &VideoInspectionOptions,
     start: Instant,
     report: &mut Value,
+    native: &mut Option<GuardedInspection<'_, '_>>,
 ) -> Result<()> {
-    ensure!(
-        options.timeout >= Duration::from_secs(1) && options.timeout <= Duration::from_secs(120),
-        "inspection timeout must be 1..120 seconds"
-    );
-    let deadline = start + options.timeout;
+    if native.is_none() {
+        ensure!(options.timeout >= Duration::from_secs(1) && options.timeout <= Duration::from_secs(120),
+            "inspection timeout must be 1..120 seconds");
+    }
+    let deadline = native.as_ref().map_or(start + options.timeout, |scope| scope.execution_deadline);
     report["workload_identity"] = json!(options.workload.identity()?);
     let request = expected(&options.workload)?;
     report["expected_output"] = json!({
         "frames":request.frames,"width":request.width,"height":request.height,
         "playback_fps":request.fps,"sample_rate_hz":request.rate,"channels":request.channels
     });
-    check_deadline(deadline)?;
+    inspection_checkpoint(native, deadline)?;
     let source = options.output_dir.join("source.mp4");
     let mut input = regular_file(&options.input, SOURCE_LIMIT).context("opening source MP4")?;
     let mut snapshot = private_file(&source)?;
@@ -228,7 +361,7 @@ fn inspect_inner(
     let mut bytes = 0u64;
     let mut buffer = [0; 65536];
     loop {
-        check_deadline(deadline)?;
+        inspection_checkpoint(native, deadline)?;
         let count = input.read(&mut buffer)?;
         if count == 0 {
             break;
@@ -271,6 +404,7 @@ fn inspect_inner(
             options,
             deadline,
             report,
+            native,
             |chunk| {
                 ensure!(
                     version.len() + chunk.len() <= DIAGNOSTIC_LIMIT,
@@ -296,7 +430,7 @@ fn inspect_inner(
         "-enable_drefs", "0", "-use_absolute_path", "0", "-show_streams", "-show_frames", "-show_entries",
         "stream=index,codec_type,width,height,r_frame_rate,avg_frame_rate,sample_rate,channels,duration,nb_frames:frame=media_type,stream_index,width,height,best_effort_timestamp_time,pkt_duration_time,nb_samples,sample_rate,channels",
         "-of", "json"]).arg(&source);
-    let probe_result = run_helper(&mut probe, "probe", options, deadline, report, |chunk| {
+    let probe_result = run_helper(&mut probe, "probe", options, deadline, report, native, |chunk| {
         ensure!(
             metadata.len() + chunk.len() <= METADATA_LIMIT,
             "frame metadata exceeds 4 MiB bound"
@@ -317,7 +451,7 @@ fn inspect_inner(
         },
     )?;
     probe_result?;
-    check_deadline(deadline)?;
+    inspection_checkpoint(native, deadline)?;
     let metadata: Value = serde_json::from_slice(&metadata).context("malformed ffprobe JSON")?;
     let audio_samples = validate_metadata(&metadata, &request, report, deadline)?;
     let frame_bytes = request.width as usize * request.height as usize * 3;
@@ -354,6 +488,7 @@ fn inspect_inner(
         options,
         deadline,
         report,
+        native,
         |mut chunk| {
             decoded += chunk.len() as u64;
             ensure!(
@@ -388,7 +523,7 @@ fn inspect_inner(
     );
     report["video"]["decoded_rgb_sha256"] = json!(format!("{:x}", hash.finalize()));
     for (index, pixels) in images {
-        check_deadline(deadline)?;
+        inspection_checkpoint(native, deadline)?;
         let name = if index == 0 {
             "first.png"
         } else if index == request.frames - 1 {
@@ -452,6 +587,7 @@ fn inspect_inner(
         options,
         deadline,
         report,
+        native,
         |chunk| {
             decoded += chunk.len() as u64;
             ensure!(
@@ -485,7 +621,7 @@ fn inspect_inner(
         "decoded audio duration must be 75..125% of video duration"
     );
     report["audio"]["validation"] = json!("passed");
-    check_deadline(deadline)?;
+    inspection_checkpoint(native, deadline)?;
     Ok(())
 }
 
@@ -734,14 +870,139 @@ fn drain(pipe: &mut impl Read, consume: &mut impl FnMut(&[u8]) -> Result<()>) ->
     }
     Ok(false)
 }
+fn run_guarded_helper(
+    command: &mut Command,
+    label: &str,
+    options: &VideoInspectionOptions,
+    deadline: Instant,
+    report: &mut Value,
+    scope: &mut GuardedInspection<'_, '_>,
+    mut consume: impl FnMut(&[u8]) -> Result<()>,
+) -> Result<()> {
+    scope.check()?;
+    let program = Path::new(command.get_program());
+    let (pin, role) = if program == scope.ffmpeg.path {
+        (scope.ffmpeg, "inspection_ffmpeg")
+    } else if program == scope.ffprobe.path {
+        (scope.ffprobe, "inspection_ffprobe")
+    } else { bail!("inspection requested an unenrolled tool"); };
+    pin.verify()?;
+    let args: Vec<String> = command.get_args()
+        .map(|arg| arg.to_str().map(str::to_owned).context("non-UTF8 inspection argument"))
+        .collect::<Result<_>>()?;
+    let spec = sandbox_command(&pin.path, &options.output_dir, args, false);
+    let started = Instant::now();
+    let lease_fd = scope.lease.raw_fd();
+    scope.creation_attempted = true;
+    scope.control.creation_attempted = true;
+    let attempt = match OwnedProcess::spawn_with_io(&spec, deadline, &mut || scope.check(), &[], Some(lease_fd)) {
+        Ok(attempt) => attempt,
+        Err(error) => { scope.uncreated_attempt_failed = true; return Err(error); }
+    };
+    let mut process = attempt.process;
+    let mut actor = ActorRecord { role, token: None, pid: process.pid(), enrollment: process.enrollment(),
+        command: spec, requested_targets: Vec::new(), inherited_lease_fd: Some(lease_fd),
+        spawn_failure: attempt.failure, settlement: None, settlement_error: None };
+    let mut stdout = process.stdout.take();
+    let mut stderr = process.stderr.take();
+    let mut diagnostics = Vec::new();
+    let mut stdout_bytes = 0u64;
+    let mut stderr_bytes = 0u64;
+    let mut diagnostics_truncated = false;
+    let mut stderr_nonblocking = false;
+    let execution = (|| -> Result<()> {
+        ensure!(actor.spawn_failure.is_none(), "inspection enrollment/exec failed: {:?}", actor.spawn_failure);
+        let stdout = stdout.as_mut().context("missing owned inspection stdout")?;
+        let stderr = stderr.as_mut().context("missing owned inspection stderr")?;
+        nonblocking(stdout)?;
+        nonblocking(stderr)?;
+        stderr_nonblocking = true;
+        loop {
+            scope.check()?;
+            process.check_membership()?;
+            let err_done = drain(stderr, &mut |chunk| {
+                stderr_bytes += chunk.len() as u64;
+                let remaining = DIAGNOSTIC_LIMIT.saturating_sub(diagnostics.len());
+                diagnostics.extend_from_slice(&chunk[..chunk.len().min(remaining)]);
+                diagnostics_truncated |= chunk.len() > remaining;
+                ensure!(!diagnostics_truncated, "inspection helper diagnostics exceed bound");
+                Ok(())
+            })?;
+            let out_done = drain(stdout, &mut |chunk| {
+                stdout_bytes += chunk.len() as u64;
+                consume(chunk)
+            })?;
+            if process.exited_unreaped()? && out_done && err_done { break; }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        Ok(())
+    })();
+    let host_elapsed_ms = started.elapsed().as_millis() as u64;
+    // No active callback during cleanup. Original denial/incompleteness is final.
+    let cleanup_start = Instant::now();
+    let cleanup_deadline = (cleanup_start + scope.control.cleanup_budget).min(scope.cleanup_deadline);
+    let settled = process.settle(cleanup_deadline, Duration::from_millis(200), &mut || {
+        check_deadline(scope.cleanup_deadline)?;
+        (scope.control.recovery_tick)()?;
+        check_deadline(scope.cleanup_deadline)
+    });
+    match settled {
+        Ok(settlement) => actor.settlement = Some(settlement),
+        Err(error) => actor.settlement_error = Some(bounded_failure(&error)),
+    }
+    let cleanup_elapsed_ms = cleanup_start.elapsed().as_millis() as u64;
+    let mut failure = execution.err().map(|error| bounded_failure(&error));
+    if stderr_nonblocking && let Some(stderr) = stderr.as_mut() {
+        if let Err(error) = drain(stderr, &mut |chunk| {
+            stderr_bytes += chunk.len() as u64;
+            let remaining = DIAGNOSTIC_LIMIT.saturating_sub(diagnostics.len());
+            diagnostics.extend_from_slice(&chunk[..chunk.len().min(remaining)]);
+            diagnostics_truncated |= chunk.len() > remaining;
+            ensure!(!diagnostics_truncated, "inspection helper diagnostics exceed bound");
+            Ok(())
+        }) {
+            failure.get_or_insert_with(|| bounded_failure(&error));
+        }
+    }
+    if !actor.settlement.as_ref().is_some_and(|s| s.complete && s.exit_code == Some(0)) {
+        failure.get_or_insert_with(|| "inspection helper did not settle with a qualified zero exit".into());
+    }
+    if !diagnostics.is_empty() {
+        failure.get_or_insert_with(|| "inspection helper emitted error diagnostics".into());
+    }
+    scope.helpers.push(NativeInspectionHelper { label: label.into(), actor, host_elapsed_ms, cleanup_elapsed_ms,
+        stdout_bytes, stderr_bytes, diagnostics_truncated, failure });
+    // Receipts are already retained before any remaining disk/report operation.
+    let index = scope.helpers.len() - 1;
+    let evidence = (|| -> Result<()> {
+        let mut file = private_file(&options.output_dir.join(format!("{label}.stderr")))?;
+        file.write_all(&diagnostics)?;
+        file.sync_all()?;
+        report["helpers"].as_array_mut().context("inspection helper report missing")?
+            .push(serde_json::to_value(&scope.helpers[index])?);
+        Ok(())
+    })();
+    if let Err(error) = evidence {
+        scope.helpers[index].failure.get_or_insert_with(|| bounded_failure(&error));
+        return Err(error);
+    }
+    if let Some(failure) = &scope.helpers[index].failure { bail!("{label}: {failure}"); }
+    scope.check()?;
+    Ok(())
+}
+
 fn run_helper(
     command: &mut Command,
     label: &str,
     options: &VideoInspectionOptions,
     deadline: Instant,
     report: &mut Value,
+    native: &mut Option<GuardedInspection<'_, '_>>,
     mut consume: impl FnMut(&[u8]) -> Result<()>,
 ) -> Result<()> {
+    if let Some(scope) = native {
+        return run_guarded_helper(command, label, options, deadline, report, scope, consume);
+    }
     check_deadline(deadline)?;
     unsafe {
         command.pre_exec(|| {

@@ -23,8 +23,8 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-const RECORD_VERSION: u32 = 3;
-const JSON_LIMIT: u64 = 16 * 1024 * 1024;
+pub(crate) const RECORD_VERSION: u32 = 3;
+pub(crate) const JSON_LIMIT: u64 = 16 * 1024 * 1024;
 // Failure text can expand sixfold when JSON-escaped. The remaining reserve
 // covers all fixed-size terminal counters, timestamps, exit and cleanup fields.
 const TERMINAL_HEADROOM: u64 = 64 * 1024;
@@ -55,10 +55,12 @@ pub(crate) struct NativeCaptureControl<'a> {
     pub creation_attempted: bool,
     pub directory: Option<PathBuf>,
     pub settlement: Option<Settlement>,
+    pub helper_accounting_complete: bool,
+    pub helper_dispositions: Vec<crate::h3_owned::ActorRecord>,
 }
 
 impl NativeCaptureControl<'_> {
-    fn check_prelaunch(&mut self) -> Result<()> {
+    pub(crate) fn check_prelaunch(&mut self) -> Result<()> {
         ensure!(
             Instant::now() < self.prelaunch_deadline && Instant::now() < self.automation_deadline,
             "native prelaunch deadline expired"
@@ -457,11 +459,11 @@ fn valid_hash(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
-fn millis(duration: Duration) -> u64 {
+pub(crate) fn millis(duration: Duration) -> u64 {
     u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
 }
 
-fn now_ms() -> Result<u64> {
+pub(crate) fn now_ms() -> Result<u64> {
     Ok(millis(
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -498,7 +500,7 @@ fn absolute(path: &Path) -> Result<PathBuf> {
     })
 }
 
-fn unique_run(root: &Path) -> Result<PathBuf> {
+pub(crate) fn unique_run(root: &Path) -> Result<PathBuf> {
     let root = absolute(root)?;
     safe_directory(&root)?;
     fs::create_dir_all(&root)?;
@@ -535,7 +537,7 @@ impl std::fmt::Display for JsonSizeLimit {
 
 impl std::error::Error for JsonSizeLimit {}
 
-fn bound_failure(reason: &mut String) {
+pub(crate) fn bound_failure(reason: &mut String) {
     const MARKER: &str = " [truncated]";
     if reason.len() > FAILURE_LIMIT {
         let mut end = FAILURE_LIMIT - MARKER.len();
@@ -569,7 +571,7 @@ impl Write for BoundedWriter<'_> {
     }
 }
 
-fn atomic_json<T: Serialize>(directory: &Path, name: &str, value: &T, limit: u64) -> Result<()> {
+pub(crate) fn atomic_json<T: Serialize>(directory: &Path, name: &str, value: &T, limit: u64) -> Result<()> {
     let temporary = directory.join(format!(
         ".mil-{}-{}.tmp",
         std::process::id(),
@@ -606,7 +608,7 @@ fn atomic_json<T: Serialize>(directory: &Path, name: &str, value: &T, limit: u64
     result
 }
 
-fn regular_file(path: &Path) -> Result<File> {
+pub(crate) fn regular_file(path: &Path) -> Result<File> {
     let metadata = fs::symlink_metadata(path)?;
     ensure!(
         metadata.is_file() && !metadata.file_type().is_symlink(),
@@ -642,7 +644,7 @@ fn load_json<T: DeserializeOwned>(path: &Path, limit: u64) -> Result<T> {
     serde_json::from_slice(&bytes).with_context(|| format!("invalid JSON in {}", path.display()))
 }
 
-fn hash_file(
+pub(crate) fn hash_file(
     path: &Path,
     max_bytes: u64,
     deadline: Instant,
@@ -687,7 +689,7 @@ fn hash_open_file(
     Ok((format!("{:x}", hasher.finalize()), bytes))
 }
 
-fn output_bytes(directory: &Path, limit: u64) -> Result<u64> {
+pub(crate) fn output_bytes(directory: &Path, limit: u64) -> Result<u64> {
     let mut stack = vec![(directory.to_path_buf(), 0_u32)];
     let mut entries = 0_u32;
     let mut bytes = 0_u64;
@@ -1231,7 +1233,7 @@ pub(crate) mod unix {
         }
     }
 
-    fn host_identity() -> Result<HostIdentity> {
+    pub(crate) fn host_identity() -> Result<HostIdentity> {
         let mut info: libc::utsname = unsafe { std::mem::zeroed() };
         ensure!(
             unsafe { libc::uname(&mut info) } == 0,
@@ -1884,6 +1886,8 @@ mod deadline_review_tests {
             creation_attempted: false,
             directory: None,
             settlement: None,
+            helper_accounting_complete: true,
+            helper_dispositions: Vec::new(),
         };
         // Internal setup rejection only, not minted production authority. No
         // lease/collector/native runtime is supplied; even the old path cannot

@@ -197,7 +197,10 @@ int mil_h3_posix_spawn_file_actions_init(mil_h3_posix_spawn_file_actions_t *acti
 static int append_action(mil_h3_posix_spawn_file_actions_t *actions, int kind, int source, int target) {
     if (!actions || actions->magic != ACTION_MAGIC) return EINVAL;
     if (source < 0 || source > MAX_TARGET || target < 0 || target > MAX_TARGET) return EBADF;
-    if (source == BROKER_FD || target == BROKER_FD) return EPERM;
+    /* Destinations are helper-local, never dup2'd in this root. In particular
+       helper target198 cannot overwrite the root control socket; that socket
+       remains forbidden as a source or close action. */
+    if (source == BROKER_FD) return EPERM;
     if (actions->count >= MIL_H3_MAX_ACTIONS) return E2BIG;
     actions->actions[actions->count++] = (struct mil_h3_file_action){ kind, source, target };
     return 0;
@@ -231,7 +234,7 @@ static int resolve_actions(const mil_h3_posix_spawn_file_actions_t *actions,
             const struct mil_h3_file_action *action = &actions->actions[i];
             int source = action->source, target = action->target;
             if (source < 0 || source > MAX_TARGET || target < 0 || target > MAX_TARGET) return EBADF;
-            if (source == BROKER_FD || target == BROKER_FD) return EPERM;
+            if (source == BROKER_FD) return EPERM;
             if (action->kind == 1) {
                 if (table[source] < 0 || fcntl(table[source], F_GETFD) < 0) return EBADF;
                 table[target] = table[source];

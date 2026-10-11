@@ -451,7 +451,7 @@ pub fn build_plan(options: &PrepareOptions) -> Result<Plan> {
             pinned.sha256 == identity.sha256,
             "conditioning input changed while decoding"
         );
-        conditioning.push(Conditioning { role: input.role, input: pinned, width: identity.width, height: identity.height, transformation: format!("Selected-source recipe only, not executed: FFmpeg first frame, Lanczos stretch to {}x{}, RGB24; channel-major float32 /255; video encoder normalization mean [0.485,0.456,0.406], std [0.229,0.224,0.225]. Anchor at {}. No transformed-pixel or latent identity observed.", render.width, render.height, if input.role == ReferenceRole::FirstFrame { "frame 0".into() } else { format!("frame {}", frames - 1) }) });
+        conditioning.push(Conditioning { role: input.role, input: pinned, width: identity.width, height: identity.height, transformation: format!("Selected-source recipe only, not executed: FFmpeg first frame, Lanczos {} to {}x{}, RGB24; channel-major float32 /255; video encoder normalization mean [0.485,0.456,0.406], std [0.229,0.224,0.225]. Anchor at {}. No transformed-pixel or latent identity observed.", if input.role == ReferenceRole::FirstFrame { "stretch" } else { "cover scale and centered crop" }, render.width, render.height, if input.role == ReferenceRole::FirstFrame { "frame 0".into() } else { format!("frame {}", frames - 1) }) });
     }
     let output_path = preparation_dir.join("h3-output.mp4");
     let mut argv = vec![

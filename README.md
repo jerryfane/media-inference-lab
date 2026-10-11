@@ -620,18 +620,55 @@ Scenarios: `success`, `codec-failure`, `root-failure`, `cancel`, `guard-denial`,
 
 Reports retain guardian-selected commands/environment, binary/sandbox hashes, observed PID/PPID/group/session/UID/birth enrollment and original exit/settlement evidence. Enrollment is a pre-exec ownership receipt, not proof of an executed source/model. CPU reports always set `native_execution_attested`, `capture_eligible` and `restoration_authority` to `false`. Original incomplete settlement is never promoted by later natural exit, retries, polling or another reaper. This does **not** resolve the previously retained live-member `killpg` EPERM; that failure remains open.
 
-Bounds: one outstanding helper; at most 16 helpers/32 requests; 16 KiB/request, four transferred pipe FDs and 128 arguments; targets 0–1023 excluding reserved broker FD 198. The root alone receives the broker socket. Codec output uses bounded root capture pipes; arbitrary executable/environment requests, sockets supplied as codec streams, duplicate targets, bad tokens and malformed/truncated frames fail closed. Guardian work is bounded to eight seconds, total automation to 14 seconds and each settlement to at most two seconds within that ceiling; the media helper has a three-second lifetime. Logs are capped at 64 KiB each, journal at 1 MiB, and generated media at the fixed sizes above. Kernel/filesystem calls themselves are not hard-cancellable.
+Bounds: one outstanding helper; at most 16 helpers/32 requests; 16 KiB/request, four transferred pipe FDs and 128 arguments; targets 0–1023. FD 198 is protected in the root's broker namespace, not forbidden as a helper-local destination: helpers never inherit that control socket. Colliding inherited lease descriptors are duplicated above the actual mapped targets, preserving the same open file description and guardian CLOEXEC custody. Codec output uses bounded root capture pipes; arbitrary executable/environment requests, sockets supplied as codec streams, duplicate targets, bad tokens and malformed/truncated frames fail closed. The original purpose-built qualification is bounded to eight seconds, total automation to 14 seconds and each settlement to at most two seconds within that ceiling; the media helper has a three-second lifetime. Logs are capped at 64 KiB each, journal at 1 MiB, and generated media at the fixed sizes above. Kernel/filesystem calls themselves are not hard-cancellable.
 
 **Project-local native build contract, not performed by this qualification:**
 
 - Compile only the separately selected `h3_ffmpeg.c` translation unit with this repository's `adapters/h3_owned_helpers.h` force-included (`-include /absolute/.../h3_owned_helpers.h`). Keep the selected runtime's original compile flags and all other translation units unchanged.
 - Compile `adapters/h3_owned_helpers.c` normally, without forced remapping, and link that object into the isolated native executable. Do not link the CPU fixture into H3. The header wraps only the observed file-actions, spawn and wait APIs; unsupported attributes, custom environments, final closed stdio and overlapping helpers are errors.
-- A future transaction-bound native guardian must install FD 198 and select/pin the real FFmpeg/ffprobe executables, environment and arguments. The bridge uses `H3_FFMPEG`/`H3_FFPROBE` as registered selectors, never PATH lookup; IPC contains no authority or trusted native result. Current CLI admission deliberately permits only the CPU fixture argument contract.
+- The transaction-bound native guardian installs FD 198 and pins real FFmpeg/ffprobe executables, complete environment and exact admitted arguments. The bridge uses `H3_FFMPEG`/`H3_FFPROBE` as registered selectors, never PATH lookup; IPC contains no authority or trusted native result. Native admission is separate from both CPU qualification commands and requires the exact `NativeH3` maintenance plan below.
 - No production checkout/binary is patched. The reviewed project-local build and transaction-bound real-tool integration are now in scope under the bounded-maintenance decision above. Native activation still requires fresh exact authorization, source/build identity, native ownership qualification, unchanged resource/service guards, coordinated scheduling and real draft/output validation. CPU qualification is not a bypass of the maintenance transaction or #15/#11's remaining native acceptance.
 
 Focused new checks, using an isolated target: `cargo test --locked --lib h3_owned::tests:: -- --test-threads=1` and `cargo test --locked --lib process_scope::darwin::io_tests:: -- --test-threads=1`. They cover wire framing/status/descriptor custody and pre-fork mapping boundaries; actual CLI qualification supplies the process/media proof.
 
 Observed [CPU ownership receipt](runs/h3-owned-cpu-20261011T195209977441Z/receipt.json): six new tests passed; all eight initial CLI scenarios met their expectations with complete original settlement. The final isolated binary also passed raw-media success, exact unknown-tool/root-fork/helper-fork denial checks, and an actual guardian SIGINT: the cancelled report recorded 110 ms total guardian elapsed time, before the internal 200 ms trigger, with the active helper terminated by SIGTERM and the root retaining exit 70. Strict Clippy initially found corrected new-code lints plus the unrelated existing `video_inspection.rs:469` `manual_is_multiple_of` lint; the final lib/bin check passed with only that lint category explicitly allowed. The full/previously accepted suites and historical lifecycle/EPERM diagnostics were not rerun. Approved guardian, rlib and transaction-candidate hashes remained unchanged.
+
+### Isolated native H3 enrollment
+
+`adapters/h3_owned_native.mk` builds into a new private directory from an explicitly selected read-only H3 source checkout. Only `H3_SOURCE` and `BUILD_ROOT` select inputs/output; provenance-critical compiler flags, source/object lists, bridge/header paths, linker inputs, shell and default goal cannot be overridden on the make command line.
+
+```sh
+make -f adapters/h3_owned_native.mk \
+  H3_SOURCE=/absolute/selected/h3-source BUILD_ROOT=/absolute/new-native-build \
+  native real-codec-fixture
+
+"$ISOLATED_TARGET/debug/mil" h3-qualify-real-codecs --cpu-only \
+  --fixture /absolute/new-native-build/bin/mil-h3-real-codec-fixture \
+  --ffmpeg /absolute/existing/ffmpeg --ffprobe /absolute/existing/ffprobe \
+  --scenario success --output-dir /absolute/new-real-codec-evidence
+
+"$ISOLATED_TARGET/debug/mil" h3-prepare-native \
+  --workload /absolute/h3-draft-workload.json --profile draft \
+  --binary /absolute/new-native-build/bin/h3-owned \
+  --model-dir /absolute/local/MiniMax-H3 \
+  --shader-cwd /absolute/selected/h3-source --source-dir /absolute/selected/h3-source \
+  --ffmpeg /absolute/existing/ffmpeg --ffprobe /absolute/existing/ffprobe \
+  --build-receipt /absolute/reviewed-build-receipt.json \
+  --guard-config /absolute/guard-config.json --root /absolute/private-capture-root \
+  --output-dir /absolute/new-native-preparation \
+  --timeout-seconds 600 --max-output-bytes 67108864
+```
+
+The build receipt records actual compiler argv/cwd, compiler/source/header/recipe/bridge/binary hashes and successful build outcome. Enrollment checks consistency with the compiled-in recipe; it is not cryptographic attestation of historical compilation. Capture/build roots must already be private mode 0700. Enrollment never invokes H3, hashes full model tensors or probes its runtime version.
+
+Initial native admission is deliberately exact: text-only draft, 864×480, 8 steps, 50 layers, reuse/core-reuse 1, 56 frames at 24 FPS, generated 32 kHz stereo, no internal canvas reduction or requested quantization. Declare `precision: "bfloat16"` for checkpoint storage and `compute_precision: null`; unresolved `auto` is rejected rather than invented. Device-selected mixed native compute is not BF16-only compute. General offline preparation supports additional profiles/conditioning; first-frame stretching and last-frame centered cover/crop are source-declared transformations, not observed latent evidence.
+
+The real-codec fixture uses the selected native codec callsites and real software FFmpeg encoding: 36 frames at 12 FPS, three seconds of independent 440/733 Hz stereo tones at 32 kHz. It checks original encoded rate/channels, unforced decoded PCM content, and the actual native reader's 64,000-frame stereo minimum separately. Scenarios `success`, `codec-failure`, `root-failure`, `cancel`, `descriptor-collision` and `broker-collision` return 0 when their **qualification expectation** passes; retained failure cases are not native success. Collision cases exercise lease/audio target 7 and lease/root-broker/helper-audio target 198. None loads models, acquires a GPU lease, controls services or grants restoration authority.
+
+`Experiment::NativeH3` consumes the enrolled plan through the existing `maintenance-run --transaction … --authorization …` lifecycle. Every model attempt needs its own fresh exact grant and coordinated heavy-work window. Root, broker codecs and full-stream inspection helpers are guardian-owned originals; complete root settlement alone cannot authorize restoration when helper accounting is incomplete. The 600-second capture ceiling includes codecs, full MP4/RGB/PCM inspection and cleanup reserve. Complete root environment equality rejects extra behavior-changing keys. Shared capture manifests and `AdapterResult` retain actual artifact hashes, resolved settings, raw profiling and unavailable measurements; stdout/stderr remain capture-owned logs, not duplicate adapter artifacts.
+
+Observed CPU integration evidence: `/Users/jerry/.local/share/media-inference-lab/h3-native-integration-20261011T220117461929Z`. Reviewed isolated C build succeeded (two bridge integer-conversion and three fixture enum/float warnings retained); Rust build and five native enrollment regressions passed. All six real-codec scenarios passed their expectations with original settlement complete. Original audio decoded 96,000 frames, with channel RMSE 0.001432366/0.000903545; native two-second reader RMSE 0.001761611/0.001108832, below the explicit 0.025 fixture limit. Actual native enrollment succeeded using the complete original compiler log; an earlier receipt parsed from truncated presentation text failed closed and remains preserved. **These are CPU/build/enrollment results, not real H3 generation, quality or performance evidence.**
+
 
 ### Image-output validation
 

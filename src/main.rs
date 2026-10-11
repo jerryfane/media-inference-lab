@@ -7,7 +7,7 @@ use media_inference_lab::{
     frame_sequence::{self, SequenceAssessment, SequenceInput, SequenceSource},
     guards::{GuardConfig, GuardMonitor, Lease},
     h3::{self, InspectOptions as H3InspectOptions, PrepareOptions as H3PrepareOptions},
-    h3_owned,
+    h3_native, h3_owned,
     image_comparison::{self, ImageAssessment, Tolerance},
     image_inspection::{self, ImageInspectionOptions},
     maintenance,
@@ -147,6 +147,37 @@ enum Command {
         #[arg(long)]
         output_dir: PathBuf,
     },
+    /// Prepare an exact bridge-enabled H3 transaction plan; never launch a model or service.
+    H3PrepareNative {
+        #[arg(long)]
+        workload: PathBuf,
+        #[arg(long, value_parser = ["draft", "standard", "detailed"])]
+        profile: String,
+        #[arg(long)]
+        binary: PathBuf,
+        #[arg(long)]
+        model_dir: PathBuf,
+        #[arg(long)]
+        shader_cwd: PathBuf,
+        #[arg(long)]
+        source_dir: PathBuf,
+        #[arg(long)]
+        ffmpeg: PathBuf,
+        #[arg(long)]
+        ffprobe: PathBuf,
+        #[arg(long)]
+        build_receipt: PathBuf,
+        #[arg(long)]
+        guard_config: PathBuf,
+        #[arg(long)]
+        root: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 600, value_parser = clap::value_parser!(u64).range(1..=600))]
+        timeout_seconds: u64,
+        #[arg(long, default_value_t = 64 * 1024 * 1024)]
+        max_output_bytes: u64,
+    },
     /// Inspect supplied H3 logs/media offline; reported exit is not owned-execution attestation.
     H3InspectResult {
         #[arg(long)]
@@ -187,6 +218,21 @@ enum Command {
         output_dir: PathBuf,
         #[arg(long, default_value = "success")]
         scenario: String,
+    },
+    /// Exercise the project-built CPU codec fixture with explicitly selected real tools; never H3 inference.
+    H3QualifyRealCodecs {
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "success", value_parser = ["success", "codec-failure", "cancel", "root-failure", "descriptor-collision", "broker-collision"])]
+        scenario: String,
+        #[arg(long)]
+        fixture: PathBuf,
+        #[arg(long)]
+        ffmpeg: PathBuf,
+        #[arg(long)]
+        ffprobe: PathBuf,
+        #[arg(long, required = true)]
+        cpu_only: bool,
     },
     #[command(hide = true)]
     H3CpuFixture {
@@ -753,6 +799,14 @@ fn run(cli: Cli) -> Result<bool> {
             println!("{}", output_dir.join("report.json").display());
             Ok(succeeded)
         }
+        Command::H3QualifyRealCodecs { output_dir, scenario, fixture, ffmpeg, ffprobe, cpu_only } => {
+            ensure!(cpu_only, "real-codec qualification is explicitly CPU-only");
+            let passed = h3_owned::qualify_real_codecs(
+                &output_dir, &scenario, &fixture, &ffmpeg, &ffprobe,
+            )?;
+            println!("{}", output_dir.join("report.json").display());
+            Ok(passed)
+        }
         Command::H3CpuFixture {
             scenario,
             output_dir,
@@ -825,6 +879,29 @@ fn run(cli: Cli) -> Result<bool> {
             })?;
             println!("{}", report_path.display());
             Ok(valid)
+        }
+        Command::H3PrepareNative {
+            workload, profile, binary, model_dir, shader_cwd, source_dir, ffmpeg, ffprobe,
+            build_receipt, guard_config, root, output_dir, timeout_seconds, max_output_bytes,
+        } => {
+            let workload_path = std::path::absolute(&workload)?;
+            let input_dir = workload_path.parent().context("workload path has no parent")?.to_path_buf();
+            let workload: Workload = load_regular_json(&workload, 1024 * 1024)?;
+            let guard_config: GuardConfig = load_regular_json(&guard_config, 1024 * 1024)?;
+            let report_path = output_dir.join("report.json");
+            h3_native::prepare(h3_native::PrepareOptions {
+                preparation: H3PrepareOptions {
+                    workload, profile: profile.parse()?, binary, model_dir, shader_cwd,
+                    source_dir, input_dir, ffmpeg, ffprobe, output_dir,
+                },
+                build_receipt,
+                output_root: root,
+                guard_config,
+                timeout: Duration::from_secs(timeout_seconds),
+                max_output_bytes,
+            })?;
+            println!("{}", report_path.display());
+            Ok(true)
         }
         Command::H3InspectResult {
             plan,
