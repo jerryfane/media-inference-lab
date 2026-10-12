@@ -1,9 +1,9 @@
 {
   "kind": "h3_only_baseline_predeclaration",
-  "protocol_version": 1,
+  "protocol_version": 2,
   "notice": "Separately authorized four-slot H3-only cohort. Not a continuation, completion or repair of the stopped eight-slot cohort; not a native grant or cooperative hold.",
-  "study_id": "h3-only-baseline-20261012T110920566Z",
-  "declared_at_utc": "2026-10-12T11:09:20.567Z",
+  "study_id": "h3-only-baseline-corrected-20261012T130715614Z",
+  "declared_at_utc": "2026-10-12T13:07:15.618Z",
   "intent": "Descriptive unchanged baseline timing and output variation only; no candidate/control configurations, same-work performance eligibility or speedup claim.",
   "source_policy": {
     "required": "Reuse the previously qualified frozen guardian/native build from main f81795607bd986e1e5d63344021cf7af85c4d400, without rebuilding or changing it. Qualify and freeze new CPU-only collector/reporting source before H0.",
@@ -309,6 +309,18 @@
     "record_max_bytes": 16777216,
     "transport": "Private bounded local IPC with exact study root, source and domain binding; qualified before native admission.",
     "ownership": "Retain original creation, finite lifetime and external owner settlement. No self-attested leader reaping; no restored or invented original timestamps.",
-    "admission": "Require sufficient remaining collector lifetime for the declared command/readiness ceiling before a bracket starts; domain/sequence/identity/record failures prevent subsequent native admission."
+    "admission": "Require sufficient remaining collector lifetime for the declared command/readiness ceiling before a bracket starts; domain/sequence/identity/record failures prevent subsequent native admission.",
+    "future_receipt_paths": "At begin, an input may have absent trailing ancestor directories. Validate every existing study-local ancestor as private/owned/non-symlink; reserve only the literal path without creating directories. The guardian alone creates its evidence root. At finish and later evidence validation, require the entire private owned non-symlink path and original bounded fresh file identity. No staging/removal workaround, relaxed final validation, or state reconstruction."
+  },
+  "prior_zero_attempt_h3_cohort": {
+    "root": "/Users/jerry/.local/share/media-inference-lab/h3-only-baseline-20261012T110920566Z",
+    "protocol_sha256": "13ac0a3223c9a4e262b7a86556c48de79977990ea7b46bedd20f445bca8d1a0b",
+    "state": "stopped_before_H0",
+    "native_attempts": 0,
+    "execution_readiness_brackets": 0,
+    "unused_grant_withdrawn": true,
+    "original_collector_closed_and_settled": true,
+    "reason": "Collector required receipt parent to exist but frozen guardian creates that directory non-recursively.",
+    "evidence": "/Users/jerry/.local/share/media-inference-lab/h3-only-baseline-20261012T110920566Z/prestart-stop-handoff.json"
   }
 }

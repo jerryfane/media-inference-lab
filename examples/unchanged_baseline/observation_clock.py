@@ -58,7 +58,7 @@ import tempfile
 import time
 import uuid
 
-PROTOCOL_SHA256 = "13ac0a3223c9a4e262b7a86556c48de79977990ea7b46bedd20f445bca8d1a0b"
+PROTOCOL_SHA256 = "34e1c4d20759bf2ebb581c1de17ea3a023cac60f723bbedf763d99b9bebdbb02"
 LIMIT = 16 * 1024 * 1024
 REQUEST_LIMIT = 131072
 REQUEST_SECONDS = 5
@@ -98,12 +98,12 @@ def canonical(path, missing=False):
     require(path.is_absolute() and str(path) == raw and ".." not in path.parts,
             "path must be canonical and absolute")
     prefix = pathlib.Path(path.anchor)
-    for index, part in enumerate(path.parts[1:], 1):
+    for part in path.parts[1:]:
         prefix = prefix / part
         try:
             info = prefix.lstat()
         except FileNotFoundError:
-            require(missing and index == len(path.parts) - 1, "missing path ancestor")
+            require(missing, "missing path ancestor")
             break
         require(not stat.S_ISLNK(info.st_mode), "symlink path rejected")
     require(path.resolve(strict=not missing) == path, "aliased path rejected")
@@ -121,9 +121,16 @@ def private_dir(path):
 def inside(root, path, missing=False):
     path = canonical(path, missing=missing)
     require(path != root and root in path.parents, "evidence must belong to this fresh study root")
-    # Every study-local directory, not shared ancestors such as /Users, is private.
+    # Existing study-local ancestors are private. Missing future ancestors are
+    # allowed only while reserving a path; finish requires the entire path.
     parent = path.parent
     while parent != root:
+        if missing:
+            try:
+                parent.lstat()
+            except FileNotFoundError:
+                parent = parent.parent
+                continue
         private_dir(parent)
         parent = parent.parent
     private_dir(root)

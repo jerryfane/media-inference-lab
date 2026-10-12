@@ -261,6 +261,80 @@ class CollectorCliTests(unittest.TestCase):
         for path in actor.root.rglob("*"):
             self.assertEqual(path.stat().st_mode & 0o777, 0o700 if path.is_dir() else 0o600)
 
+    def test_future_receipt_directory_is_created_only_by_producer_after_begin(self):
+        actor = self.actor()
+        slot = actor.root / "slots" / "H0"
+        slot.mkdir(mode=0o700, parents=True)
+        os.chmod(slot.parent, 0o700)
+        evidence = slot / "transaction-evidence"
+        begin = actor.begin(receipt_path=str(evidence / "receipt.json"),
+                            companion_path=str(slot / "command-outcome.json"))
+        actor.cli(begin)
+        self.assertFalse(evidence.exists())
+        # Same non-recursive, create-only directory operation as frozen main.
+        evidence.mkdir(mode=0o700)
+        actor.publish_inputs(begin)
+        execution = actor.cli(actor.finish())["record"]
+        self.assertTrue(execution["collection_complete"])
+        self.assertEqual(execution["receipt_identity"]["path"], begin["receipt_path"])
+        observer = slot / "postattempt-readiness"
+        readiness = actor.begin("H0/readiness", receipt_path=begin["receipt_path"],
+                                companion_path=str(observer / "readiness.json"))
+        actor.cli(readiness)
+        self.assertFalse(observer.exists())
+        observer.mkdir(mode=0o700)
+        actor.publish_inputs(readiness)
+        observed = actor.cli(actor.finish("H0/readiness"))["record"]
+        self.assertTrue(observed["collection_complete"])
+        self.assertEqual(observed["receipt_identity"], execution["receipt_identity"])
+        self.assertFalse(actor.cli({"op": "close"})["collection_complete"])
+        self.assertEqual(actor.wait(), 1)
+        self.assertEqual(actor.final()["completed_brackets"], 2)
+
+    def test_future_receipt_directory_missing_at_finish_is_incomplete(self):
+        actor = self.actor()
+        begin = actor.begin(receipt_path=str(actor.root / "future" / "receipt.json"))
+        actor.cli(begin)
+        write_private(pathlib.Path(begin["companion_path"]), {"synthetic": True})
+        result = actor.cli(actor.finish())["record"]
+        self.assertFalse(result["collection_complete"])
+        self.assertIsNone(result["receipt_identity"])
+        self.assert_terminal(actor)
+
+    def test_future_receipt_directory_checks_existing_ancestors_before_begin(self):
+        for unsafe in ("permissions", "symlink"):
+            with self.subTest(unsafe=unsafe):
+                actor = self.actor("-" + unsafe)
+                ancestor = actor.root / "existing"
+                if unsafe == "permissions":
+                    ancestor.mkdir(mode=0o700)
+                    ancestor.chmod(0o755)
+                else:
+                    target = self.proof / (self._testMethodName + "-foreign")
+                    target.mkdir(mode=0o700)
+                    ancestor.symlink_to(target, target_is_directory=True)
+                actor.cli(actor.begin(receipt_path=str(ancestor / "future" / "receipt.json")), expected=1)
+                self.assert_terminal(actor)
+                self.assertFalse((actor.root / "observation-clock" / "H0.execution.start.json").exists())
+
+    def test_future_receipt_directory_rejects_unsafe_published_ancestors(self):
+        for unsafe in ("permissions", "symlink"):
+            with self.subTest(unsafe=unsafe):
+                actor = self.actor("-" + unsafe)
+                ancestor = actor.root / "future"
+                begin = actor.begin(receipt_path=str(ancestor / "receipt.json"))
+                actor.cli(begin)
+                if unsafe == "permissions":
+                    ancestor.mkdir(mode=0o700)
+                    ancestor.chmod(0o755)
+                else:
+                    target = self.proof / (self._testMethodName + "-foreign")
+                    target.mkdir(mode=0o700)
+                    ancestor.symlink_to(target, target_is_directory=True)
+                actor.publish_inputs(begin)
+                actor.cli(actor.finish(), expected=1)
+                self.assert_terminal(actor)
+
     def test_overlap_duplicate_and_wrong_order_stop_original_actor(self):
         for name, second in (("duplicate", "H0/execution"), ("overlap", "H0/readiness")):
             with self.subTest(name=name):
