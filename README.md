@@ -286,4 +286,46 @@ This PNG view reports **PNG-output evidence only**. It explicitly marks hardware
 
 Observed verification: after coherent edits, `cargo test --test png_report` passed three new regressions using a CommonMark parser (test-only dependency) to check literal untrusted fields, embedded fences/control characters, and offline link integrity after bundle relocation and source removal. Clippy with warnings denied and the binary build passed. Seven fresh bounded actual CLI scenarios exercised all four numerical outcomes, unavailable and supplied review records, long embedded fences, baseline-repeat reporting and overwrite refusal. Six readable bundles were produced; artifact hashes/sizes/private modes and a relocated bundle were checked. All three generated PNG inputs and the tested binary stayed unchanged during smoke; actual Markdown output was inspected. Previously cleared PR30 decoder checks, including the parent's empty-IDAT cases, were accepted without rerun. No real quality review, model/native inference/GPU execution, merge or infrastructure/policy/live-service action occurred.
 
+### Full declared PNG-frame sequence comparisons
+
+`compare-frames` compares **every frame in explicitly declared PNG sequences**, using the existing Rust PNG decoder without invoking an external video/audio codec process, model or inference runtime. It is not compressed-video decoding or verification that an original video was completely/correctly exported. Supply a schema-v1 manifest for each role; paths are absolute or relative to that manifest's directory:
+
+```json
+{
+  "schema_version": 1,
+  "frame_count": 2,
+  "provenance": "Describe the source and extraction/alignment method; this declaration is unverified.",
+  "frames": [
+    {"index": 0, "path": "frames/0000.png", "pts_ns": 0, "duration_ns": 40000000},
+    {"index": 1, "path": "frames/0001.png", "pts_ns": 40000000, "duration_ns": 40000000}
+  ]
+}
+```
+
+```sh
+target/debug/mil compare-frames \
+  --baseline /absolute/baseline-frames.json \
+  --candidate /absolute/candidate-frames.json \
+  --baseline-repeat /absolute/separate-repeat-frames.json \
+  --output-dir runs/frame-comparison
+```
+
+The repeat is optional and is never substituted from the candidate. Indices must be exactly `0..frame_count-1`; count must match the complete list. Presentation timestamps and positive durations are integer nanoseconds, start at zero, and form contiguous intervals without gaps, overlaps or overflow. All roles must have identical counts and intervals. Variable frame durations are supported only with exactly matching declared alignment. Every PNG must retain constant width, height, channel layout and bit depth across all frames and roles, using the strict static-PNG formats/bounds above. There is no frame selection, dropping, matching, interpolation, crop, resize or sample conversion. Unsupported or late-invalid frames fail the entire comparison rather than yielding a shortened result.
+
+The report preserves every frame's original/decoded identity and metrics, complete input declarations, all timing intervals, separate repeat results and whole-sequence totals. Aggregate integer absolute/squared errors and `N` include **all stored samples in all frames**, including alpha; they are not time-weighted. MAE is the total absolute error divided by `N`, RMSE uses the total squared error divided by `N`, and PSNR uses that same mean squared error—not an average of per-frame PSNR. No FPS, inference throughput or temporal-quality metric is inferred. Equality and low error do not establish quality, prompt adherence, a controlled experiment or matching generation settings.
+
+Optionally declare `--max-absolute-error N --tolerance-rationale TEXT`; the rationale is mandatory and the bound must fit the sample-code range. Exit `0` means all decoded samples are exact or within this declared maximum, `1` means different without a bound or outside it, and `2` means invalid input, quota or I/O failure. Bounds are never adjusted to pass a candidate.
+
+Sequence SHA-256 binds the complete ordered encoded PNG contents **and timing**, excluding paths/provenance: domain bytes `mil-png-sequence-v1\0` (final byte NUL), frame count and total duration as u64 big-endian, then each frame's index/PTS/duration as u64 big-endian followed by its encoded PNG SHA-256 as 64 lowercase ASCII bytes. Encoded metadata changes therefore change this identity even when decoded samples are identical. This is not a container identity or authenticated provenance.
+
+Optional `--assessment review.json` accepts schema version 1 with `baseline_sha256` and `candidate_sha256` bound to those complete sequence identities; nonblank `reviewer` and `protocol`; `prompt_adherence`, `artifacts`, `temporal_consistency` and `audio` observations; and a `limitations` string array. Observations use `{"status":"available","value":"..."}` or `{"status":"unavailable","reason":"..."}`. Audio **must be unavailable** because this command has no decoded audio to bind. Reviewer/protocol/observations remain unverified, distinct from numerical evidence, and cannot change classification. Absence remains explicitly unassessed; no assistant quality leaderboard is produced.
+
+The private create-new bundle includes all original PNG snapshots, an unscaled baseline-left/candidate-right sheet for **every** frame, `report.md` and final `report.json` (bundle v1, kind `offline_png_sequence_comparison_bundle`). Names are fixed under `frames/0000-baseline.png`, `0000-candidate.png`, optional `0000-repeat.png`, and `0000-sheet.png`, continuing by index. Copies come from the same retained bytes hashed/decoded, not later source rereads. Sheets omit ancillary metadata and are not color-managed quality evidence. The Markdown contains fixed local links, literal caller text, all numerical denominators and prominent unassessed/unverified warnings. Artifact hashes/byte counts support relocation independently of original source paths.
+
+Limits: 1–1024 frames per role; manifest/assessment JSON at most 1 MiB each; cumulative encoded PNG bytes at most 512 MiB across all roles; cumulative decoded samples at most 512 MiB **per role**. Individual PNG limits still apply. Only the current two/three decoded frames are retained, not the entire raster sequence. Output frame payload (originals plus sheets) is capped at 1 GiB, with 270 MiB per sheet; Markdown at 8 MiB and final JSON at 16 MiB, for at most 1048 MiB of bundle file payload. These are byte/count bounds, not a total-RSS or wall-clock guarantee. Directory/file modes are 0700/0600 subject to a stricter umask. Existing output paths are rejected. Manifest/timeline/basic assessment errors occur before output; a late frame error, mismatched final assessment binding or output failure can leave a partial private directory. Final report generation starts only after every frame and assessment binding succeeds.
+
+Observed CPU verification: `cargo test --lib frame_sequence::tests` passed one cumulative-quota regression; `cargo test --test frame_sequence --test frame_sequence_cli` passed 14 new cases, including the 1024th frame, full 16-bit totals/low bits, alignment/late errors, complete identity binding, independent temporal records, source removal, relocation and safe local Markdown links. Clippy with warnings denied and the binary build passed. Twelve fresh actual CLI scenarios covered all four numerical outcomes, separate repeat, supplied temporal records, encoded-different/decoded-exact frames, full 16-bit sequences, timeline/count errors, late invalid data, wrong binding, unsupported audio claims and overwrite refusal. All 33 generated source files and the tested binary remained unchanged. Artifact hashes/sizes/private modes and independent sequence identities were checked; all four RGB sheets and a 16-bit sheet were independently inflated/unfiltered and matched exact expected rows. The emitted Markdown and one actual raw A/B PNG sheet were inspected; no browser visual or temporal-quality proof is claimed.
+
+The four-frame generated fixture compared 98,304 samples: absolute/squared totals 12,288/147,456, maximum 12, and separate repeat absolute total 1. Bound 12 passed; bound 11 and no bound retained differences. The two-frame 16-bit fixture retained a one-code low-bit difference over eight samples. These are generated CPU fixtures and synthetic review records, not real inference/video or actual reviewer evidence. Exact local commands/results are retained at `runs/frame-sequence-20261008-222922/receipt.json`. Cleared PR32 checks and its parent's zero-baseline probe were accepted without rerun. #18/#19/#20 remain open for real-runtime evidence and remaining container/audio/latent/media acceptance; no model/native/GPU execution or authorization change is added.
+
 The repository is private initially. Public release, licensing, and sharing local artifacts require an explicit owner decision; this repository does not grant rights to third-party runtimes, model weights, or unpublished patches.

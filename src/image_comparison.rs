@@ -150,7 +150,7 @@ fn validate_assessment(
     Ok(())
 }
 
-fn validate_alignment(baseline: &DecodedPng, other: &DecodedPng) -> Result<()> {
+pub(crate) fn validate_alignment(baseline: &DecodedPng, other: &DecodedPng) -> Result<()> {
     let left = baseline.identity();
     let right = other.identity();
     ensure!(
@@ -163,7 +163,7 @@ fn validate_alignment(baseline: &DecodedPng, other: &DecodedPng) -> Result<()> {
     Ok(())
 }
 
-fn metrics(baseline: &DecodedPng, other: &DecodedPng) -> ImageMetrics {
+pub(crate) fn metrics(baseline: &DecodedPng, other: &DecodedPng) -> ImageMetrics {
     let identity = baseline.identity();
     let pixel_count = u64::from(identity.width) * u64::from(identity.height);
     let channel_count = identity.color.channels() as u8;
