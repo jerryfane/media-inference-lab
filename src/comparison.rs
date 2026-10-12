@@ -1,6 +1,7 @@
-//! Read-only, descriptive comparisons of independently retained capture evidence.
+//! Descriptive comparison of retained captures; optional metadata-only archival.
 use crate::{
     capture::{self, CaptureRecord, CaptureState},
+    capture_archive::CaptureArchive,
     schema::{Observation, RuntimeIdentity, TimingUnit},
     study::{ComparisonMode, Metric, PlannedSample, Role, StudyInput},
 };
@@ -417,10 +418,13 @@ fn median_comparison(
 
 /// Inspects one capture at a time. The deadline is cooperative between inspections,
 /// not a promise to interrupt a stalled filesystem call or an ongoing inspection.
+/// An optional archive retains the same inspected records; archive I/O/quota errors
+/// fail the operation. With no archive this remains a read-only comparison.
 pub fn compare(
     input: &StudyInput,
     base_dir: &Path,
     inspection_budget: Duration,
+    mut archive: Option<&mut CaptureArchive>,
 ) -> Result<ComparisonReport> {
     input.validate()?;
     ensure!(
@@ -430,6 +434,9 @@ pub fn compare(
     let start = Instant::now();
     let requested_identity = input.plan.workload.identity()?;
     let slots = input.plan.slots()?;
+    if let Some(archive) = archive.as_deref_mut() {
+        archive.prepare(slots.len())?;
+    }
     let mut rows = Vec::with_capacity(slots.len());
     let mut directories = HashSet::new();
     let mut manifests = HashSet::new();
@@ -540,6 +547,9 @@ pub fn compare(
                             (row.metric_seconds, row.metric_unavailable_reason) =
                                 metric(&record, &input.plan.metric);
                             row.provenance = Some(provenance(&record)?);
+                            if let Some(archive) = archive.as_deref_mut() {
+                                archive.store(&row.slot, &record)?;
+                            }
                         }
                         Err(error) => {
                             row.inspection = InspectionState::Invalid;
