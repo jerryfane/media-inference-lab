@@ -1,0 +1,132 @@
+{
+  "automation_ceiling_note": "Bounds automation, not a failed outage; GUI may remain paused for manual recovery",
+  "capture_directory": null,
+  "controller_identity": {
+    "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "pgid": 66229,
+    "pid": 90403,
+    "ppid": 66229,
+    "sid": 66229,
+    "start_seconds": 1791556644,
+    "start_subseconds": 94882,
+    "state": "running",
+    "uid": 501
+  },
+  "creation_attempted": true,
+  "elapsed_ms": 1125,
+  "experiment_failure": null,
+  "guardian_pid": 90438,
+  "kind": "cpu_maintenance_transaction",
+  "lease_path": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge/.cpu-maintenance.lock",
+  "recovery_failure": "insufficient CPU lifetime observation budget",
+  "restored": false,
+  "schema_version": 1,
+  "scope": "Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee",
+  "service_accounting_complete": true,
+  "service_enrollment_failure": null,
+  "service_process_dispositions": [
+    {
+      "complete": true,
+      "descendant_uncertainty": null,
+      "failure": null,
+      "identity": {
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "pgid": 90525,
+        "pid": 90525,
+        "ppid": 90438,
+        "sid": 90525,
+        "start_seconds": 1791556647,
+        "start_subseconds": 52957,
+        "state": "running",
+        "uid": 501
+      },
+      "intermediate_identity": null,
+      "intermediate_pid": null,
+      "intermediate_reaped": true,
+      "intermediate_status": null,
+      "kind": "failed CPU replacement",
+      "known_absent": true,
+      "launch_record": {
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+        "environment": {},
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+      },
+      "pid": 90525,
+      "settlement": {
+        "complete": true,
+        "exit_code": null,
+        "exit_signal": 15,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": true,
+        "leader_reaped": true
+      }
+    },
+    {
+      "complete": true,
+      "descendant_uncertainty": null,
+      "failure": null,
+      "identity": {
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "pgid": 90488,
+        "pid": 90488,
+        "ppid": 90438,
+        "sid": 90488,
+        "start_seconds": 1791556646,
+        "start_subseconds": 243930,
+        "state": "stopped",
+        "uid": 501
+      },
+      "intermediate_identity": null,
+      "intermediate_pid": null,
+      "intermediate_reaped": true,
+      "intermediate_status": null,
+      "kind": "CPU fixture disposal",
+      "known_absent": true,
+      "launch_record": {
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+        "environment": {},
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+      },
+      "pid": 90488,
+      "settlement": {
+        "complete": true,
+        "exit_code": null,
+        "exit_signal": 15,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": true,
+        "leader_reaped": true
+      }
+    }
+  ],
+  "settlement": {
+    "complete": true,
+    "exit_code": 0,
+    "exit_signal": null,
+    "failure": null,
+    "group_absent": true,
+    "group_signalled": false,
+    "leader_reaped": true
+  },
+  "success": false,
+  "transaction_id": "cpu-1791556644098-90403",
+  "transaction_sha256": "8c5b41c505ea380c64ffe2870770e25d9112ae1169cb3f03da7eb9bd75ba5574"
+}

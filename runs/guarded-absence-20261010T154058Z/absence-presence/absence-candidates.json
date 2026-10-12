@@ -1,0 +1,14 @@
+[
+  {
+    "pid": 97352,
+    "ppid": 97350,
+    "pgid": 97352,
+    "sid": 97352,
+    "uid": 501,
+    "start_seconds": 1791647076,
+    "start_subseconds": 824684,
+    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/absence-presence/absence-bin/startup-actor",
+    "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/absence-presence",
+    "state": "running"
+  }
+]

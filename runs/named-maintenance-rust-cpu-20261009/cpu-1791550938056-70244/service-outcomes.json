@@ -1,0 +1,55 @@
+[
+  {
+    "role": "studio",
+    "root": {
+      "pid": 70380,
+      "ppid": 70321,
+      "pgid": 70380,
+      "sid": 70380,
+      "uid": 501,
+      "start_seconds": 1791550940,
+      "start_subseconds": 485943,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "gui": null,
+    "inhibited": false,
+    "restored": false,
+    "failure": "CPU stop incomplete: Settlement { complete: false, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: Some(\"group settlement observation failed: reading targeted process session: No such process (os error 3)\") }",
+    "evidence": [],
+    "launch_record": null
+  },
+  {
+    "role": "omlx",
+    "root": {
+      "pid": 70356,
+      "ppid": 70321,
+      "pgid": 70356,
+      "sid": 70356,
+      "uid": 501,
+      "start_seconds": 1791550939,
+      "start_subseconds": 920725,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "gui": {
+      "pid": 70357,
+      "ppid": 70321,
+      "pgid": 70357,
+      "sid": 70357,
+      "uid": 501,
+      "start_seconds": 1791550940,
+      "start_subseconds": 200740,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "inhibited": false,
+    "restored": false,
+    "failure": null,
+    "evidence": [],
+    "launch_record": null
+  }
+]

@@ -1,0 +1,88 @@
+{
+  "automation_ceiling_note": "Bounds automation, not a failed outage; GUI may remain paused for manual recovery",
+  "capture_directory": null,
+  "controller_identity": {
+    "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "pgid": 10064,
+    "pid": 99902,
+    "ppid": 10064,
+    "sid": 10064,
+    "start_seconds": 1791647140,
+    "start_subseconds": 844870,
+    "state": "running",
+    "uid": 501
+  },
+  "creation_attempted": true,
+  "elapsed_ms": 789,
+  "experiment_failure": "named scope revoked: required service observation unavailable: named absence not established; no control of candidates authorized",
+  "final_absence_failure": "named absence not established; no control of candidates authorized",
+  "guardian_pid": 99904,
+  "kind": "cpu_maintenance_transaction",
+  "lease_path": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late/.cpu-maintenance.lock",
+  "recovery_failure": null,
+  "restored": true,
+  "schema_version": 1,
+  "scope": "Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee",
+  "service_accounting_complete": true,
+  "service_enrollment_failure": null,
+  "service_process_dispositions": [
+    {
+      "complete": true,
+      "descendant_uncertainty": null,
+      "failure": null,
+      "identity": {
+        "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late",
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "pgid": 99929,
+        "pid": 99929,
+        "ppid": 99904,
+        "sid": 99929,
+        "start_seconds": 1791647141,
+        "start_subseconds": 513283,
+        "state": "running",
+        "uid": 501
+      },
+      "intermediate_identity": null,
+      "intermediate_pid": null,
+      "intermediate_reaped": true,
+      "intermediate_status": null,
+      "kind": "CPU fixture disposal",
+      "known_absent": true,
+      "launch_record": {
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-late",
+        "environment": {},
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+      },
+      "pid": 99929,
+      "settlement": {
+        "complete": true,
+        "exit_code": null,
+        "exit_signal": 15,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": true,
+        "leader_reaped": true
+      }
+    }
+  ],
+  "settlement": {
+    "complete": true,
+    "exit_code": null,
+    "exit_signal": 15,
+    "failure": null,
+    "group_absent": true,
+    "group_signalled": true,
+    "leader_reaped": true
+  },
+  "success": false,
+  "transaction_id": "cpu-1791647140848-99902",
+  "transaction_sha256": "2d5d43ce6873756abcda3d4fdd2c155043dd6fc6b136d9ea4cdbdafd60fb24b4"
+}

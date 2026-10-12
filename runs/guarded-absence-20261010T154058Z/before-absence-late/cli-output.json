@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "maintenance-cpu",
+    "--root",
+    "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/before-absence-late",
+    "--scenario",
+    "absence-late"
+  ],
+  "returncode": 2,
+  "stdout": "{\"controller_pid\":89614,\"guardian_pid\":89616,\"receipt\":\"/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/before-absence-late/cpu-1791646882880-89614/receipt.json\"}\n",
+  "stderr": "mil: full zombie executable/cwd/session identity unavailable\n"
+}

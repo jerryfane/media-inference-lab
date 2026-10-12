@@ -1,0 +1,24 @@
+{
+  "failure": "Throwaway driver checked event instead of phase; timed out without sending any signal.",
+  "correction": "Read the actual phase=experiment_created journal field.",
+  "controller_killed": false,
+  "terminal_receipt_success": true,
+  "settlement": {
+    "complete": true,
+    "exit_code": 0,
+    "exit_signal": null,
+    "failure": null,
+    "group_absent": true,
+    "group_signalled": false,
+    "leader_reaped": true
+  },
+  "restored": true,
+  "owned_pids": [
+    112,
+    114,
+    124,
+    347,
+    99997
+  ],
+  "all_recorded_owned_pids_absent": true
+}

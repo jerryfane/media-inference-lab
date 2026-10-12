@@ -1,0 +1,26 @@
+   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.54s
+     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-f2e656554c1e4b94)
+
+running 2 tests
+internal signal boundary: pid=50008 signal=9 group=true denied=true reached_dispatch=true expired=false state=Running cleanup=Settlement { complete: false, leader_reaped: false, group_absent: false, group_signalled: true, exit_code: None, exit_signal: None, failure: Some("owned signal failed: signalling bound process: Operation not permitted (os error 1); KILL failed or control expired: signalling bound process: Operation not permitted (os error 1)") }
+
+thread 'process_scope::tests::bound_signal_dispatch_revocation_preserves_live_group' (67792992) panicked at src/process_scope.rs:1977:9:
+assertion failed: settlement.complete && settlement.leader_reaped && settlement.group_absent
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test process_scope::tests::bound_signal_dispatch_revocation_preserves_live_group ... FAILED
+internal signal boundary: pid=50009 signal=17 group=false denied=true reached_dispatch=true expired=true state=Running cleanup=Settlement { complete: false, leader_reaped: false, group_absent: false, group_signalled: true, exit_code: None, exit_signal: None, failure: Some("owned signal failed: signalling bound process: Operation not permitted (os error 1); KILL failed or control expired: signalling bound process: Operation not permitted (os error 1)") }
+
+thread 'process_scope::tests::bound_signal_dispatch_expiry_preserves_running_process' (67792991) panicked at src/process_scope.rs:1977:9:
+assertion failed: settlement.complete && settlement.leader_reaped && settlement.group_absent
+test process_scope::tests::bound_signal_dispatch_expiry_preserves_running_process ... FAILED
+
+failures:
+
+failures:
+    process_scope::tests::bound_signal_dispatch_expiry_preserves_running_process
+    process_scope::tests::bound_signal_dispatch_revocation_preserves_live_group
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 45 filtered out; finished in 0.05s
+
+error: test failed, to rerun pass `--lib`

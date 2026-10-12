@@ -1,0 +1,40 @@
+[
+  {
+    "first_environment_additional": true,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    }
+  },
+  {
+    "first_environment_duplicate": true,
+    "result": {
+      "comparison": {
+        "additional_profile_names": false,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": true
+    }
+  }
+]

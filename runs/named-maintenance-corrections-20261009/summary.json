@@ -1,0 +1,529 @@
+{
+  "schema_version": 1,
+  "review": "https://github.com/jerryfane/media-inference-lab/issues/11#issuecomment-6082367524",
+  "base_commit": "b576449ee8a13bf4fe8aa983e46ab9e60e10d5cc",
+  "scope": "Only newly commissioned failure windows; owned finite CPU actors; no old acceptance proofs rerun.",
+  "before": "before-summary.json",
+  "initial_after": [
+    {
+      "test": "capture::deadline_review_tests::review_prelaunch_setup_callback_cannot_renew_phase",
+      "passed": true,
+      "log": "review_prelaunch_setup_callback_cannot_renew_phase.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "capture::deadline_review_tests::review_prelaunch_setup_callback_cannot_renew_phase",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "capture::deadline_review_tests::review_prelaunch_callback_overrun_never_attempts_creation",
+      "passed": true,
+      "log": "review_prelaunch_callback_overrun_never_attempts_creation.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "capture::deadline_review_tests::review_prelaunch_callback_overrun_never_attempts_creation",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "service_lifecycle::tests::detached_fork_uncertainty_blocks_complete_accounting",
+      "passed": true,
+      "log": "detached_fork_uncertainty_blocks_complete_accounting.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "service_lifecycle::tests::detached_fork_uncertainty_blocks_complete_accounting",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "service_lifecycle::tests::detached_success_preserves_session_launch_and_null_stdio",
+      "passed": true,
+      "log": "detached_success_preserves_session_launch_and_null_stdio.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "service_lifecycle::tests::detached_success_preserves_session_launch_and_null_stdio",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "service_lifecycle::tests::detached_exec_failure_preserves_and_disposes_identities",
+      "passed": true,
+      "log": "detached_exec_failure_preserves_and_disposes_identities.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "service_lifecycle::tests::detached_exec_failure_preserves_and_disposes_identities",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "service_lifecycle::tests::detached_setup_failure_preserves_and_disposes_identities",
+      "passed": true,
+      "log": "detached_setup_failure_preserves_and_disposes_identities.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "service_lifecycle::tests::detached_setup_failure_preserves_and_disposes_identities",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "service_lifecycle::tests::detached_executed_authority_loss_disposes_bound_child",
+      "passed": true,
+      "log": "detached_executed_authority_loss_disposes_bound_child.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "service_lifecycle::tests::detached_executed_authority_loss_disposes_bound_child",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "service_lifecycle::tests::detached_pid_authority_loss_reaps_supervised_child",
+      "passed": true,
+      "log": "detached_pid_authority_loss_reaps_supervised_child.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "service_lifecycle::tests::detached_pid_authority_loss_reaps_supervised_child",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "service_lifecycle::tests::detached_early_authority_loss_retains_cleanup_disposition",
+      "passed": true,
+      "log": "detached_early_authority_loss_retains_cleanup_disposition.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "service_lifecycle::tests::detached_early_authority_loss_retains_cleanup_disposition",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "service_lifecycle::tests::deferred_helper_returns_owner_then_finishes_original_slot",
+      "passed": true,
+      "log": "deferred_helper_returns_owner_then_finishes_original_slot.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "service_lifecycle::tests::deferred_helper_returns_owner_then_finishes_original_slot",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "service_lifecycle::tests::helper_recovery_expiry_is_sticky_and_preserves_owner",
+      "passed": true,
+      "log": "helper_recovery_expiry_is_sticky_and_preserves_owner.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "service_lifecycle::tests::helper_recovery_expiry_is_sticky_and_preserves_owner",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition",
+      "passed": true,
+      "log": "helper_authority_loss_retains_cleanup_disposition.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "service_lifecycle::tests::deadline_after_term_never_escalates",
+      "passed": false,
+      "log": "deadline_after_term_never_escalates.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "service_lifecycle::tests::deadline_after_term_never_escalates",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "process_scope::tests::setup_or_exec_failure_retains_child_until_explicit_settlement",
+      "passed": true,
+      "log": "setup_or_exec_failure_retains_child_until_explicit_settlement.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "process_scope::tests::setup_or_exec_failure_retains_child_until_explicit_settlement",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "process_scope::tests::enrollment_revocation_retains_barrier_child_for_independent_cleanup",
+      "passed": true,
+      "log": "enrollment_revocation_retains_barrier_child_for_independent_cleanup.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "process_scope::tests::enrollment_revocation_retains_barrier_child_for_independent_cleanup",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "process_scope::tests::expired_independent_cleanup_retains_incomplete_evidence_without_signalling",
+      "passed": true,
+      "log": "expired_independent_cleanup_retains_incomplete_evidence_without_signalling.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "process_scope::tests::expired_independent_cleanup_retains_incomplete_evidence_without_signalling",
+        "--nocapture"
+      ]
+    },
+    {
+      "test": "process_scope::tests::post_barrier_revocation_retains_child_for_independent_cleanup",
+      "passed": true,
+      "log": "post_barrier_revocation_retains_child_for_independent_cleanup.after.log",
+      "command": [
+        "target/debug/deps/media_inference_lab-f2e656554c1e4b94",
+        "--exact",
+        "process_scope::tests::post_barrier_revocation_retains_child_for_independent_cleanup",
+        "--nocapture"
+      ]
+    }
+  ],
+  "corrected_stopped_child": {
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--lib",
+      "service_lifecycle::tests::deadline_after_term_never_escalates",
+      "--",
+      "--exact",
+      "--nocapture"
+    ],
+    "exit": 0,
+    "log": "deadline_after_term_never_escalates.corrected-after.log",
+    "observed": "exited_before_cleanup=false; independent cleanup complete, leader reaped, group absent; SIGKILL9 during cleanup only"
+  },
+  "focused_result": "17 distinct new cases passed across focused correction runs. Initial after-run16/17; failed stopped-child case fixed and alone rerun.",
+  "checks": {
+    "command": "cargo fmt --all && cargo clippy --offline --all-targets -- -D warnings && cargo build --offline --bin mil",
+    "exit": 0,
+    "log": "coherent-checks.log",
+    "note": "Subsequent test-only edit removed an incidental error-message substring assertion; no production behavior changed."
+  },
+  "cli": {
+    "invocations": "cli-invocations.json",
+    "executable_sha256": "e81385470a61e2f78d2776278b556c295806f44c1929b0e97cd0bcf266760e36",
+    "arming-deadline": {
+      "exit": 1,
+      "creation_attempted": false,
+      "failed_actor_pid": 90401,
+      "service_accounting_complete": true,
+      "restored": false
+    },
+    "restore-launch-deadline": {
+      "exit": 1,
+      "experiment_exit_code": 0,
+      "failed_actor_pid": 90525,
+      "service_accounting_complete": true,
+      "gui_observed_stopped": true,
+      "studio_restored": false
+    }
+  },
+  "implementation": [
+    "Fresh before/after-callback authority checks and pre-KILL escalation check.",
+    "Post-fork SpawnAttempt retains OwnedProcess on every launch failure; execution authority is never substituted for cleanup.",
+    "One lazy shared service recovery slot bounded by original hard ceiling; deferred observation helpers finish after cancellation and before restoration; incomplete/expired accounting stays sticky.",
+    "Detached intermediate and grandchild identities/barriers/status survive handshake errors; pre-exec kernel observation retains fork uncertainty; successful restored stdio remains /dev/null.",
+    "Native capture preserves original absolute prelaunch deadline through setup and creation; callback overrun cannot renew phase.",
+    "Stopped roots require terminal SIGCHLD and zombie metadata before final reap; all-zombie group required."
+  ],
+  "limitations": [
+    "Initial TERM/helper baseline probe flaws are disclosed in before-summary.json; only revised service probes establish those failures.",
+    "Detached baseline proves missing accounting, not backend exec. After tests separately cover executed actor failure and successful null-stdio/session launch.",
+    "Native capture setup tests supplied no lease, runtime, model, production authority or native collector; no inference process could launch.",
+    "New CLI cases hit insufficient lifetime-observation budget, not elapsed deadline. Actual expiry is exercised by focused regressions.",
+    "First after-run failed stopped-child settlement and exceeded test cleanup ceiling; independent exact-identity test-harness residue disposal is retained in failed-after-owned-residue.json. It is not renewed automation authority or passing settlement evidence.",
+    "PID71080 was observed absent after manual disposal using targeted ps (exit1, empty output).",
+    "Checks are focused correction evidence, not the historical188-test b576449 result or a full-suite rerun.",
+    "No live service control/probes, launchd fixture, selected-runtime reprobe, sensitive reads, native imports/models, shared GPU lease, scheduling, deployment or merge.",
+    "G1/G2/G3 remain mandatory; X2/X3 remain unapproved and uninvoked; no retired output-retention gate.",
+    "External identity/signal checks remain non-atomic; stalled syscalls have no hard cancellation guarantee; fork uncertainty cannot establish arbitrary-descendant absence.",
+    "Actual native endpoint compatibility and restoration fidelity remain unverified; issues11/12 remain open.",
+    "Retained CPU authorization files are historical consumed/expired evidence, not reusable grants."
+  ],
+  "source_sha256": {
+    "src/capture.rs": "d6ba2ce91d5e1272e96f66debee3e0889d30191af00a1262e1087d128058db21",
+    "src/maintenance.rs": "bac6b1bc2372ddff72944296c4240dde4de1bc4f7f24c0b6d49caf03067ac665",
+    "src/native_guard.rs": "2be791276954cf4d6659d710bd1f4d09e964edfad19b3e134840378bb80f44bd",
+    "src/process_scope.rs": "916921b4e267f4f2e21f67e80a7ce9dbd42c56e6f27b3e61dd272be43ec80357",
+    "src/service_lifecycle.rs": "16a42a4e4e9f4ff7acefd76efbb574f6b9a727f7b102d3110c213a367bb0a71c",
+    "README.md": "0b646f6d1369ae3a3ad46a1dc4187435f625116c17143a215ce0bb99bab3950f"
+  },
+  "files": [
+    {
+      "path": "after-build.stderr.log",
+      "bytes": 162,
+      "sha256": "140a86de17df70df6d57bf4370119db0dbd174841040038f9437e75d3376bde6"
+    },
+    {
+      "path": "after-build.stdout.jsonl",
+      "bytes": 67892,
+      "sha256": "1fe581dd7db0deb851877801d995360e540c9119304dca8841a1be121d6ef064"
+    },
+    {
+      "path": "arming-deadline/authorization-consumed.json",
+      "bytes": 119,
+      "sha256": "fc459fc07f87beb3130f2bc5b101d800205c302b297c4cbeb6a2954d143c00df"
+    },
+    {
+      "path": "arming-deadline/authorization.json",
+      "bytes": 446,
+      "sha256": "6a4d8ac70ec8e6891fca0cc3b092521fdc25c65a5fa9dbea6c0017ff7d240724"
+    },
+    {
+      "path": "arming-deadline/guardian.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "arming-deadline/guardian.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "arming-deadline/receipt.json",
+      "bytes": 5244,
+      "sha256": "3bec21f555db511766a03361dfa9e49ac28b645d518cce6a39bd63583029e74a"
+    },
+    {
+      "path": "arming-deadline/service-outcomes.json",
+      "bytes": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "arming-deadline/transaction.json",
+      "bytes": 3343,
+      "sha256": "31fd42d5d6820ac13738ff6d46ed4bd42f76b93e9629bfe60133b06d505050ed"
+    },
+    {
+      "path": "before-build.stderr.log",
+      "bytes": 162,
+      "sha256": "dfcf8da11d47b5c61cb6fc6fefd2e3722f237532a47da0cf8850ea1768e58e10"
+    },
+    {
+      "path": "before-build.stdout.jsonl",
+      "bytes": 67892,
+      "sha256": "64c6a2e99695b29157087514c565334a26eb4e5e832425c812523453c0ee0493"
+    },
+    {
+      "path": "before-summary.json",
+      "bytes": 6807,
+      "sha256": "ab736113e045568e165035c9f4d034342d3c5fac760d5013d19d42e7ac7c4453"
+    },
+    {
+      "path": "cli-invocations.json",
+      "bytes": 1367,
+      "sha256": "6b9b4de77b1c4e2e320398a59eaa57cee11d2f5a20089539cfd9eb4e5ecbaabb"
+    },
+    {
+      "path": "coherent-checks.log",
+      "bytes": 322,
+      "sha256": "dbefa7c0728dedbb36de59dd8da849c9e7609455926565a727c1fb274e1bb91a"
+    },
+    {
+      "path": "deadline_after_term_never_escalates.after.log",
+      "bytes": 869,
+      "sha256": "493f8c1f8d1204dd72fd3089d062b686be6f0ad7c2cad718cb4a602be07c4eeb"
+    },
+    {
+      "path": "deadline_after_term_never_escalates.before.log",
+      "bytes": 603,
+      "sha256": "1979449de459591ab0c84df25cc72de46a5b4a917b90f992e51eb9be18636288"
+    },
+    {
+      "path": "deadline_after_term_never_escalates.corrected-after.log",
+      "bytes": 688,
+      "sha256": "7a790d8695b7f2883326b43eb860ab09a5840e5a6b564457facfa4c2cbd4f0e1"
+    },
+    {
+      "path": "deadline_after_term_never_escalates.revised-before.log",
+      "bytes": 571,
+      "sha256": "ed8253d5b61e19cf03a733b22ab2d19761aa1fc2d235f8d9bffbf95f8eae468f"
+    },
+    {
+      "path": "deferred_helper_returns_owner_then_finishes_original_slot.after.log",
+      "bytes": 1192,
+      "sha256": "d63729fd54004d203c4a8aff84962554ae1bda3a96082a5ecff738e12e8cf4d8"
+    },
+    {
+      "path": "detached_early_authority_loss_retains_cleanup_disposition.after.log",
+      "bytes": 1361,
+      "sha256": "2a3e56425b6099c32b71792b55b07eebbcd10e043f2bb68619f9eb9432b1db2d"
+    },
+    {
+      "path": "detached_early_authority_loss_retains_cleanup_disposition.before.log",
+      "bytes": 474,
+      "sha256": "f277c9fb1e344ff73f75898a15ebc8bc83821a0c55e74dd8943c2e2a785621da"
+    },
+    {
+      "path": "detached_exec_failure_preserves_and_disposes_identities.after.log",
+      "bytes": 1734,
+      "sha256": "9cc6c1fc2a8bf9901d81238cbf6e04609930265584eb7f02740f772bc54d525b"
+    },
+    {
+      "path": "detached_executed_authority_loss_disposes_bound_child.after.log",
+      "bytes": 1708,
+      "sha256": "80ba6149cbdab23b8c7cd6c8b9df77fa3ddb5856b05b9b47dbeaefc6e9ef29cd"
+    },
+    {
+      "path": "detached_fork_uncertainty_blocks_complete_accounting.after.log",
+      "bytes": 1904,
+      "sha256": "d40c4be6f5f741c85c6bf415b45f2e1ef3c21634afec39b0410cd3e6f114c632"
+    },
+    {
+      "path": "detached_pid_authority_loss_reaps_supervised_child.after.log",
+      "bytes": 1690,
+      "sha256": "fdf92759894835c191b95f408f7223533b0b71732f7db10710841a992e3d9de4"
+    },
+    {
+      "path": "detached_setup_failure_preserves_and_disposes_identities.after.log",
+      "bytes": 1334,
+      "sha256": "919d8de6866060f5e44177586c6db514d6cfe2c1aca3298a8255c537aaa78da0"
+    },
+    {
+      "path": "detached_success_preserves_session_launch_and_null_stdio.after.log",
+      "bytes": 1778,
+      "sha256": "1f46f8e999b4f0b12966f8e527f17ab3470d7caeeba5979b3949cda9bb1a7aa5"
+    },
+    {
+      "path": "enrollment_revocation_retains_barrier_child_for_independent_cleanup.after.log",
+      "bytes": 215,
+      "sha256": "2365a916f4b8c2cd197c4bad89418d134c0799db2a58a8b8676324838fbcc44f"
+    },
+    {
+      "path": "expired_independent_cleanup_retains_incomplete_evidence_without_signalling.after.log",
+      "bytes": 530,
+      "sha256": "cd88ad50cb8992f051f8f6f030dd3fee85888f2ca0437e745ffa55aec30a1f66"
+    },
+    {
+      "path": "failed-after-owned-residue.json",
+      "bytes": 499,
+      "sha256": "bc6a0d86a932556474541ae7636198fa886b5a8b979e4f2235ee15b28363c457"
+    },
+    {
+      "path": "helper_authority_loss_retains_cleanup_disposition.after.log",
+      "bytes": 1235,
+      "sha256": "b2269b6c8a197173b63514ee2b8f74d59a701ff454c286f96b1525cdc6f5385d"
+    },
+    {
+      "path": "helper_authority_loss_retains_cleanup_disposition.before.log",
+      "bytes": 439,
+      "sha256": "f0c6eb52e4f647b6f813d554323d1052f595e1ae066f1a54b6afa9515de9234f"
+    },
+    {
+      "path": "helper_authority_loss_retains_cleanup_disposition.revised-before.log",
+      "bytes": 484,
+      "sha256": "68c35d032889ecea16b3d8c24d3d9fea558c73afd34d38f1e0ac271065a81105"
+    },
+    {
+      "path": "helper_recovery_expiry_is_sticky_and_preserves_owner.after.log",
+      "bytes": 1328,
+      "sha256": "caab0bc4dc0e75ec3998e82bb7e10d5c4798308a29d2d23820143d9d9e132a9d"
+    },
+    {
+      "path": "isolated-before-build.stderr.log",
+      "bytes": 2079,
+      "sha256": "bb7f8f4fe8c66377a35d3b9e96097121a0064a12d097a171904885e12cf1eb45"
+    },
+    {
+      "path": "isolated-before-build.stdout.jsonl",
+      "bytes": 70227,
+      "sha256": "4cb918c780d26c030209bce5ddb8c45365aa87ca2efffce1165d9b88507a9284"
+    },
+    {
+      "path": "post_barrier_revocation_retains_child_for_independent_cleanup.after.log",
+      "bytes": 450,
+      "sha256": "783df21255e4dfa9b4c6a0f1c8c09b0e465c0a6b7d91fc66740a95c3770e1746"
+    },
+    {
+      "path": "post_barrier_revocation_retains_child_for_independent_cleanup.before.log",
+      "bytes": 924,
+      "sha256": "3e1842a584e802f7c3087a7d4efe45c6a3beb7c1be9f50f1ef84a6a9ebc28ea6"
+    },
+    {
+      "path": "restore-launch-deadline/authorization-consumed.json",
+      "bytes": 119,
+      "sha256": "0fb4d8427711219ef58aa99008604b472a4ba89042680d43d99ba51ab55a5950"
+    },
+    {
+      "path": "restore-launch-deadline/authorization.json",
+      "bytes": 446,
+      "sha256": "7b1adbdb586668c2104708542a2118d5e53f5dc790d393315bc08358448ff087"
+    },
+    {
+      "path": "restore-launch-deadline/experiment.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "restore-launch-deadline/experiment.stdout",
+      "bytes": 134,
+      "sha256": "8b28dbc5b7043c8dd57930cb453d17f00421c33079df68f7301ee06a328d7db4"
+    },
+    {
+      "path": "restore-launch-deadline/guardian.jsonl",
+      "bytes": 7569,
+      "sha256": "fec94c90d1af947909669f209493e49ab5c007f502f34499429ddfcc1dcbea1a"
+    },
+    {
+      "path": "restore-launch-deadline/guardian.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "restore-launch-deadline/receipt.json",
+      "bytes": 4250,
+      "sha256": "cd6bc58c5d609d6eadc1046382dad7d553dc055987715b853cdf7e9719a37140"
+    },
+    {
+      "path": "restore-launch-deadline/service-outcomes.json",
+      "bytes": 8159,
+      "sha256": "9d39bc850fcad9ea024c6a78d198a4ac14e3cabf7648eca3466531c31d50634c"
+    },
+    {
+      "path": "restore-launch-deadline/transaction.json",
+      "bytes": 3343,
+      "sha256": "99b2d27cc6cb3db563cf813dba38b1e599fe0be0ea036530bfff54e44f292e43"
+    },
+    {
+      "path": "review_prelaunch_callback_overrun_never_attempts_creation.after.log",
+      "bytes": 370,
+      "sha256": "005dcc27a1a4ae5d418e3b4c73e0e3712c707c27b4c3f43b3f29b40469fbf417"
+    },
+    {
+      "path": "review_prelaunch_callback_overrun_never_attempts_creation.before.log",
+      "bytes": 717,
+      "sha256": "498d8a92b2427bcf807063d7799e500bb9bbf307838b5868d6334ce947ef1a7f"
+    },
+    {
+      "path": "review_prelaunch_setup_callback_cannot_renew_phase.after.log",
+      "bytes": 363,
+      "sha256": "0a06dd1d3eab85e6d95b044ec25ec878e4fb4f7076cba4e52c48e79f32925a53"
+    },
+    {
+      "path": "service-lifecycle-before.rs.txt",
+      "bytes": 55850,
+      "sha256": "0e42db30073fdd269f72844622c095a924602d9498185fd8c1e7d5e139060851"
+    },
+    {
+      "path": "setup_or_exec_failure_retains_child_until_explicit_settlement.after.log",
+      "bytes": 209,
+      "sha256": "b0be5ec999ca29488496406824a1c06cebdb489b3b0a478fecaa966f10aa49d4"
+    }
+  ]
+}

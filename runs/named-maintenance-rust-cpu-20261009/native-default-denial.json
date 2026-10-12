@@ -1,0 +1,64 @@
+{
+  "command": [
+    "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "mflux-run",
+    "--execute",
+    "--python",
+    "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-native-denial-d_koi944/never-python",
+    "--source-dir",
+    "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-native-denial-d_koi944/never-source",
+    "--source-sha256",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "--model-dir",
+    "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-native-denial-d_koi944/never-model",
+    "--workload",
+    "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-native-denial-d_koi944/never-workload.json",
+    "--guard-config",
+    "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-native-denial-d_koi944/never-guard.json",
+    "--root",
+    "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-native-denial-d_koi944/must-not-create",
+    "--output",
+    "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-native-denial-d_koi944/denied.json",
+    "--timeout-seconds",
+    "600",
+    "--max-output-bytes",
+    "67108864"
+  ],
+  "exit": 1,
+  "stdout": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-native-denial-d_koi944/denied.json\n",
+  "stderr": "",
+  "report": {
+    "authorization_decision": {
+      "allowed": false,
+      "reasons": [
+        "exact transaction authorization not established"
+      ]
+    },
+    "capture_directory": null,
+    "check": null,
+    "diagnostics": "",
+    "elapsed_ms": 0,
+    "errors": [
+      {
+        "message": "native activation denied: maintenance transaction absent",
+        "stage": "preparation_or_launch"
+      }
+    ],
+    "kind": "native_mflux_attempt",
+    "limitations": [
+      "CPU validation is not native import, ABI, model allocation, inference or benchmark proof.",
+      "Named scope is enrolled Studio/oMLX plus guardian-owned experiment, not aggregate live queue or whole-host GPU authority.",
+      "Only exact transaction authorization plus actual service/resource observations permit creation; persisted readings and references cannot grant authority.",
+      "The existing venv is invoked by its selected path; resolved base interpreter identity is recorded separately, never substituted.",
+      "No automatic retries, installs, network/model downloads, weight copies, live changes or uploads. Partial failures are retained. Filesystem syscalls have no forced deadline."
+    ],
+    "maintenance_receipt": null,
+    "mode": "execute",
+    "native_execution": false,
+    "ok": false,
+    "prepared_plan": null,
+    "schema_version": 2,
+    "status": "preparation_failed"
+  },
+  "capture_root_created": false
+}

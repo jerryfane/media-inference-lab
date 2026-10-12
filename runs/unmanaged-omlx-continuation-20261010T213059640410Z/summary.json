@@ -1,0 +1,2562 @@
+{
+  "schema_version": 1,
+  "authority": {
+    "authority": "https://github.com/jerryfane/media-inference-lab/issues/11#issuecomment-6102339792",
+    "commission": "/Users/jerry/.omp/agent/sessions/-Desktop-repos/2026-09-23T20-11-14-647Z_01a0cfe4-d157-7408-95f4-9c4d760de086/local/unverified-omlx-continuation.json",
+    "prior_guardian_sha256": "b75edb1a089315482fbf7dc3d30cb4496b14e78091c8e3eb295f6ba4f647a0e7",
+    "historical_38672_receipt": "/Users/jerry/.local/share/media-inference-lab/absence-readonly-preparation-20261010T160021285409Z/studio.json",
+    "historical_38672_sha256": "b6057e64606e1487a2194b66cd37192adaef1f6fa5337a3a4e2de4224fcad61c",
+    "remaining_live_invocations": 1,
+    "no_grant_or_lease": true
+  },
+  "policy": {
+    "kind": "omlx_unmanaged",
+    "purpose": "native_or_cpu_must_match_transaction",
+    "acknowledgement": "accept_unverified_omlx",
+    "meaning": "unverified and excluded from oMLX observation/control; not an isolated or verified-exclusive GPU baseline",
+    "no_automatic_fallback": true
+  },
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "service_lifecycle::tests::",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 101,
+      "elapsed_ms": 10105.676,
+      "stdout": "\nrunning 18 tests\ntest service_lifecycle::tests::cpu_restore_replaces_backend_and_resumes_same_gui_once ... ok\ntest service_lifecycle::tests::deadline_after_term_never_escalates ... ok\ntest service_lifecycle::tests::deferred_helper_returns_owner_then_finishes_original_slot ... ok\ntest service_lifecycle::tests::detached_early_authority_loss_retains_cleanup_disposition ... ok\ntest service_lifecycle::tests::detached_exec_failure_preserves_and_disposes_identities ... ok\ntest service_lifecycle::tests::detached_executed_authority_loss_disposes_bound_child ... ok\ntest service_lifecycle::tests::detached_fork_uncertainty_blocks_complete_accounting ... ok\ntest service_lifecycle::tests::detached_pid_authority_loss_reaps_supervised_child ... ok\ntest service_lifecycle::tests::detached_setup_failure_preserves_and_disposes_identities ... ok\ntest service_lifecycle::tests::detached_success_preserves_session_launch_and_null_stdio ... ok\ntest service_lifecycle::tests::failed_cpu_replacement_keeps_same_gui_paused_and_blocks_retry ... ok\ntest service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition ... ok\ntest service_lifecycle::tests::helper_recovery_expiry_is_sticky_and_preserves_owner ... ok\ntest service_lifecycle::tests::listener_capture_errors_retain_safe_exact_helper_accounting ... FAILED\ntest service_lifecycle::tests::listener_nonfork_stalls_cancel_without_losing_ownership ... ok\ntest service_lifecycle::tests::listener_parser_rejects_ambiguous_or_diagnostic_records ... ok\ntest service_lifecycle::tests::listener_success_returns_settlement_without_growing_history ... ok\ntest service_lifecycle::tests::unmanaged_callbacks_cannot_control_and_observation_failure_is_sticky ... ok\n\nfailures:\n\n---- service_lifecycle::tests::listener_capture_errors_retain_safe_exact_helper_accounting stdout ----\nlistener helper case=0 elapsed=45.797167ms error=helper pid 34569 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted) accounting=[ActorDisposition { kind: \"bounded helper\", pid: 34569, identity: Some(ProcessIdentity { pid: 34569, ppid: 34312, pgid: 34569, sid: 34569, uid: 501, start_seconds: 1791668072, start_subseconds: 768150, executable: \"/bin/bash\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpqDB93k\", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpqDB93k/helper-0.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpqDB93k\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"listener helper emitted diagnostics (output omitted); cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener helper case=1 elapsed=40.54125ms error=helper pid 34570 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted) accounting=[ActorDisposition { kind: \"bounded helper\", pid: 34570, identity: Some(ProcessIdentity { pid: 34570, ppid: 34312, pgid: 34570, sid: 34570, uid: 501, start_seconds: 1791668072, start_subseconds: 814232, executable: \"/bin/bash\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpqDB93k\", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpqDB93k/helper-1.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpqDB93k\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"listener helper emitted diagnostics (output omitted); cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener helper case=2 elapsed=43.357042ms error=helper pid 34571 cleanup complete=true: Ok(()): unrecognized listener field (output omitted) accounting=[ActorDisposition { kind: \"bounded helper\", pid: 34571, identity: Some(ProcessIdentity { pid: 34571, ppid: 34312, pgid: 34571, sid: 34571, uid: 501, start_seconds: 1791668072, start_subseconds: 854983, executable: \"/bin/bash\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpqDB93k\", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpqDB93k/helper-2.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpqDB93k\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"unrecognized listener field (output omitted); cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener helper case=3 elapsed=17.5065ms error=helper pid 34572 cleanup complete=true: Ok(()): invalid listener exit/output combination (output omitted) accounting=[ActorDisposition { kind: \"bounded helper\", pid: 34572, identity: None, intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpqDB93k/helper-3.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpqDB93k\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(1), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"invalid listener exit/output combination (output omitted); cleanup: Ok(())\"), descendant_uncertainty: None }]\nError: unsafe error or missing helper accounting\n\n\nfailures:\n    service_lifecycle::tests::listener_capture_errors_retain_safe_exact_helper_accounting\n\ntest result: FAILED. 17 passed; 1 failed; 0 ignored; 0 measured; 72 filtered out; finished in 6.19s\n\n",
+      "stderr": "   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.03s\n     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-a51443bb38096914)\nerror: test failed, to rerun pass `--lib`\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "service_lifecycle::tests::listener_capture_errors_retain_safe_exact_helper_accounting",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "purpose": "one diagnostic execution after moving existing accounting print before failing assertion; does not clear first failure",
+      "exit_code": 101,
+      "elapsed_ms": 2039.832,
+      "stdout": "\nrunning 1 test\ntest service_lifecycle::tests::listener_capture_errors_retain_safe_exact_helper_accounting ... FAILED\n\nfailures:\n\nfailures:\n    service_lifecycle::tests::listener_capture_errors_retain_safe_exact_helper_accounting\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 89 filtered out; finished in 0.11s\n\n",
+      "stderr": "   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.03s\n     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-a51443bb38096914)\nlistener helper case=0 elapsed=41.525041ms error=helper pid 38630 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted) accounting=[ActorDisposition { kind: \"bounded helper\", pid: 38630, identity: None, intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpoqEIKR/helper-0.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpoqEIKR\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"listener helper emitted diagnostics (output omitted); cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener helper case=1 elapsed=38.693125ms error=helper pid 38635 cleanup complete=true: Ok(()): listener helper emitted diagnostics (output omitted) accounting=[ActorDisposition { kind: \"bounded helper\", pid: 38635, identity: Some(ProcessIdentity { pid: 38635, ppid: 38606, pgid: 38635, sid: 38635, uid: 501, start_seconds: 1791668174, start_subseconds: 725423, executable: \"/bin/bash\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpoqEIKR\", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpoqEIKR/helper-1.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpoqEIKR\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"listener helper emitted diagnostics (output omitted); cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener helper case=2 elapsed=9.370042ms error=helper pid 38636 cleanup complete=true: Ok(()): unrecognized listener field (output omitted) accounting=[ActorDisposition { kind: \"bounded helper\", pid: 38636, identity: None, intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpoqEIKR/helper-2.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpoqEIKR\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"unrecognized listener field (output omitted); cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener helper case=3 elapsed=9.021834ms error=helper pid 38637 cleanup complete=true: Ok(()): invalid listener exit/output combination (output omitted) accounting=[ActorDisposition { kind: \"bounded helper\", pid: 38637, identity: None, intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpoqEIKR/helper-3.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpoqEIKR\", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(1), exit_signal: None, failure: None }), complete: true, known_absent: true, failure: Some(\"invalid listener exit/output combination (output omitted); cleanup: Ok(())\"), descendant_uncertainty: None }]\nlistener helper case=4 elapsed=9.055333ms error=helper pid 38638 cleanup complete=false: Err(cleanup incomplete for pid 38638): bounded command output exceeds bound accounting=[ActorDisposition { kind: \"bounded helper\", pid: 38638, identity: Some(ProcessIdentity { pid: 38638, ppid: 38606, pgid: 38638, sid: 38638, uid: 501, start_seconds: 1791668174, start_subseconds: 783201, executable: \"/bin/bash\", cwd: \"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpoqEIKR\", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: \"/bin/sh\", args: [\"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpoqEIKR/helper-4.sh\"], cwd: \"/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpoqEIKR\", environment: {} }, settlement: Some(Settlement { complete: false, leader_reaped: false, group_absent: false, group_signalled: false, exit_code: None, exit_signal: None, failure: Some(\"owned signal failed: signalling bound process: Operation not permitted (os error 1); TERM failed or control expired: signalling bound process: Operation not permitted (os error 1)\") }), complete: false, known_absent: false, failure: Some(\"bounded command output exceeds bound; cleanup: Err(cleanup incomplete for pid 38638)\"), descendant_uncertainty: None }]\nError: unsafe error or missing helper accounting\nerror: test failed, to rerun pass `--lib`\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "native_guard::tests::",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "elapsed_ms": 60.654,
+      "stdout": "\nrunning 2 tests\ntest native_guard::tests::backwards_wall_clock_and_automation_ceiling_revoke ... ok\ntest native_guard::tests::stale_authority_is_sticky_even_after_clock_recovery ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 88 filtered out; finished in 0.00s\n\n",
+      "stderr": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s\n     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-a51443bb38096914)\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "capture::tests::",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "elapsed_ms": 47.743,
+      "stdout": "\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 90 filtered out; finished in 0.00s\n\n",
+      "stderr": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s\n     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-a51443bb38096914)\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--test",
+        "maintenance_absence",
+        "--test",
+        "maintenance_authorization",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 101,
+      "elapsed_ms": 3979.626,
+      "stdout": "",
+      "stderr": "   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\nerror[E0603]: struct `ReviewedLaunchScope` is private\n   --> tests/maintenance_authorization.rs:260:33\n    |\n260 |         restore_qualification::{ReviewedLaunchScope, ReviewedPermissionInput},\n    |                                 ^^^^^^^^^^^^^^^^^^^ private struct\n    |\nnote: the struct `ReviewedLaunchScope` is defined here\n   --> src/restore_qualification.rs:36:40\n    |\n 36 | use crate::qualification_scope::{self, ReviewedLaunchScope, ScopeObservation};\n    |                                        ^^^^^^^^^^^^^^^^^^^\n\nFor more information about this error, try `rustc --explain E0603`.\nerror: could not compile `media-inference-lab` (test \"maintenance_authorization\") due to 1 previous error\nwarning: build failed, waiting for other jobs to finish...\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "capture::deadline_review_tests::",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "elapsed_ms": 227.163,
+      "stdout": "\nrunning 2 tests\ntest capture::deadline_review_tests::review_prelaunch_callback_overrun_never_attempts_creation ... ok\ntest capture::deadline_review_tests::review_prelaunch_setup_callback_cannot_renew_phase ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 88 filtered out; finished in 0.16s\n\n",
+      "stderr": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s\n     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-a51443bb38096914)\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--test",
+        "maintenance_absence",
+        "--test",
+        "maintenance_authorization",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "elapsed_ms": 10302.677,
+      "stdout": "\nrunning 8 tests\ntest absent_scope_controller_loss_settles_experiment_and_restores_only_studio ... ok\ntest ambiguous_or_unavailable_probes_never_admit_work_or_control_candidates ... ok\ntest clean_absence_runs_owned_work_without_fabricating_service_lifecycle ... ok\ntest late_foreign_appearance_aborts_owned_work_but_does_not_block_studio_recovery ... ok\ntest unmanaged_controller_loss_recovers_studio_and_preserves_harness_owned_fixture ... ok\ntest unmanaged_failed_experiment_revokes_success_but_recovers_studio ... ok\ntest unmanaged_success_restores_studio_without_controlling_foreign_fixture ... ok\ntest untitled_non_listening_executable_candidate_denies_before_service_controls ... ok\n\ntest result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.74s\n\n\nrunning 8 tests\ntest absence_mode_requires_exact_grant_and_cannot_cross_purposes ... ok\ntest absent_validation_never_opens_fixture_paths ... ok\ntest changed_work_or_permission_cannot_create_guardian_evidence_or_lease ... ok\ntest cpu_scope_cannot_select_shared_gpu_lease_or_borrow_phase_time ... ok\ntest unmanaged_cpu_policy_and_grant_cannot_authorize_native_purpose ... ok\ntest unmanaged_policy_mutation_requires_new_exact_authorization_before_effects ... ok\ntest unmanaged_policy_rejects_private_permissions_even_with_exact_grant ... ok\ntest unmanaged_policy_requires_explicit_well_formed_acknowledgement_and_purpose ... ok\n\ntest result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s\n\n",
+      "stderr": "   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.35s\n     Running tests/maintenance_absence.rs (target/debug/deps/maintenance_absence-ed0a20f37b38266c)\n     Running tests/maintenance_authorization.rs (target/debug/deps/maintenance_authorization-dd27ee09447616ff)\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--lib",
+        "--bin",
+        "mil"
+      ],
+      "exit_code": 0,
+      "elapsed_ms": 3720.771,
+      "stdout": "",
+      "stderr": "   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.70s\n"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "elapsed_ms": 2635.776,
+      "stdout": "",
+      "stderr": "    Checking media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.58s\n"
+    }
+  ],
+  "verification_summary": {
+    "passed_distinct_tests": 37,
+    "unresolved_distinct_test_failures": 1,
+    "build": "passed",
+    "clippy": "passed",
+    "initial_test_compile_failure": "New test imported ReviewedLaunchScope through private restore_qualification import; corrected to public qualification_scope module, affected integration suites then passed.",
+    "empty_capture_filter": "Initial capture::tests:: matched0; corrected actual module filter captured2 tests. No coverage claimed from0-test invocation.",
+    "retained_accounting_failure": "Existing listener overflow test failed first run and one diagnostic execution. Moved existing print before assertion, no assertion relaxation. Diagnostic helper38638 TERM killpg EPERM while observed live; settlement complete=false, leader_reaped=false, group_absent=false at that boundary, descendant_uncertainty=None. Test-owned finite-child reap fallback exists, but no retrospective clearance is claimed. First failure did not record the failed-case PID. No elevation, permission suppression or retry-to-pass."
+  },
+  "proof_builds": [
+    {
+      "command": [
+        "rustc",
+        "--edition=2024",
+        "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/proof.rs",
+        "-L",
+        "dependency=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps",
+        "--extern",
+        "media_inference_lab=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib",
+        "--extern",
+        "anyhow=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libanyhow-db1f6a292fd18298.rlib",
+        "--extern",
+        "serde_json=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/libserde_json-62172c0c324f471a.rlib",
+        "-o",
+        "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/owned-proof"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "source_sha256": "3a88d4d2f32239c62dfe52f0029610a145619a5b6d57c66c9a44f897a7f3ebd6",
+      "guardian_sha256": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1",
+      "rlib_sha256": "b8a8dded1c3ffe4931559c41a993bc2f469a0283d816d4b8b28d6f5ac9369dd3"
+    }
+  ],
+  "cases": {
+    "unmanaged-normal": {
+      "execution": {
+        "command": [
+          "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/owned-proof",
+          "cpu",
+          "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+          "unmanaged-normal"
+        ],
+        "driver_pid": 45613,
+        "driver_reaped": true,
+        "exit_code": 0,
+        "elapsed_ms": 2960.45,
+        "stdout": "unmanaged-normal.stdout",
+        "stderr": "unmanaged-normal.stderr"
+      },
+      "driver_evidence": [
+        {
+          "protocol": {
+            "controller_pid": 45659,
+            "guardian_pid": 45688,
+            "receipt": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal/cpu-1791668347671-45659/receipt.json"
+          },
+          "scenario": "unmanaged-normal"
+        },
+        {
+          "behavior_pass": true,
+          "controller_reaped": true,
+          "guardian_absent": true,
+          "receipt": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal/cpu-1791668347671-45659/receipt.json",
+          "recorded_owned_identities_absent": [
+            45659,
+            45689,
+            45704,
+            45711
+          ],
+          "result": {
+            "automation_ceiling_note": "Bounds automation, not a failed outage; GUI may remain paused for manual recovery",
+            "capture_directory": null,
+            "controller_identity": {
+              "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 10064,
+              "pid": 45659,
+              "ppid": 45613,
+              "sid": 10064,
+              "start_seconds": 1791668347,
+              "start_subseconds": 131468,
+              "state": "running",
+              "uid": 501
+            },
+            "creation_attempted": true,
+            "elapsed_ms": 759,
+            "experiment_failure": null,
+            "final_absence_failure": null,
+            "guardian_pid": 45688,
+            "kind": "cpu_maintenance_transaction",
+            "lease_path": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal/.cpu-maintenance.lock",
+            "omlx_unmanaged": {
+              "acknowledgement": "accept_unverified_omlx",
+              "policy": "unmanaged",
+              "private_qualification": "not_applicable",
+              "purpose": "cpu",
+              "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+              "state": "unverified"
+            },
+            "recovery_failure": null,
+            "restored": true,
+            "schema_version": 1,
+            "scope": "Studio lifecycle and direct guardian experiment only; oMLX unverified and excluded from control; not an isolated or verified-exclusive GPU baseline",
+            "service_accounting_complete": true,
+            "service_enrollment_failure": null,
+            "service_process_dispositions": [
+              {
+                "complete": true,
+                "descendant_uncertainty": null,
+                "failure": null,
+                "identity": {
+                  "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+                  "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                  "pgid": 45711,
+                  "pid": 45711,
+                  "ppid": 45688,
+                  "sid": 45711,
+                  "start_seconds": 1791668348,
+                  "start_subseconds": 310539,
+                  "state": "running",
+                  "uid": 501
+                },
+                "intermediate_identity": null,
+                "intermediate_pid": null,
+                "intermediate_reaped": true,
+                "intermediate_status": null,
+                "kind": "CPU fixture disposal",
+                "known_absent": true,
+                "launch_record": {
+                  "args": [
+                    "maintenance-participant",
+                    "--mode",
+                    "service",
+                    "--duration-ms",
+                    "30000"
+                  ],
+                  "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+                  "environment": {},
+                  "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+                },
+                "pid": 45711,
+                "settlement": {
+                  "complete": true,
+                  "exit_code": null,
+                  "exit_signal": 15,
+                  "failure": null,
+                  "group_absent": true,
+                  "group_signalled": true,
+                  "leader_reaped": true
+                }
+              }
+            ],
+            "settlement": {
+              "complete": true,
+              "exit_code": 0,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            },
+            "success": true,
+            "transaction_id": "cpu-1791668347671-45659",
+            "transaction_sha256": "e75804399e4643cbe72e428f095874d2c5822df4176950b733e094c297368694"
+          },
+          "scenario": "unmanaged-normal",
+          "service_outcomes": [
+            {
+              "absence": null,
+              "actors": [
+                {
+                  "complete": true,
+                  "descendant_uncertainty": null,
+                  "failure": null,
+                  "identity": {
+                    "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+                    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                    "pgid": 45711,
+                    "pid": 45711,
+                    "ppid": 45688,
+                    "sid": 45711,
+                    "start_seconds": 1791668348,
+                    "start_subseconds": 310539,
+                    "state": "running",
+                    "uid": 501
+                  },
+                  "intermediate_identity": null,
+                  "intermediate_pid": null,
+                  "intermediate_reaped": true,
+                  "intermediate_status": null,
+                  "kind": "CPU fixture disposal",
+                  "known_absent": true,
+                  "launch_record": {
+                    "args": [
+                      "maintenance-participant",
+                      "--mode",
+                      "service",
+                      "--duration-ms",
+                      "30000"
+                    ],
+                    "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+                    "environment": {},
+                    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+                  },
+                  "pid": 45711,
+                  "settlement": {
+                    "complete": true,
+                    "exit_code": null,
+                    "exit_signal": 15,
+                    "failure": null,
+                    "group_absent": true,
+                    "group_signalled": true,
+                    "leader_reaped": true
+                  }
+                }
+              ],
+              "evidence": [
+                "owned backend settled and reaped; group absent",
+                "owned replacement launch PID 45711",
+                "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence"
+              ],
+              "failure": null,
+              "gui": null,
+              "inhibited": false,
+              "launch_record": {
+                "args": [
+                  "maintenance-participant",
+                  "--mode",
+                  "service",
+                  "--duration-ms",
+                  "30000"
+                ],
+                "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+                "environment": {},
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+              },
+              "restored": true,
+              "role": "studio",
+              "root": {
+                "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "pgid": 45711,
+                "pid": 45711,
+                "ppid": 45688,
+                "sid": 45711,
+                "start_seconds": 1791668348,
+                "start_subseconds": 310539,
+                "state": "running",
+                "uid": 501
+              },
+              "unmanaged": null
+            },
+            {
+              "absence": null,
+              "actors": [],
+              "evidence": [],
+              "failure": null,
+              "gui": null,
+              "inhibited": false,
+              "launch_record": null,
+              "restored": false,
+              "role": "omlx",
+              "root": null,
+              "unmanaged": {
+                "acknowledgement": "accept_unverified_omlx",
+                "policy": "unmanaged",
+                "private_qualification": "not_applicable",
+                "purpose": "cpu",
+                "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+                "state": "unverified"
+              }
+            }
+          ]
+        }
+      ],
+      "transaction": {
+        "schema_version": 1,
+        "transaction_id": "cpu-1791668347671-45659",
+        "purpose": "cpu",
+        "evidence_root": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal/cpu-1791668347671-45659",
+        "lease_path": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal/.cpu-maintenance.lock",
+        "guardian_sha256": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1",
+        "budgets": {
+          "arming_ms": 3000,
+          "studio_stop_ms": 2000,
+          "omlx_stop_ms": 2000,
+          "prelaunch_ms": 1000,
+          "experiment_ms": 3000,
+          "cleanup_ms": 2000,
+          "omlx_restore_ms": 3000,
+          "studio_restore_ms": 2000,
+          "recovery_ms": 3000,
+          "total_ms": 30000
+        },
+        "services": [
+          {
+            "kind": "owned_cpu",
+            "role": "studio",
+            "command": {
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+              "environment": {}
+            },
+            "restore_command": {
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+              "environment": {}
+            },
+            "gui_command": null
+          },
+          {
+            "kind": "omlx_unmanaged",
+            "purpose": "cpu",
+            "acknowledgement": "accept_unverified_omlx"
+          }
+        ],
+        "experiment": {
+          "kind": "cpu",
+          "command": {
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "args": [
+              "maintenance-participant",
+              "--mode",
+              "compute",
+              "--duration-ms",
+              "200"
+            ],
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+            "environment": {}
+          }
+        },
+        "reviewed_permissions": null
+      },
+      "journal": [
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [],
+            "failure": null,
+            "gui": null,
+            "inhibited": false,
+            "launch_record": null,
+            "restored": false,
+            "role": "omlx",
+            "root": null,
+            "unmanaged": {
+              "acknowledgement": "accept_unverified_omlx",
+              "policy": "unmanaged",
+              "private_qualification": "not_applicable",
+              "purpose": "cpu",
+              "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+              "state": "unverified"
+            }
+          },
+          "guardian_elapsed_ms": 0,
+          "phase": "omlx_unmanaged_admission"
+        },
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [
+              "owned backend settled and reaped; group absent"
+            ],
+            "failure": null,
+            "gui": null,
+            "inhibited": true,
+            "launch_record": null,
+            "restored": false,
+            "role": "studio",
+            "root": {
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 45689,
+              "pid": 45689,
+              "ppid": 45688,
+              "sid": 45689,
+              "start_seconds": 1791668347,
+              "start_subseconds": 835057,
+              "state": "running",
+              "uid": 501
+            },
+            "unmanaged": null
+          },
+          "guardian_elapsed_ms": 267,
+          "phase": "studio_stop"
+        },
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [],
+            "failure": null,
+            "gui": null,
+            "inhibited": false,
+            "launch_record": null,
+            "restored": false,
+            "role": "omlx",
+            "root": null,
+            "unmanaged": {
+              "acknowledgement": "accept_unverified_omlx",
+              "policy": "unmanaged",
+              "private_qualification": "not_applicable",
+              "purpose": "cpu",
+              "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+              "state": "unverified"
+            }
+          },
+          "guardian_elapsed_ms": 267,
+          "phase": "omlx_unmanaged_prelaunch_no_control"
+        },
+        {
+          "evidence": {
+            "authority_scope": "Enrolled Studio inhibition and guardian-owned experiment only; oMLX explicitly unmanaged and excluded from lifecycle authority, its state and GPU exclusivity unverified",
+            "decision": {
+              "allowed": true,
+              "reasons": []
+            },
+            "guardian_elapsed_ms": 267,
+            "services": [
+              {
+                "absence": null,
+                "actors": [],
+                "evidence": [
+                  "owned backend settled and reaped; group absent"
+                ],
+                "failure": null,
+                "gui": null,
+                "inhibited": true,
+                "launch_record": null,
+                "restored": false,
+                "role": "studio",
+                "root": {
+                  "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+                  "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                  "pgid": 45689,
+                  "pid": 45689,
+                  "ppid": 45688,
+                  "sid": 45689,
+                  "start_seconds": 1791668347,
+                  "start_subseconds": 835057,
+                  "state": "running",
+                  "uid": 501
+                },
+                "unmanaged": null
+              },
+              {
+                "absence": null,
+                "actors": [],
+                "evidence": [],
+                "failure": null,
+                "gui": null,
+                "inhibited": false,
+                "launch_record": null,
+                "restored": false,
+                "role": "omlx",
+                "root": null,
+                "unmanaged": {
+                  "acknowledgement": "accept_unverified_omlx",
+                  "policy": "unmanaged",
+                  "private_qualification": "not_applicable",
+                  "purpose": "cpu",
+                  "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+                  "state": "unverified"
+                }
+              }
+            ],
+            "transaction_sha256": "e75804399e4643cbe72e428f095874d2c5822df4176950b733e094c297368694"
+          },
+          "guardian_elapsed_ms": 267,
+          "phase": "scope_observation"
+        },
+        {
+          "evidence": {
+            "failure": null,
+            "identity": {
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 45704,
+              "pid": 45704,
+              "ppid": 45688,
+              "sid": 45704,
+              "start_seconds": 1791668348,
+              "start_subseconds": 103335,
+              "state": "running",
+              "uid": 501
+            },
+            "pid": 45704
+          },
+          "guardian_elapsed_ms": 278,
+          "phase": "experiment_creation_attempt"
+        },
+        {
+          "evidence": {
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "pgid": 45704,
+            "pid": 45704,
+            "ppid": 45688,
+            "sid": 45704,
+            "start_seconds": 1791668348,
+            "start_subseconds": 103335,
+            "state": "running",
+            "uid": 501
+          },
+          "guardian_elapsed_ms": 278,
+          "phase": "experiment_created"
+        },
+        {
+          "evidence": {
+            "authority_scope": "Enrolled Studio inhibition and guardian-owned experiment only; oMLX explicitly unmanaged and excluded from lifecycle authority, its state and GPU exclusivity unverified",
+            "decision": {
+              "allowed": true,
+              "reasons": []
+            },
+            "guardian_elapsed_ms": 393,
+            "services": [
+              {
+                "absence": null,
+                "actors": [],
+                "evidence": [
+                  "owned backend settled and reaped; group absent"
+                ],
+                "failure": null,
+                "gui": null,
+                "inhibited": true,
+                "launch_record": null,
+                "restored": false,
+                "role": "studio",
+                "root": {
+                  "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+                  "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                  "pgid": 45689,
+                  "pid": 45689,
+                  "ppid": 45688,
+                  "sid": 45689,
+                  "start_seconds": 1791668347,
+                  "start_subseconds": 835057,
+                  "state": "running",
+                  "uid": 501
+                },
+                "unmanaged": null
+              },
+              {
+                "absence": null,
+                "actors": [],
+                "evidence": [],
+                "failure": null,
+                "gui": null,
+                "inhibited": false,
+                "launch_record": null,
+                "restored": false,
+                "role": "omlx",
+                "root": null,
+                "unmanaged": {
+                  "acknowledgement": "accept_unverified_omlx",
+                  "policy": "unmanaged",
+                  "private_qualification": "not_applicable",
+                  "purpose": "cpu",
+                  "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+                  "state": "unverified"
+                }
+              }
+            ],
+            "transaction_sha256": "e75804399e4643cbe72e428f095874d2c5822df4176950b733e094c297368694"
+          },
+          "guardian_elapsed_ms": 393,
+          "phase": "scope_observation"
+        },
+        {
+          "evidence": {
+            "complete": true,
+            "exit_code": 0,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          },
+          "guardian_elapsed_ms": 475,
+          "phase": "experiment_settlement"
+        },
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [],
+            "failure": null,
+            "gui": null,
+            "inhibited": false,
+            "launch_record": null,
+            "restored": false,
+            "role": "omlx",
+            "root": null,
+            "unmanaged": {
+              "acknowledgement": "accept_unverified_omlx",
+              "policy": "unmanaged",
+              "private_qualification": "not_applicable",
+              "purpose": "cpu",
+              "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+              "state": "unverified"
+            }
+          },
+          "guardian_elapsed_ms": 475,
+          "phase": "omlx_unmanaged_recovery_no_control"
+        },
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [
+              "owned backend settled and reaped; group absent",
+              "owned replacement launch PID 45711",
+              "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence"
+            ],
+            "failure": null,
+            "gui": null,
+            "inhibited": false,
+            "launch_record": {
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+              "environment": {},
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+            },
+            "restored": true,
+            "role": "studio",
+            "root": {
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 45711,
+              "pid": 45711,
+              "ppid": 45688,
+              "sid": 45711,
+              "start_seconds": 1791668348,
+              "start_subseconds": 310539,
+              "state": "running",
+              "uid": 501
+            },
+            "unmanaged": null
+          },
+          "guardian_elapsed_ms": 745,
+          "phase": "studio_restore"
+        }
+      ],
+      "controller_stdout": "{\"controller_pid\":45659,\"guardian_pid\":45688,\"receipt\":\"/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal/cpu-1791668347671-45659/receipt.json\"}\n/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal/cpu-1791668347671-45659/receipt.json\n",
+      "controller_stderr": "",
+      "unmanaged-fixture-before.json": {
+        "pid": 45687,
+        "ppid": 45659,
+        "pgid": 45687,
+        "sid": 45687,
+        "uid": 501,
+        "start_seconds": 1791668347,
+        "start_subseconds": 724324,
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+        "state": "running"
+      },
+      "unmanaged-fixture-settlement.json": {
+        "after": {
+          "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "pgid": 45687,
+          "pid": 45687,
+          "ppid": 45659,
+          "sid": 45687,
+          "start_seconds": 1791668347,
+          "start_subseconds": 724324,
+          "state": "running",
+          "uid": 501
+        },
+        "before": {
+          "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-normal",
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "pgid": 45687,
+          "pid": 45687,
+          "ppid": 45659,
+          "sid": 45687,
+          "start_seconds": 1791668347,
+          "start_subseconds": 724324,
+          "state": "running",
+          "uid": 501
+        },
+        "created": true,
+        "failure": null,
+        "owner": "cpu_cli_harness",
+        "pid": 45687,
+        "settlement": {
+          "complete": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": true,
+          "leader_reaped": true
+        },
+        "settlement_failure": null,
+        "uncontrolled_by_guardian": true,
+        "unwinding": false
+      }
+    },
+    "unmanaged-failure": {
+      "execution": {
+        "command": [
+          "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/owned-proof",
+          "cpu",
+          "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+          "unmanaged-failure"
+        ],
+        "driver_pid": 45739,
+        "driver_reaped": true,
+        "exit_code": 0,
+        "elapsed_ms": 920.585,
+        "stdout": "unmanaged-failure.stdout",
+        "stderr": "unmanaged-failure.stderr"
+      },
+      "driver_evidence": [
+        {
+          "protocol": {
+            "controller_pid": 45740,
+            "guardian_pid": 45742,
+            "receipt": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure/cpu-1791668348730-45740/receipt.json"
+          },
+          "scenario": "unmanaged-failure"
+        },
+        {
+          "behavior_pass": true,
+          "controller_reaped": true,
+          "guardian_absent": true,
+          "receipt": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure/cpu-1791668348730-45740/receipt.json",
+          "recorded_owned_identities_absent": [
+            45740,
+            45743,
+            45745
+          ],
+          "result": {
+            "automation_ceiling_note": "Bounds automation, not a failed outage; GUI may remain paused for manual recovery",
+            "capture_directory": null,
+            "controller_identity": {
+              "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 10064,
+              "pid": 45740,
+              "ppid": 45739,
+              "sid": 10064,
+              "start_seconds": 1791668348,
+              "start_subseconds": 726693,
+              "state": "running",
+              "uid": 501
+            },
+            "creation_attempted": true,
+            "elapsed_ms": 592,
+            "experiment_failure": "full zombie executable/cwd/session identity unavailable",
+            "final_absence_failure": null,
+            "guardian_pid": 45742,
+            "kind": "cpu_maintenance_transaction",
+            "lease_path": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure/.cpu-maintenance.lock",
+            "omlx_unmanaged": {
+              "acknowledgement": "accept_unverified_omlx",
+              "policy": "unmanaged",
+              "private_qualification": "not_applicable",
+              "purpose": "cpu",
+              "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+              "state": "unverified"
+            },
+            "recovery_failure": null,
+            "restored": true,
+            "schema_version": 1,
+            "scope": "Studio lifecycle and direct guardian experiment only; oMLX unverified and excluded from control; not an isolated or verified-exclusive GPU baseline",
+            "service_accounting_complete": true,
+            "service_enrollment_failure": null,
+            "service_process_dispositions": [
+              {
+                "complete": true,
+                "descendant_uncertainty": null,
+                "failure": null,
+                "identity": {
+                  "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+                  "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                  "pgid": 45745,
+                  "pid": 45745,
+                  "ppid": 45742,
+                  "sid": 45745,
+                  "start_seconds": 1791668349,
+                  "start_subseconds": 192393,
+                  "state": "running",
+                  "uid": 501
+                },
+                "intermediate_identity": null,
+                "intermediate_pid": null,
+                "intermediate_reaped": true,
+                "intermediate_status": null,
+                "kind": "CPU fixture disposal",
+                "known_absent": true,
+                "launch_record": {
+                  "args": [
+                    "maintenance-participant",
+                    "--mode",
+                    "service",
+                    "--duration-ms",
+                    "30000"
+                  ],
+                  "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+                  "environment": {},
+                  "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+                },
+                "pid": 45745,
+                "settlement": {
+                  "complete": true,
+                  "exit_code": null,
+                  "exit_signal": 15,
+                  "failure": null,
+                  "group_absent": true,
+                  "group_signalled": true,
+                  "leader_reaped": true
+                }
+              }
+            ],
+            "settlement": {
+              "complete": true,
+              "exit_code": 1,
+              "exit_signal": null,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": false,
+              "leader_reaped": true
+            },
+            "success": false,
+            "transaction_id": "cpu-1791668348730-45740",
+            "transaction_sha256": "007dfc70dcf9d04cc6dd893b412afda6f2632a849c8f15054e71bf92c314a525"
+          },
+          "scenario": "unmanaged-failure",
+          "service_outcomes": [
+            {
+              "absence": null,
+              "actors": [
+                {
+                  "complete": true,
+                  "descendant_uncertainty": null,
+                  "failure": null,
+                  "identity": {
+                    "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+                    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                    "pgid": 45745,
+                    "pid": 45745,
+                    "ppid": 45742,
+                    "sid": 45745,
+                    "start_seconds": 1791668349,
+                    "start_subseconds": 192393,
+                    "state": "running",
+                    "uid": 501
+                  },
+                  "intermediate_identity": null,
+                  "intermediate_pid": null,
+                  "intermediate_reaped": true,
+                  "intermediate_status": null,
+                  "kind": "CPU fixture disposal",
+                  "known_absent": true,
+                  "launch_record": {
+                    "args": [
+                      "maintenance-participant",
+                      "--mode",
+                      "service",
+                      "--duration-ms",
+                      "30000"
+                    ],
+                    "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+                    "environment": {},
+                    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+                  },
+                  "pid": 45745,
+                  "settlement": {
+                    "complete": true,
+                    "exit_code": null,
+                    "exit_signal": 15,
+                    "failure": null,
+                    "group_absent": true,
+                    "group_signalled": true,
+                    "leader_reaped": true
+                  }
+                }
+              ],
+              "evidence": [
+                "owned backend settled and reaped; group absent",
+                "owned replacement launch PID 45745",
+                "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence"
+              ],
+              "failure": null,
+              "gui": null,
+              "inhibited": false,
+              "launch_record": {
+                "args": [
+                  "maintenance-participant",
+                  "--mode",
+                  "service",
+                  "--duration-ms",
+                  "30000"
+                ],
+                "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+                "environment": {},
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+              },
+              "restored": true,
+              "role": "studio",
+              "root": {
+                "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "pgid": 45745,
+                "pid": 45745,
+                "ppid": 45742,
+                "sid": 45745,
+                "start_seconds": 1791668349,
+                "start_subseconds": 192393,
+                "state": "running",
+                "uid": 501
+              },
+              "unmanaged": null
+            },
+            {
+              "absence": null,
+              "actors": [],
+              "evidence": [],
+              "failure": null,
+              "gui": null,
+              "inhibited": false,
+              "launch_record": null,
+              "restored": false,
+              "role": "omlx",
+              "root": null,
+              "unmanaged": {
+                "acknowledgement": "accept_unverified_omlx",
+                "policy": "unmanaged",
+                "private_qualification": "not_applicable",
+                "purpose": "cpu",
+                "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+                "state": "unverified"
+              }
+            }
+          ]
+        }
+      ],
+      "transaction": {
+        "schema_version": 1,
+        "transaction_id": "cpu-1791668348730-45740",
+        "purpose": "cpu",
+        "evidence_root": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure/cpu-1791668348730-45740",
+        "lease_path": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure/.cpu-maintenance.lock",
+        "guardian_sha256": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1",
+        "budgets": {
+          "arming_ms": 3000,
+          "studio_stop_ms": 2000,
+          "omlx_stop_ms": 2000,
+          "prelaunch_ms": 1000,
+          "experiment_ms": 3000,
+          "cleanup_ms": 2000,
+          "omlx_restore_ms": 3000,
+          "studio_restore_ms": 2000,
+          "recovery_ms": 3000,
+          "total_ms": 30000
+        },
+        "services": [
+          {
+            "kind": "owned_cpu",
+            "role": "studio",
+            "command": {
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+              "environment": {}
+            },
+            "restore_command": {
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+              "environment": {}
+            },
+            "gui_command": null
+          },
+          {
+            "kind": "omlx_unmanaged",
+            "purpose": "cpu",
+            "acknowledgement": "accept_unverified_omlx"
+          }
+        ],
+        "experiment": {
+          "kind": "cpu",
+          "command": {
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "args": [
+              "maintenance-participant",
+              "--mode",
+              "fail",
+              "--duration-ms",
+              "1"
+            ],
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+            "environment": {}
+          }
+        },
+        "reviewed_permissions": null
+      },
+      "journal": [
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [],
+            "failure": null,
+            "gui": null,
+            "inhibited": false,
+            "launch_record": null,
+            "restored": false,
+            "role": "omlx",
+            "root": null,
+            "unmanaged": {
+              "acknowledgement": "accept_unverified_omlx",
+              "policy": "unmanaged",
+              "private_qualification": "not_applicable",
+              "purpose": "cpu",
+              "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+              "state": "unverified"
+            }
+          },
+          "guardian_elapsed_ms": 0,
+          "phase": "omlx_unmanaged_admission"
+        },
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [
+              "owned backend settled and reaped; group absent"
+            ],
+            "failure": null,
+            "gui": null,
+            "inhibited": true,
+            "launch_record": null,
+            "restored": false,
+            "role": "studio",
+            "root": {
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 45743,
+              "pid": 45743,
+              "ppid": 45742,
+              "sid": 45743,
+              "start_seconds": 1791668348,
+              "start_subseconds": 892869,
+              "state": "running",
+              "uid": 501
+            },
+            "unmanaged": null
+          },
+          "guardian_elapsed_ms": 291,
+          "phase": "studio_stop"
+        },
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [],
+            "failure": null,
+            "gui": null,
+            "inhibited": false,
+            "launch_record": null,
+            "restored": false,
+            "role": "omlx",
+            "root": null,
+            "unmanaged": {
+              "acknowledgement": "accept_unverified_omlx",
+              "policy": "unmanaged",
+              "private_qualification": "not_applicable",
+              "purpose": "cpu",
+              "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+              "state": "unverified"
+            }
+          },
+          "guardian_elapsed_ms": 291,
+          "phase": "omlx_unmanaged_prelaunch_no_control"
+        },
+        {
+          "evidence": {
+            "authority_scope": "Enrolled Studio inhibition and guardian-owned experiment only; oMLX explicitly unmanaged and excluded from lifecycle authority, its state and GPU exclusivity unverified",
+            "decision": {
+              "allowed": true,
+              "reasons": []
+            },
+            "guardian_elapsed_ms": 291,
+            "services": [
+              {
+                "absence": null,
+                "actors": [],
+                "evidence": [
+                  "owned backend settled and reaped; group absent"
+                ],
+                "failure": null,
+                "gui": null,
+                "inhibited": true,
+                "launch_record": null,
+                "restored": false,
+                "role": "studio",
+                "root": {
+                  "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+                  "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                  "pgid": 45743,
+                  "pid": 45743,
+                  "ppid": 45742,
+                  "sid": 45743,
+                  "start_seconds": 1791668348,
+                  "start_subseconds": 892869,
+                  "state": "running",
+                  "uid": 501
+                },
+                "unmanaged": null
+              },
+              {
+                "absence": null,
+                "actors": [],
+                "evidence": [],
+                "failure": null,
+                "gui": null,
+                "inhibited": false,
+                "launch_record": null,
+                "restored": false,
+                "role": "omlx",
+                "root": null,
+                "unmanaged": {
+                  "acknowledgement": "accept_unverified_omlx",
+                  "policy": "unmanaged",
+                  "private_qualification": "not_applicable",
+                  "purpose": "cpu",
+                  "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+                  "state": "unverified"
+                }
+              }
+            ],
+            "transaction_sha256": "007dfc70dcf9d04cc6dd893b412afda6f2632a849c8f15054e71bf92c314a525"
+          },
+          "guardian_elapsed_ms": 291,
+          "phase": "scope_observation"
+        },
+        {
+          "evidence": {
+            "failure": null,
+            "identity": null,
+            "pid": 45744
+          },
+          "guardian_elapsed_ms": 299,
+          "phase": "experiment_creation_attempt"
+        },
+        {
+          "evidence": {
+            "complete": true,
+            "exit_code": 1,
+            "exit_signal": null,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": false,
+            "leader_reaped": true
+          },
+          "guardian_elapsed_ms": 299,
+          "phase": "experiment_settlement"
+        },
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [],
+            "failure": null,
+            "gui": null,
+            "inhibited": false,
+            "launch_record": null,
+            "restored": false,
+            "role": "omlx",
+            "root": null,
+            "unmanaged": {
+              "acknowledgement": "accept_unverified_omlx",
+              "policy": "unmanaged",
+              "private_qualification": "not_applicable",
+              "purpose": "cpu",
+              "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+              "state": "unverified"
+            }
+          },
+          "guardian_elapsed_ms": 299,
+          "phase": "omlx_unmanaged_recovery_no_control"
+        },
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [
+              "owned backend settled and reaped; group absent",
+              "owned replacement launch PID 45745",
+              "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence"
+            ],
+            "failure": null,
+            "gui": null,
+            "inhibited": false,
+            "launch_record": {
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+              "environment": {},
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+            },
+            "restored": true,
+            "role": "studio",
+            "root": {
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 45745,
+              "pid": 45745,
+              "ppid": 45742,
+              "sid": 45745,
+              "start_seconds": 1791668349,
+              "start_subseconds": 192393,
+              "state": "running",
+              "uid": 501
+            },
+            "unmanaged": null
+          },
+          "guardian_elapsed_ms": 580,
+          "phase": "studio_restore"
+        }
+      ],
+      "controller_stdout": "{\"controller_pid\":45740,\"guardian_pid\":45742,\"receipt\":\"/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure/cpu-1791668348730-45740/receipt.json\"}\n/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure/cpu-1791668348730-45740/receipt.json\n",
+      "controller_stderr": "",
+      "unmanaged-fixture-before.json": {
+        "pid": 45741,
+        "ppid": 45740,
+        "pgid": 45741,
+        "sid": 45741,
+        "uid": 501,
+        "start_seconds": 1791668348,
+        "start_subseconds": 786711,
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+        "state": "running"
+      },
+      "unmanaged-fixture-settlement.json": {
+        "after": {
+          "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "pgid": 45741,
+          "pid": 45741,
+          "ppid": 45740,
+          "sid": 45741,
+          "start_seconds": 1791668348,
+          "start_subseconds": 786711,
+          "state": "running",
+          "uid": 501
+        },
+        "before": {
+          "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-failure",
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "pgid": 45741,
+          "pid": 45741,
+          "ppid": 45740,
+          "sid": 45741,
+          "start_seconds": 1791668348,
+          "start_subseconds": 786711,
+          "state": "running",
+          "uid": 501
+        },
+        "created": true,
+        "failure": null,
+        "owner": "cpu_cli_harness",
+        "pid": 45741,
+        "settlement": {
+          "complete": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": true,
+          "leader_reaped": true
+        },
+        "settlement_failure": null,
+        "uncontrolled_by_guardian": true,
+        "unwinding": false
+      }
+    },
+    "unmanaged-controller-loss": {
+      "execution": {
+        "command": [
+          "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/owned-proof",
+          "cpu",
+          "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+          "unmanaged-controller-loss"
+        ],
+        "driver_pid": 45762,
+        "driver_reaped": true,
+        "exit_code": 0,
+        "elapsed_ms": 884.707,
+        "stdout": "unmanaged-controller-loss.stdout",
+        "stderr": "unmanaged-controller-loss.stderr"
+      },
+      "driver_evidence": [
+        {
+          "foreign_before": {
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "pgid": 45763,
+            "pid": 45763,
+            "ppid": 45762,
+            "sid": 45763,
+            "start_seconds": 1791668349,
+            "start_subseconds": 650311,
+            "state": "running",
+            "uid": 501
+          },
+          "guardian_has_no_ownership": true
+        },
+        {
+          "protocol": {
+            "controller_pid": 45767,
+            "guardian_pid": 45782,
+            "receipt": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss/cpu-1791668349659-45767/receipt.json"
+          },
+          "scenario": "unmanaged-controller-loss"
+        },
+        {
+          "controlled_only_owned_controller": 45767,
+          "reaped": true,
+          "status": "signal: 9 (SIGKILL)"
+        },
+        {
+          "foreign_after": {
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "pgid": 45763,
+            "pid": 45763,
+            "ppid": 45762,
+            "sid": 45763,
+            "start_seconds": 1791668349,
+            "start_subseconds": 650311,
+            "state": "running",
+            "uid": 501
+          },
+          "foreign_before": {
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "pgid": 45763,
+            "pid": 45763,
+            "ppid": 45762,
+            "sid": 45763,
+            "start_seconds": 1791668349,
+            "start_subseconds": 650311,
+            "state": "running",
+            "uid": 501
+          },
+          "guardian_has_no_ownership": true,
+          "same_birth_and_running": true
+        },
+        {
+          "owned_fixture_pid": 45763,
+          "settlement": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          },
+          "settlement_error": null
+        },
+        {
+          "behavior_pass": true,
+          "controller_reaped": true,
+          "guardian_absent": true,
+          "receipt": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss/cpu-1791668349659-45767/receipt.json",
+          "recorded_owned_identities_absent": [
+            45767,
+            45783,
+            45784,
+            45785
+          ],
+          "result": {
+            "automation_ceiling_note": "Bounds automation, not a failed outage; GUI may remain paused for manual recovery",
+            "capture_directory": null,
+            "controller_identity": {
+              "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 10064,
+              "pid": 45767,
+              "ppid": 45762,
+              "sid": 10064,
+              "start_seconds": 1791668349,
+              "start_subseconds": 657403,
+              "state": "running",
+              "uid": 501
+            },
+            "creation_attempted": true,
+            "elapsed_ms": 650,
+            "experiment_failure": "controller authority revoked: controller EOF",
+            "final_absence_failure": null,
+            "guardian_pid": 45782,
+            "kind": "cpu_maintenance_transaction",
+            "lease_path": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss/.cpu-maintenance.lock",
+            "omlx_unmanaged": {
+              "acknowledgement": "accept_unverified_omlx",
+              "policy": "unmanaged",
+              "private_qualification": "not_applicable",
+              "purpose": "cpu",
+              "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+              "state": "unverified"
+            },
+            "recovery_failure": null,
+            "restored": true,
+            "schema_version": 1,
+            "scope": "Studio lifecycle and direct guardian experiment only; oMLX unverified and excluded from control; not an isolated or verified-exclusive GPU baseline",
+            "service_accounting_complete": true,
+            "service_enrollment_failure": null,
+            "service_process_dispositions": [
+              {
+                "complete": true,
+                "descendant_uncertainty": null,
+                "failure": null,
+                "identity": {
+                  "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+                  "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                  "pgid": 45785,
+                  "pid": 45785,
+                  "ppid": 45782,
+                  "sid": 45785,
+                  "start_seconds": 1791668350,
+                  "start_subseconds": 162838,
+                  "state": "running",
+                  "uid": 501
+                },
+                "intermediate_identity": null,
+                "intermediate_pid": null,
+                "intermediate_reaped": true,
+                "intermediate_status": null,
+                "kind": "CPU fixture disposal",
+                "known_absent": true,
+                "launch_record": {
+                  "args": [
+                    "maintenance-participant",
+                    "--mode",
+                    "service",
+                    "--duration-ms",
+                    "30000"
+                  ],
+                  "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+                  "environment": {},
+                  "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+                },
+                "pid": 45785,
+                "settlement": {
+                  "complete": true,
+                  "exit_code": null,
+                  "exit_signal": 15,
+                  "failure": null,
+                  "group_absent": true,
+                  "group_signalled": true,
+                  "leader_reaped": true
+                }
+              }
+            ],
+            "settlement": {
+              "complete": true,
+              "exit_code": null,
+              "exit_signal": 15,
+              "failure": null,
+              "group_absent": true,
+              "group_signalled": true,
+              "leader_reaped": true
+            },
+            "success": false,
+            "transaction_id": "cpu-1791668349659-45767",
+            "transaction_sha256": "44ed91d30340850c8578888e81a1b318319add2fe3b1a2e7983907e0647a022d"
+          },
+          "scenario": "unmanaged-controller-loss",
+          "service_outcomes": [
+            {
+              "absence": null,
+              "actors": [
+                {
+                  "complete": true,
+                  "descendant_uncertainty": null,
+                  "failure": null,
+                  "identity": {
+                    "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+                    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                    "pgid": 45785,
+                    "pid": 45785,
+                    "ppid": 45782,
+                    "sid": 45785,
+                    "start_seconds": 1791668350,
+                    "start_subseconds": 162838,
+                    "state": "running",
+                    "uid": 501
+                  },
+                  "intermediate_identity": null,
+                  "intermediate_pid": null,
+                  "intermediate_reaped": true,
+                  "intermediate_status": null,
+                  "kind": "CPU fixture disposal",
+                  "known_absent": true,
+                  "launch_record": {
+                    "args": [
+                      "maintenance-participant",
+                      "--mode",
+                      "service",
+                      "--duration-ms",
+                      "30000"
+                    ],
+                    "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+                    "environment": {},
+                    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+                  },
+                  "pid": 45785,
+                  "settlement": {
+                    "complete": true,
+                    "exit_code": null,
+                    "exit_signal": 15,
+                    "failure": null,
+                    "group_absent": true,
+                    "group_signalled": true,
+                    "leader_reaped": true
+                  }
+                }
+              ],
+              "evidence": [
+                "owned backend settled and reaped; group absent",
+                "owned replacement launch PID 45785",
+                "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence"
+              ],
+              "failure": null,
+              "gui": null,
+              "inhibited": false,
+              "launch_record": {
+                "args": [
+                  "maintenance-participant",
+                  "--mode",
+                  "service",
+                  "--duration-ms",
+                  "30000"
+                ],
+                "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+                "environment": {},
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+              },
+              "restored": true,
+              "role": "studio",
+              "root": {
+                "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "pgid": 45785,
+                "pid": 45785,
+                "ppid": 45782,
+                "sid": 45785,
+                "start_seconds": 1791668350,
+                "start_subseconds": 162838,
+                "state": "running",
+                "uid": 501
+              },
+              "unmanaged": null
+            },
+            {
+              "absence": null,
+              "actors": [],
+              "evidence": [],
+              "failure": null,
+              "gui": null,
+              "inhibited": false,
+              "launch_record": null,
+              "restored": false,
+              "role": "omlx",
+              "root": null,
+              "unmanaged": {
+                "acknowledgement": "accept_unverified_omlx",
+                "policy": "unmanaged",
+                "private_qualification": "not_applicable",
+                "purpose": "cpu",
+                "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+                "state": "unverified"
+              }
+            }
+          ]
+        }
+      ],
+      "transaction": {
+        "schema_version": 1,
+        "transaction_id": "cpu-1791668349659-45767",
+        "purpose": "cpu",
+        "evidence_root": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss/cpu-1791668349659-45767",
+        "lease_path": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss/.cpu-maintenance.lock",
+        "guardian_sha256": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1",
+        "budgets": {
+          "arming_ms": 3000,
+          "studio_stop_ms": 2000,
+          "omlx_stop_ms": 2000,
+          "prelaunch_ms": 1000,
+          "experiment_ms": 6000,
+          "cleanup_ms": 2000,
+          "omlx_restore_ms": 3000,
+          "studio_restore_ms": 2000,
+          "recovery_ms": 3000,
+          "total_ms": 30000
+        },
+        "services": [
+          {
+            "kind": "owned_cpu",
+            "role": "studio",
+            "command": {
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+              "environment": {}
+            },
+            "restore_command": {
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+              "environment": {}
+            },
+            "gui_command": null
+          },
+          {
+            "kind": "omlx_unmanaged",
+            "purpose": "cpu",
+            "acknowledgement": "accept_unverified_omlx"
+          }
+        ],
+        "experiment": {
+          "kind": "cpu",
+          "command": {
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "args": [
+              "maintenance-participant",
+              "--mode",
+              "hold",
+              "--duration-ms",
+              "5000"
+            ],
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+            "environment": {}
+          }
+        },
+        "reviewed_permissions": null
+      },
+      "journal": [
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [],
+            "failure": null,
+            "gui": null,
+            "inhibited": false,
+            "launch_record": null,
+            "restored": false,
+            "role": "omlx",
+            "root": null,
+            "unmanaged": {
+              "acknowledgement": "accept_unverified_omlx",
+              "policy": "unmanaged",
+              "private_qualification": "not_applicable",
+              "purpose": "cpu",
+              "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+              "state": "unverified"
+            }
+          },
+          "guardian_elapsed_ms": 0,
+          "phase": "omlx_unmanaged_admission"
+        },
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [
+              "owned backend settled and reaped; group absent"
+            ],
+            "failure": null,
+            "gui": null,
+            "inhibited": true,
+            "launch_record": null,
+            "restored": false,
+            "role": "studio",
+            "root": {
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 45783,
+              "pid": 45783,
+              "ppid": 45782,
+              "sid": 45783,
+              "start_seconds": 1791668349,
+              "start_subseconds": 799784,
+              "state": "running",
+              "uid": 501
+            },
+            "unmanaged": null
+          },
+          "guardian_elapsed_ms": 287,
+          "phase": "studio_stop"
+        },
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [],
+            "failure": null,
+            "gui": null,
+            "inhibited": false,
+            "launch_record": null,
+            "restored": false,
+            "role": "omlx",
+            "root": null,
+            "unmanaged": {
+              "acknowledgement": "accept_unverified_omlx",
+              "policy": "unmanaged",
+              "private_qualification": "not_applicable",
+              "purpose": "cpu",
+              "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+              "state": "unverified"
+            }
+          },
+          "guardian_elapsed_ms": 288,
+          "phase": "omlx_unmanaged_prelaunch_no_control"
+        },
+        {
+          "evidence": {
+            "authority_scope": "Enrolled Studio inhibition and guardian-owned experiment only; oMLX explicitly unmanaged and excluded from lifecycle authority, its state and GPU exclusivity unverified",
+            "decision": {
+              "allowed": true,
+              "reasons": []
+            },
+            "guardian_elapsed_ms": 288,
+            "services": [
+              {
+                "absence": null,
+                "actors": [],
+                "evidence": [
+                  "owned backend settled and reaped; group absent"
+                ],
+                "failure": null,
+                "gui": null,
+                "inhibited": true,
+                "launch_record": null,
+                "restored": false,
+                "role": "studio",
+                "root": {
+                  "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+                  "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                  "pgid": 45783,
+                  "pid": 45783,
+                  "ppid": 45782,
+                  "sid": 45783,
+                  "start_seconds": 1791668349,
+                  "start_subseconds": 799784,
+                  "state": "running",
+                  "uid": 501
+                },
+                "unmanaged": null
+              },
+              {
+                "absence": null,
+                "actors": [],
+                "evidence": [],
+                "failure": null,
+                "gui": null,
+                "inhibited": false,
+                "launch_record": null,
+                "restored": false,
+                "role": "omlx",
+                "root": null,
+                "unmanaged": {
+                  "acknowledgement": "accept_unverified_omlx",
+                  "policy": "unmanaged",
+                  "private_qualification": "not_applicable",
+                  "purpose": "cpu",
+                  "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+                  "state": "unverified"
+                }
+              }
+            ],
+            "transaction_sha256": "44ed91d30340850c8578888e81a1b318319add2fe3b1a2e7983907e0647a022d"
+          },
+          "guardian_elapsed_ms": 288,
+          "phase": "scope_observation"
+        },
+        {
+          "evidence": {
+            "failure": null,
+            "identity": {
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 45784,
+              "pid": 45784,
+              "ppid": 45782,
+              "sid": 45784,
+              "start_seconds": 1791668350,
+              "start_subseconds": 88844,
+              "state": "running",
+              "uid": 501
+            },
+            "pid": 45784
+          },
+          "guardian_elapsed_ms": 301,
+          "phase": "experiment_creation_attempt"
+        },
+        {
+          "evidence": {
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "pgid": 45784,
+            "pid": 45784,
+            "ppid": 45782,
+            "sid": 45784,
+            "start_seconds": 1791668350,
+            "start_subseconds": 88844,
+            "state": "running",
+            "uid": 501
+          },
+          "guardian_elapsed_ms": 301,
+          "phase": "experiment_created"
+        },
+        {
+          "evidence": {
+            "complete": true,
+            "exit_code": null,
+            "exit_signal": 15,
+            "failure": null,
+            "group_absent": true,
+            "group_signalled": true,
+            "leader_reaped": true
+          },
+          "guardian_elapsed_ms": 362,
+          "phase": "experiment_settlement"
+        },
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [],
+            "failure": null,
+            "gui": null,
+            "inhibited": false,
+            "launch_record": null,
+            "restored": false,
+            "role": "omlx",
+            "root": null,
+            "unmanaged": {
+              "acknowledgement": "accept_unverified_omlx",
+              "policy": "unmanaged",
+              "private_qualification": "not_applicable",
+              "purpose": "cpu",
+              "scope": "oMLX excluded from lifecycle authority; GPU exclusivity unverified",
+              "state": "unverified"
+            }
+          },
+          "guardian_elapsed_ms": 362,
+          "phase": "omlx_unmanaged_recovery_no_control"
+        },
+        {
+          "evidence": {
+            "absence": null,
+            "actors": [],
+            "evidence": [
+              "owned backend settled and reaped; group absent",
+              "owned replacement launch PID 45785",
+              "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence"
+            ],
+            "failure": null,
+            "gui": null,
+            "inhibited": false,
+            "launch_record": {
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+              "environment": {},
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+            },
+            "restored": true,
+            "role": "studio",
+            "root": {
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 45785,
+              "pid": 45785,
+              "ppid": 45782,
+              "sid": 45785,
+              "start_seconds": 1791668350,
+              "start_subseconds": 162838,
+              "state": "running",
+              "uid": 501
+            },
+            "unmanaged": null
+          },
+          "guardian_elapsed_ms": 637,
+          "phase": "studio_restore"
+        }
+      ],
+      "controller_stdout": "{\"controller_pid\":45767,\"guardian_pid\":45782,\"receipt\":\"/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/unmanaged-controller-loss/cpu-1791668349659-45767/receipt.json\"}\n",
+      "controller_stderr": ""
+    },
+    "absence-presence": {
+      "execution": {
+        "command": [
+          "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/owned-proof",
+          "cpu",
+          "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence",
+          "absence-presence"
+        ],
+        "driver_pid": 45795,
+        "driver_reaped": true,
+        "exit_code": 0,
+        "elapsed_ms": 358.566,
+        "stdout": "absence-presence.stdout",
+        "stderr": "absence-presence.stderr"
+      },
+      "driver_evidence": [
+        {
+          "protocol": {
+            "controller_pid": 45797,
+            "guardian_pid": 45818,
+            "receipt": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence/cpu-1791668350542-45797/receipt.json"
+          },
+          "scenario": "absence-presence"
+        },
+        {
+          "behavior_pass": true,
+          "controller_reaped": true,
+          "guardian_absent": true,
+          "receipt": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence/cpu-1791668350542-45797/receipt.json",
+          "recorded_owned_identities_absent": [
+            45797
+          ],
+          "result": {
+            "automation_ceiling_note": "Bounds automation, not a failed outage; GUI may remain paused for manual recovery",
+            "capture_directory": null,
+            "controller_identity": {
+              "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 10064,
+              "pid": 45797,
+              "ppid": 45795,
+              "sid": 10064,
+              "start_seconds": 1791668350,
+              "start_subseconds": 540306,
+              "state": "running",
+              "uid": 501
+            },
+            "creation_attempted": false,
+            "elapsed_ms": 13,
+            "experiment_failure": "service enrollment failed: named absence not established; no control of candidates authorized",
+            "final_absence_failure": null,
+            "guardian_pid": 45818,
+            "kind": "cpu_maintenance_transaction",
+            "lease_path": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence/.cpu-maintenance.lock",
+            "omlx_unmanaged": null,
+            "recovery_failure": null,
+            "restored": false,
+            "schema_version": 1,
+            "scope": "Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee",
+            "service_accounting_complete": true,
+            "service_enrollment_failure": {
+              "absence": {
+                "private_qualification": "not_applicable",
+                "scope": "bounded named absence only; non-atomic, not whole-host idle",
+                "state": "present"
+              },
+              "actors": [],
+              "evidence": [],
+              "failure": "named absence not established; no control of candidates authorized",
+              "gui": null,
+              "inhibited": false,
+              "launch_record": null,
+              "restored": false,
+              "role": "omlx",
+              "root": null,
+              "unmanaged": null
+            },
+            "service_process_dispositions": [],
+            "settlement": null,
+            "success": false,
+            "transaction_id": "cpu-1791668350542-45797",
+            "transaction_sha256": "ef77ad376ffa0364567fd4c53c27520bc7175d6b44a9104f08f918acbe89fe3f"
+          },
+          "scenario": "absence-presence",
+          "service_outcomes": []
+        }
+      ],
+      "transaction": {
+        "schema_version": 1,
+        "transaction_id": "cpu-1791668350542-45797",
+        "purpose": "cpu",
+        "evidence_root": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence/cpu-1791668350542-45797",
+        "lease_path": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence/.cpu-maintenance.lock",
+        "guardian_sha256": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1",
+        "budgets": {
+          "arming_ms": 3000,
+          "studio_stop_ms": 2000,
+          "omlx_stop_ms": 2000,
+          "prelaunch_ms": 1000,
+          "experiment_ms": 3000,
+          "cleanup_ms": 2000,
+          "omlx_restore_ms": 3000,
+          "studio_restore_ms": 2000,
+          "recovery_ms": 3000,
+          "total_ms": 30000
+        },
+        "services": [
+          {
+            "kind": "owned_cpu",
+            "role": "studio",
+            "command": {
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence",
+              "environment": {}
+            },
+            "restore_command": {
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence",
+              "environment": {}
+            },
+            "gui_command": null
+          },
+          {
+            "kind": "omlx_absent",
+            "binding": {
+              "kind": "cpu",
+              "probe": {
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "args": [
+                  "maintenance-participant",
+                  "--mode",
+                  "absence-probe",
+                  "--duration-ms",
+                  "1"
+                ],
+                "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence",
+                "environment": {}
+              },
+              "executable_root": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence/absence-bin"
+            }
+          }
+        ],
+        "experiment": {
+          "kind": "cpu",
+          "command": {
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "args": [
+              "maintenance-participant",
+              "--mode",
+              "compute",
+              "--duration-ms",
+              "200"
+            ],
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence",
+            "environment": {}
+          }
+        },
+        "reviewed_permissions": null
+      },
+      "journal": [],
+      "controller_stdout": "{\"controller_pid\":45797,\"guardian_pid\":45818,\"receipt\":\"/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence/cpu-1791668350542-45797/receipt.json\"}\n/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence/cpu-1791668350542-45797/receipt.json\n",
+      "controller_stderr": "",
+      "absence-fixture-preparation.json": {
+        "executable": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence/absence-bin/startup-actor",
+        "failure": null,
+        "kind": "ad_hoc_sign_owned_sleep_copy",
+        "pid": 45800,
+        "settlement": {
+          "complete": true,
+          "exit_code": 0,
+          "exit_signal": null,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": false,
+          "leader_reaped": true
+        }
+      },
+      "absence-fixture-settlement.json": {
+        "created": true,
+        "failure": null,
+        "identity": {
+          "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence",
+          "executable": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-presence/absence-bin/startup-actor",
+          "pgid": 45804,
+          "pid": 45804,
+          "ppid": 45797,
+          "sid": 45804,
+          "start_seconds": 1791668350,
+          "start_subseconds": 630356,
+          "state": "running",
+          "uid": 501
+        },
+        "pid": 45804,
+        "settlement": {
+          "complete": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": true,
+          "leader_reaped": true
+        },
+        "uncontrolled_by_guardian": true
+      }
+    },
+    "absence-probe-error": {
+      "execution": {
+        "command": [
+          "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/owned-proof",
+          "cpu",
+          "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error",
+          "absence-probe-error"
+        ],
+        "driver_pid": 45825,
+        "driver_reaped": true,
+        "exit_code": 0,
+        "elapsed_ms": 262.93,
+        "stdout": "absence-probe-error.stdout",
+        "stderr": "absence-probe-error.stderr"
+      },
+      "driver_evidence": [
+        {
+          "protocol": {
+            "controller_pid": 45826,
+            "guardian_pid": 45827,
+            "receipt": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error/cpu-1791668350901-45826/receipt.json"
+          },
+          "scenario": "absence-probe-error"
+        },
+        {
+          "behavior_pass": true,
+          "controller_reaped": true,
+          "guardian_absent": true,
+          "receipt": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error/cpu-1791668350901-45826/receipt.json",
+          "recorded_owned_identities_absent": [
+            45826
+          ],
+          "result": {
+            "automation_ceiling_note": "Bounds automation, not a failed outage; GUI may remain paused for manual recovery",
+            "capture_directory": null,
+            "controller_identity": {
+              "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "pgid": 10064,
+              "pid": 45826,
+              "ppid": 45825,
+              "sid": 10064,
+              "start_seconds": 1791668350,
+              "start_subseconds": 899060,
+              "state": "running",
+              "uid": 501
+            },
+            "creation_attempted": false,
+            "elapsed_ms": 13,
+            "experiment_failure": "service enrollment failed: bounded named absence probe unavailable: owned CPU absence probe unavailable (exit 2): mil: invalid type: map, expected a sequence at line 1 column 0\n",
+            "final_absence_failure": null,
+            "guardian_pid": 45827,
+            "kind": "cpu_maintenance_transaction",
+            "lease_path": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error/.cpu-maintenance.lock",
+            "omlx_unmanaged": null,
+            "recovery_failure": null,
+            "restored": false,
+            "schema_version": 1,
+            "scope": "Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee",
+            "service_accounting_complete": true,
+            "service_enrollment_failure": {
+              "absence": {
+                "private_qualification": "not_applicable",
+                "scope": "bounded named absence only; non-atomic, not whole-host idle",
+                "state": "unavailable"
+              },
+              "actors": [],
+              "evidence": [],
+              "failure": "bounded named absence probe unavailable: owned CPU absence probe unavailable (exit 2): mil: invalid type: map, expected a sequence at line 1 column 0\n",
+              "gui": null,
+              "inhibited": false,
+              "launch_record": null,
+              "restored": false,
+              "role": "omlx",
+              "root": null,
+              "unmanaged": null
+            },
+            "service_process_dispositions": [],
+            "settlement": null,
+            "success": false,
+            "transaction_id": "cpu-1791668350901-45826",
+            "transaction_sha256": "636c7d49c7675cfda9cff6f9e1acd69c4c848a39f3e0f72d2475af21630d9330"
+          },
+          "scenario": "absence-probe-error",
+          "service_outcomes": []
+        }
+      ],
+      "transaction": {
+        "schema_version": 1,
+        "transaction_id": "cpu-1791668350901-45826",
+        "purpose": "cpu",
+        "evidence_root": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error/cpu-1791668350901-45826",
+        "lease_path": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error/.cpu-maintenance.lock",
+        "guardian_sha256": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1",
+        "budgets": {
+          "arming_ms": 3000,
+          "studio_stop_ms": 2000,
+          "omlx_stop_ms": 2000,
+          "prelaunch_ms": 1000,
+          "experiment_ms": 3000,
+          "cleanup_ms": 2000,
+          "omlx_restore_ms": 3000,
+          "studio_restore_ms": 2000,
+          "recovery_ms": 3000,
+          "total_ms": 30000
+        },
+        "services": [
+          {
+            "kind": "owned_cpu",
+            "role": "studio",
+            "command": {
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error",
+              "environment": {}
+            },
+            "restore_command": {
+              "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+              "args": [
+                "maintenance-participant",
+                "--mode",
+                "service",
+                "--duration-ms",
+                "30000"
+              ],
+              "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error",
+              "environment": {}
+            },
+            "gui_command": null
+          },
+          {
+            "kind": "omlx_absent",
+            "binding": {
+              "kind": "cpu",
+              "probe": {
+                "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+                "args": [
+                  "maintenance-participant",
+                  "--mode",
+                  "absence-probe",
+                  "--duration-ms",
+                  "1"
+                ],
+                "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error",
+                "environment": {}
+              },
+              "executable_root": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error/absence-bin"
+            }
+          }
+        ],
+        "experiment": {
+          "kind": "cpu",
+          "command": {
+            "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+            "args": [
+              "maintenance-participant",
+              "--mode",
+              "compute",
+              "--duration-ms",
+              "200"
+            ],
+            "cwd": "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error",
+            "environment": {}
+          }
+        },
+        "reviewed_permissions": null
+      },
+      "journal": [],
+      "controller_stdout": "{\"controller_pid\":45826,\"guardian_pid\":45827,\"receipt\":\"/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error/cpu-1791668350901-45826/receipt.json\"}\n/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/absence-probe-error/cpu-1791668350901-45826/receipt.json\n",
+      "controller_stderr": ""
+    }
+  },
+  "historical_38672": "Unchanged and incomplete; separate from new diagnostic helper38638. Neither uncertainty is cleared by later successful owned proof.",
+  "limits": [
+    "CPU CLI exercises shared guardian state machine, not live Studio admission/restoration or native capture/inference.",
+    "No global oMLX absence probe, private collection, elevation, grant, shared lease, control, capture, inference or activation. CPU-local leases/authorizations only.",
+    "User accepted oMLX uncertainty; independent Studio registration/print collection permission remains unresolved. No live print executed, including launchctl_absent.",
+    "Raw live diagnostics/argv/env are not persisted or transmitted.",
+    "Parent Herdr prompt failed agent_blocked; final issue evidence and explicit handoff remain required."
+  ],
+  "guardian_sha256": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1",
+  "rlib_sha256": "b8a8dded1c3ffe4931559c41a993bc2f469a0283d816d4b8b28d6f5ac9369dd3",
+  "source_sha256": {
+    "src/maintenance.rs": "a3d13eed2aec9169138956d73397a6753ca62f1e53fb184264667015e6344769",
+    "src/service_lifecycle.rs": "d19b3841eb36fd870d1d672523d33d9439090de5ef716ed97ea9c476c0f73f79",
+    "src/process_scope.rs": "1cfe34874577fa6f43870744af279aec17d37eb3be23991c5799367e643f6a81",
+    "src/native_guard.rs": "a205807db7330c794c23e33082d86c44547990ec21dfa88b501813338c5be728",
+    "src/qualification_scope.rs": "bbdf62625e99ce9b322d34ed4e85497cca08e9676fae12ca50e2e940e128729d",
+    "src/restore_qualification.rs": "ba6516d5e6e708529a2be29fba7c6b0a5f34409d39d683546df78bb2a246b273",
+    "src/qualification_profile.rs": "9fba3b1fe8b4d4f8562d98dc0f21981ba87a103719b84cb5a3c73074167ff8ee",
+    "src/lib.rs": "042b068ce58c0f792a192165a0ea0f0e7879d4718bb9e13cb6be9104d75f0e3e",
+    "src/capture.rs": "36a069484e5f5c76ebd3dd7d8ca8370b26ac7169151f635ed6ecc8f4782bc95a",
+    "src/guards.rs": "3aba006d110d78415771034cf73cb8a6453fbea44ce51d7ad23151f0a7b83618",
+    "src/native.rs": "d0b4696a5b329e35f3424340bf5e5cebad5cbdadf58da5b8a555bc24dbf10a73",
+    "src/main.rs": "57c59ba10eb29bc1457317d9d09239fe98b22bc00012c3aaf42cc30b2e8ba14e",
+    "src/preflight.rs": "b92fb6bd5593aa531c863dffc291ed8c1247b5677c19396a67b792a1e25dd80d",
+    "src/sequence_report.rs": "b022876ab3bc25226d54b40addb9a6690cbe37f4b5492d538c68740efdd3c65c",
+    "src/frame_sequence.rs": "398aab949517feb568398a38cb8edba98eca7b37a6687010efe3073b51fb10bc",
+    "src/image_comparison.rs": "36bd109b3bcc024dae3f93bf5a06273ebe97f462ca2d2aee139db3e0f7bf83b3",
+    "src/study_report.rs": "53d38cd53e92482c0cc4b51485771b07d46eb6ee90b1f66b45ee828172d3bc2f",
+    "src/png_report.rs": "f0a214114ed6eabd33ec4a431121272d4e9f887b8f1c1d97eefb6c1bc03d297a",
+    "src/capture_archive.rs": "c81c03c4c39e9a4046d343b93d5841a24e8924b5555776b6a7f08401a5432824",
+    "src/markdown.rs": "8df585bdd93ede679d33bf56cbebe490ff82630ff5c319ca00c34b1d77a0df3a",
+    "src/comparison.rs": "bdd5c12cab100763801824825a9a75fa79a3e665e993f6e3b40a72ac107c625c",
+    "src/png_image.rs": "90e530a3c2347b63a4616f7a30bdebba7b5d077e3d74e784423a3c4a78293ca5",
+    "src/study.rs": "81b8a296b04749f7786ca94bb8c6e296e7f4afbc5f29bfad32e827b7dfbfa874",
+    "src/schema.rs": "0570810b9950b49e4fe0315041f4a6e9225178590c9f558d5beae7c1e384d6a6",
+    "Cargo.toml": "b5c681c426ab547fea9370a71497203de93e820dd76d542cfd4250fbd828977b",
+    "Cargo.lock": "58108075860c9f8c020f22a9dd16194d489f5d6de0879f59a10c8a372881330e",
+    "tests/maintenance_absence.rs": "1a56a6fb8733ad3c996506c6fb6f4c740ad478f7a6c434cd56793d1cb0312246",
+    "tests/maintenance_authorization.rs": "3810629662cd901e7b96fccc487ca549a91999dc55ec431982588ea3c8fdbff0"
+  },
+  "final_proof_source_sha256": "3a88d4d2f32239c62dfe52f0029610a145619a5b6d57c66c9a44f897a7f3ebd6",
+  "final_proof_binary_sha256": "97b444e0eb8cd8fabebf2be4c2e993fc76f4ac8d29b733cef217dd45793ea90a",
+  "fresh_preparation": "One bounded final-candidate Studio permitted metadata/runtime/resources preparation follows owned proof; no live print or activation. Results retained separately in private candidate receipt."
+}

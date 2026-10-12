@@ -1,0 +1,16 @@
+
+running 8 tests
+test restore_qualification::tests::manifest_timing_replaced_parent_directory_fails_binding ... ok
+test restore_qualification::tests::manifest_timing_pinned_parent_cannot_redirect_file_bytes ... ok
+test restore_qualification::tests::manifest_timing_pinned_listing_keeps_original_names_under_aba_replacement ... ok
+test restore_qualification::tests::manifest_timing_pinned_listing_enforces_bounds_deadline_and_directory_type ... ok
+test restore_qualification::tests::manifest_timing_stream_changes_and_expired_deadlines_deny ... ok
+test restore_qualification::tests::manifest_timing_logical_byte_and_entry_bounds_remain_enforced ... ok
+test restore_qualification::tests::manifest_timing_nonregular_types_and_unsafe_aliases_deny ... ok
+test restore_qualification::tests::manifest_timing_preserves_alias_entries_and_rehashes_every_phase ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 71 filtered out; finished in 0.02s
+
+   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.24s
+     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-a51443bb38096914)

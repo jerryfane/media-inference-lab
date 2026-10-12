@@ -1,0 +1,87 @@
+[
+  {
+    "role": "studio",
+    "root": {
+      "pid": 88235,
+      "ppid": 88143,
+      "pgid": 88235,
+      "sid": 88235,
+      "uid": 501,
+      "start_seconds": 1791551370,
+      "start_subseconds": 650427,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "gui": null,
+    "inhibited": false,
+    "restored": true,
+    "failure": null,
+    "evidence": [
+      "owned backend settled and reaped; group absent",
+      "owned replacement launch PID 88235",
+      "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence"
+    ],
+    "launch_record": {
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "args": [
+        "maintenance-participant",
+        "--mode",
+        "service",
+        "--duration-ms",
+        "30000"
+      ],
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "environment": {}
+    }
+  },
+  {
+    "role": "omlx",
+    "root": {
+      "pid": 88182,
+      "ppid": 88143,
+      "pgid": 88182,
+      "sid": 88182,
+      "uid": 501,
+      "start_seconds": 1791551370,
+      "start_subseconds": 105154,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "gui": {
+      "pid": 88148,
+      "ppid": 88143,
+      "pgid": 88148,
+      "sid": 88148,
+      "uid": 501,
+      "start_seconds": 1791551369,
+      "start_subseconds": 392590,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "inhibited": false,
+    "restored": true,
+    "failure": null,
+    "evidence": [
+      "same GUI birth identity observed stopped after SIGSTOP",
+      "owned backend settled and reaped; group absent",
+      "owned replacement launch PID 88182",
+      "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence",
+      "same GUI resumed only after qualified restore; bounded watch passed"
+    ],
+    "launch_record": {
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "args": [
+        "maintenance-participant",
+        "--mode",
+        "service",
+        "--duration-ms",
+        "30000"
+      ],
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "environment": {}
+    }
+  }
+]

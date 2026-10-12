@@ -1,0 +1,16 @@
+
+running 1 test
+test service_lifecycle::tests::deadline_after_term_never_escalates ... FAILED
+
+failures:
+
+failures:
+    service_lifecycle::tests::deadline_after_term_never_escalates
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 44 filtered out; finished in 5.01s
+
+TERM deadline probe: result=Err(service deadline expired), exited_before_cleanup=true, cleanup=Ok(Settlement { complete: false, leader_reaped: false, group_absent: false, group_signalled: true, exit_code: None, exit_signal: None, failure: Some("leader reap failed or changed: Undefined error: 0 (os error 0)") })
+
+thread 'service_lifecycle::tests::deadline_after_term_never_escalates' (67549619) panicked at src/service_lifecycle.rs:1685:9:
+finite test child 71080 did not reap within enrolled outer ceiling
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

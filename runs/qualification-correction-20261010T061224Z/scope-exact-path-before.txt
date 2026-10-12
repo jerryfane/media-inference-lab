@@ -1,0 +1,23 @@
+$ cargo test --offline --lib qualification_scope::tests::scope_home_and_directory_bindings_are_lexically_exact
+
+running 1 test
+test qualification_scope::tests::scope_home_and_directory_bindings_are_lexically_exact ... FAILED
+
+failures:
+
+---- qualification_scope::tests::scope_home_and_directory_bindings_are_lexically_exact stdout ----
+
+thread 'qualification_scope::tests::scope_home_and_directory_bindings_are_lexically_exact' (73469216) panicked at src/qualification_scope.rs:413:9:
+assertion failed: scope.validate_for(&environment).is_err()
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    qualification_scope::tests::scope_home_and_directory_bindings_are_lexically_exact
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 70 filtered out; finished in 0.00s
+
+   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.06s
+     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-f2e656554c1e4b94)
+error: test failed, to rerun pass `--lib`

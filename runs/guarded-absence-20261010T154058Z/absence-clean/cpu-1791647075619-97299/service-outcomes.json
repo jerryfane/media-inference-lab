@@ -1,0 +1,148 @@
+[
+  {
+    "role": "studio",
+    "root": {
+      "pid": 97320,
+      "ppid": 97305,
+      "pgid": 97320,
+      "sid": 97320,
+      "uid": 501,
+      "start_seconds": 1791647076,
+      "start_subseconds": 282547,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/absence-clean",
+      "state": "running"
+    },
+    "gui": null,
+    "inhibited": false,
+    "restored": true,
+    "failure": null,
+    "evidence": [
+      "owned backend settled and reaped; group absent",
+      "owned replacement launch PID 97320",
+      "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence"
+    ],
+    "launch_record": {
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "args": [
+        "maintenance-participant",
+        "--mode",
+        "service",
+        "--duration-ms",
+        "30000"
+      ],
+      "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/absence-clean",
+      "environment": {}
+    },
+    "actors": [
+      {
+        "kind": "CPU fixture disposal",
+        "pid": 97320,
+        "identity": {
+          "pid": 97320,
+          "ppid": 97305,
+          "pgid": 97320,
+          "sid": 97320,
+          "uid": 501,
+          "start_seconds": 1791647076,
+          "start_subseconds": 282547,
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/absence-clean",
+          "state": "running"
+        },
+        "intermediate_pid": null,
+        "intermediate_identity": null,
+        "intermediate_reaped": true,
+        "intermediate_status": null,
+        "launch_record": {
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "args": [
+            "maintenance-participant",
+            "--mode",
+            "service",
+            "--duration-ms",
+            "30000"
+          ],
+          "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/absence-clean",
+          "environment": {}
+        },
+        "settlement": {
+          "complete": true,
+          "leader_reaped": true,
+          "group_absent": true,
+          "group_signalled": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null
+        },
+        "complete": true,
+        "known_absent": true,
+        "failure": null,
+        "descendant_uncertainty": null
+      }
+    ],
+    "absence": null
+  },
+  {
+    "role": "omlx",
+    "root": null,
+    "gui": null,
+    "inhibited": false,
+    "restored": false,
+    "failure": null,
+    "evidence": [],
+    "launch_record": null,
+    "actors": [
+      {
+        "kind": "CPU fixture disposal",
+        "pid": 97320,
+        "identity": {
+          "pid": 97320,
+          "ppid": 97305,
+          "pgid": 97320,
+          "sid": 97320,
+          "uid": 501,
+          "start_seconds": 1791647076,
+          "start_subseconds": 282547,
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/absence-clean",
+          "state": "running"
+        },
+        "intermediate_pid": null,
+        "intermediate_identity": null,
+        "intermediate_reaped": true,
+        "intermediate_status": null,
+        "launch_record": {
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "args": [
+            "maintenance-participant",
+            "--mode",
+            "service",
+            "--duration-ms",
+            "30000"
+          ],
+          "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/absence-clean",
+          "environment": {}
+        },
+        "settlement": {
+          "complete": true,
+          "leader_reaped": true,
+          "group_absent": true,
+          "group_signalled": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null
+        },
+        "complete": true,
+        "known_absent": true,
+        "failure": null,
+        "descendant_uncertainty": null
+      }
+    ],
+    "absence": {
+      "state": "absent",
+      "private_qualification": "not_applicable",
+      "scope": "bounded named absence only; non-atomic, not whole-host idle"
+    }
+  }
+]

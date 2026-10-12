@@ -1,0 +1,10 @@
+
+running 1 test
+test service_lifecycle::tests::detached_fork_uncertainty_blocks_complete_accounting ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.18s
+
+detached fork probe: result=Err(detached pid 71403 intermediate 71402 cleanup complete=false: Ok(())
+
+Caused by:
+    detached launcher fork observed; arbitrary escaped-descendant absence remains unqualified), accounting=[ActorDisposition { kind: "detached launch", pid: 71403, identity: Some(ProcessIdentity { pid: 71403, ppid: 71402, pgid: 71403, sid: 71403, uid: 501, start_seconds: 1791556189, start_subseconds: 554748, executable: "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-f2e656554c1e4b94", cwd: "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpLm9Coj", state: Running }), intermediate_pid: Some(71402), intermediate_identity: Some(ProcessIdentity { pid: 71402, ppid: 71401, pgid: 66229, sid: 66229, uid: 501, start_seconds: 1791556189, start_subseconds: 553862, executable: "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-f2e656554c1e4b94", cwd: "/Users/jerry/Desktop/repos/media-inference-lab", state: Running }), intermediate_reaped: true, intermediate_status: Some(0), launch_record: CommandSpec { executable: "/bin/sh", args: ["-c", "/bin/sleep 1 & exec /bin/sleep 2"], cwd: "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpLm9Coj", environment: {} }, settlement: None, complete: false, known_absent: true, failure: Some("detached launcher fork observed; arbitrary escaped-descendant absence remains unqualified; cleanup: Ok(()); descendant uncertainty: Some(\"detached launcher fork observed; arbitrary escaped-descendant absence remains unqualified\")"), descendant_uncertainty: Some("detached launcher fork observed; arbitrary escaped-descendant absence remains unqualified") }]

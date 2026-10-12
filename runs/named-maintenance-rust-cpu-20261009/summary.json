@@ -1,0 +1,428 @@
+{
+  "schema_version": 1,
+  "kind": "rust_named_maintenance_cpu_evidence",
+  "branch": "feat/named-maintenance-integration",
+  "archive_root": "/Users/jerry/Desktop/repos/media-inference-lab/runs/named-maintenance-rust-cpu-20261009",
+  "original_private_root": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+  "final_binary_sha256": "90ff521cf31ebbaf2de47840a220f958e1e7086aed28d4ed6eff4ac522aba481",
+  "checks": [
+    {
+      "command": "cargo check --all-targets",
+      "result": "passed after fixing two Darwin extern-C function pointer closures"
+    },
+    {
+      "command": "cargo test --lib --test guards --test guard_capture --test maintenance_authorization",
+      "result": "39 passed across 4 suites"
+    },
+    {
+      "command": "cargo test --all-targets",
+      "result": "188 passed across 21 suites",
+      "raw_output": "cargo-test-all-targets.log"
+    },
+    {
+      "command": "cargo clippy --all-targets -- -D warnings",
+      "result": "passed after the retained initial nine lint diagnostics were corrected; no warning suppressions",
+      "initial_output": "cargo-clippy-initial.log"
+    },
+    {
+      "command": "cargo build --bin mil",
+      "result": "passed; final binary exercised by normal-final-binary and native-default-denial.json"
+    }
+  ],
+  "cases": [
+    {
+      "case": "normal-before-race-fix",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "normal"
+      ],
+      "receipt": "cpu-1791550938056-70244/receipt.json",
+      "success": false,
+      "restored": false,
+      "creation_attempted": false,
+      "settlement": null,
+      "experiment_failure": "CPU stop incomplete: Settlement { complete: false, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: Some(\"group settlement observation failed: reading targeted process session: No such process (os error 3)\") }",
+      "recovery_failure": "restore requires inhibition; failure is sticky and no retry is permitted"
+    },
+    {
+      "case": "normal-after-race-fix",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "normal"
+      ],
+      "receipt": "cpu-1791551312563-85768/receipt.json",
+      "success": true,
+      "restored": true,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": true,
+        "exit_code": 0,
+        "exit_signal": null,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": false,
+        "leader_reaped": true
+      },
+      "experiment_failure": null,
+      "recovery_failure": null
+    },
+    {
+      "case": "retained",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "retained"
+      ],
+      "receipt": "cpu-1791551359314-87746/receipt.json",
+      "success": false,
+      "restored": false,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": false,
+        "exit_code": null,
+        "exit_signal": 15,
+        "failure": "fork observed; Darwin cannot atomically enroll arbitrary descendants; escaped-descendant absence remains unqualified even after known-group cleanup; descendant observed; complete fork/escape enrollment cannot be established",
+        "group_absent": true,
+        "group_signalled": true,
+        "leader_reaped": true
+      },
+      "experiment_failure": "fork observed; Darwin cannot atomically enroll arbitrary descendants; escaped-descendant absence remains unqualified even after known-group cleanup; descendant observed; complete fork/escape enrollment cannot be established",
+      "recovery_failure": "experiment settlement unproved: all restoration withheld"
+    },
+    {
+      "case": "escaped-before-marker",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "escaped"
+      ],
+      "receipt": "cpu-1791551362170-87887/receipt.json",
+      "success": false,
+      "restored": false,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": false,
+        "exit_code": null,
+        "exit_signal": 15,
+        "failure": "fork observed; Darwin cannot atomically enroll arbitrary descendants; escaped-descendant absence remains unqualified even after known-group cleanup; descendant observed; complete fork/escape enrollment cannot be established",
+        "group_absent": true,
+        "group_signalled": true,
+        "leader_reaped": true
+      },
+      "experiment_failure": "fork observed; Darwin cannot atomically enroll arbitrary descendants; escaped-descendant absence remains unqualified even after known-group cleanup; descendant observed; complete fork/escape enrollment cannot be established",
+      "recovery_failure": "experiment settlement unproved: all restoration withheld"
+    },
+    {
+      "case": "deadline",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "deadline"
+      ],
+      "receipt": "cpu-1791551367264-88074/receipt.json",
+      "success": false,
+      "restored": true,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": true,
+        "exit_code": null,
+        "exit_signal": 15,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": true,
+        "leader_reaped": true
+      },
+      "experiment_failure": "experiment phase deadline expired",
+      "recovery_failure": null
+    },
+    {
+      "case": "cleanup-deadline",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "cleanup-deadline"
+      ],
+      "receipt": "cpu-1791551371001-88236/receipt.json",
+      "success": false,
+      "restored": false,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": false,
+        "exit_code": null,
+        "exit_signal": null,
+        "failure": "settlement control denied: guardian process deadline reached",
+        "group_absent": false,
+        "group_signalled": true,
+        "leader_reaped": false
+      },
+      "experiment_failure": "experiment phase deadline expired",
+      "recovery_failure": "experiment settlement unproved: all restoration withheld"
+    },
+    {
+      "case": "restore-failure-before-detail",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "restore-failure"
+      ],
+      "receipt": "cpu-1791551376183-88427/receipt.json",
+      "success": false,
+      "restored": false,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": true,
+        "exit_code": 0,
+        "exit_signal": null,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": false,
+        "leader_reaped": true
+      },
+      "experiment_failure": null,
+      "recovery_failure": "full zombie executable/cwd/session identity unavailable"
+    },
+    {
+      "case": "escaped-with-setsid-proof",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "escaped"
+      ],
+      "receipt": "cpu-1791552028574-15122/receipt.json",
+      "success": false,
+      "restored": false,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": false,
+        "exit_code": null,
+        "exit_signal": 15,
+        "failure": "fork observed; Darwin cannot atomically enroll arbitrary descendants; escaped-descendant absence remains unqualified even after known-group cleanup; descendant observed; complete fork/escape enrollment cannot be established",
+        "group_absent": true,
+        "group_signalled": true,
+        "leader_reaped": true
+      },
+      "experiment_failure": "fork observed; Darwin cannot atomically enroll arbitrary descendants; escaped-descendant absence remains unqualified even after known-group cleanup; descendant observed; complete fork/escape enrollment cannot be established",
+      "recovery_failure": "experiment settlement unproved: all restoration withheld"
+    },
+    {
+      "case": "restore-failure-with-exit-proof",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "restore-failure"
+      ],
+      "receipt": "cpu-1791552033550-15352/receipt.json",
+      "success": false,
+      "restored": false,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": true,
+        "exit_code": 0,
+        "exit_signal": null,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": false,
+        "leader_reaped": true
+      },
+      "experiment_failure": null,
+      "recovery_failure": "full zombie executable/cwd/session identity unavailable"
+    },
+    {
+      "case": "controller-loss",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "controller-loss"
+      ],
+      "receipt": "cpu-1791552131260-19034/receipt.json",
+      "success": false,
+      "restored": true,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": true,
+        "exit_code": null,
+        "exit_signal": 15,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": true,
+        "leader_reaped": true
+      },
+      "experiment_failure": "controller authority revoked: controller EOF",
+      "recovery_failure": null,
+      "driver_action": "After experiment_created, SIGKILL the owned controller through its retained subprocess handle; observed controller exit -9 and guardian controller EOF."
+    },
+    {
+      "case": "stale",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "stale"
+      ],
+      "receipt": "cpu-1791552134913-19236/receipt.json",
+      "success": false,
+      "restored": true,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": true,
+        "exit_code": null,
+        "exit_signal": 15,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": true,
+        "leader_reaped": true
+      },
+      "experiment_failure": "guardian authority stale after observation/suspend gap",
+      "recovery_failure": null,
+      "driver_action": "After experiment_created, SIGSTOP only the newly owned guardian, wait 1.35 seconds, SIGCONT it; observed stale authority revocation."
+    },
+    {
+      "case": "contention-owner-normal-exit",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "controller-loss"
+      ],
+      "receipt": "cpu-1791552139968-19428/receipt.json",
+      "success": true,
+      "restored": true,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": true,
+        "exit_code": 0,
+        "exit_signal": null,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": false,
+        "leader_reaped": true
+      },
+      "experiment_failure": null,
+      "recovery_failure": null,
+      "driver_action": "Start a second real transaction against the same PRIVATE temporary lease while the first owned experiment is running. Denied contender retains a failure receipt, empty service outcomes and empty journal. First owner completed normally."
+    },
+    {
+      "case": "contention-denied",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "normal"
+      ],
+      "receipt": "cpu-1791552142745-19549/receipt.json",
+      "success": false,
+      "restored": false,
+      "creation_attempted": false,
+      "settlement": null,
+      "experiment_failure": "GPU lease unavailable (another owner may be active): Resource temporarily unavailable (os error 35)",
+      "recovery_failure": null,
+      "driver_action": "Start a second real transaction against the same PRIVATE temporary lease while the first owned experiment is running. Denied contender retains a failure receipt, empty service outcomes and empty journal. First owner completed normally."
+    },
+    {
+      "case": "normal-after-loss-and-contention",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "normal"
+      ],
+      "receipt": "cpu-1791552192437-21424/receipt.json",
+      "success": true,
+      "restored": true,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": true,
+        "exit_code": 0,
+        "exit_signal": null,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": false,
+        "leader_reaped": true
+      },
+      "experiment_failure": null,
+      "recovery_failure": null
+    },
+    {
+      "case": "normal-final-binary",
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "maintenance-cpu",
+        "--root",
+        "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+        "--scenario",
+        "normal"
+      ],
+      "receipt": "cpu-1791552781986-44458/receipt.json",
+      "success": true,
+      "restored": true,
+      "creation_attempted": true,
+      "settlement": {
+        "complete": true,
+        "exit_code": 0,
+        "exit_signal": null,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": false,
+        "leader_reaped": true
+      },
+      "experiment_failure": null,
+      "recovery_failure": null
+    }
+  ],
+  "native_default_denial": "native-default-denial.json",
+  "limitations": [
+    "CPU lifecycle proof only; no native imports, MLX/MFLUX model allocation, generation, benchmark or native restoration acceptance.",
+    "No shared GPU lease, live service probes/control, launchd fixtures, application config/credential/environment collection or selected-runtime preparation rerun.",
+    "X2/X3 remain unapproved and uninvoked. Mandatory G1/G2/G3 remain pre-stop gates. Restore stdio is /dev/null; console diagnostics unavailable; no output retention gate.",
+    "Native activation requires fresh binary/adapter/sandbox/workload preparation, exact transaction and per-operation approvals, and mac-studio scheduling. Prior grants/preparations are not reusable.",
+    "Any observed fork leaves escaped-descendant absence unqualified; known-group cleanup does not authorize restoration. Named scope is not whole-host GPU or aggregate queue authority.",
+    "Historical run binaries differ; each transaction retains its own actual guardian SHA-256. source-sha256.json identifies final source, not the earlier failing binaries."
+  ],
+  "observed_corrections": [
+    "Initial actual normal run exposed a getsid ESRCH race as a process became a zombie. Birth/group metadata now supports dying owned roots and external bound absence without pretending full zombie identity is available; the initial failed receipt remains intact.",
+    "The initial contention harness incorrectly assumed no receipt on denied lease acquisition. Actual retained denial receipt, empty journal and empty service outcomes were inspected; no program failure was suppressed or rerun to confirm.",
+    "The default-denial harness initially treated structured errors as strings. Only the assertion was corrected; the original CLI operation was not rerun.",
+    "Earlier contention receipt says GPU lease in the generic error text, but records the private temporary CPU path. Final source uses cooperating lease wording."
+  ],
+  "recovery_policy": "Sticky failure remains failure after successful recovery; uncertain experiment settlement withholds restoration; failed oMLX replacement leaves GUI stopped and prevents Studio restore. CPU fixtures are then separately disposed."
+}

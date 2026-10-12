@@ -1,12 +1,20 @@
-//! Native execution prerequisites. These observations do not issue manager grants.
-use crate::guards::{GuardDecision, Observation};
-use anyhow::{Result, ensure};
+//! Named-scope admission is observed by the guardian; explicitly unmanaged oMLX remains unverified.
+use crate::{
+    guards::GuardDecision,
+    service_lifecycle::{
+        RecoveryBudget, RecoveryControl, ServiceHandle, ServiceObservation, ServiceRole,
+    },
+};
+use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
 
 pub const SANDBOX_EXECUTABLE: &str = "/usr/bin/sandbox-exec";
-pub const SANDBOX_PROFILE: &str = "(version 1)(allow default)(deny network*)(deny file-write* (require-not (subpath (param \"MIL_RUN\"))))";
-/// Supervisor-owned environment, shared with the exact prepared command identity.
+pub const SANDBOX_PROFILE: &str = "(version 1)(allow default)(deny network*)(deny process-fork)(deny file-write* (require-not (subpath (param \"MIL_RUN\"))))";
 pub const OFFLINE_ENVIRONMENT: [(&str, &str); 6] = [
     ("HF_HUB_OFFLINE", "1"),
     ("TRANSFORMERS_OFFLINE", "1"),
@@ -15,211 +23,272 @@ pub const OFFLINE_ENVIRONMENT: [(&str, &str); 6] = [
     ("TOKENIZERS_PARALLELISM", "false"),
     ("LC_ALL", "C"),
 ];
-pub const LIVE_QUEUE_UNAVAILABLE: &str = "No authoritative aggregate live queue integration exists: health and per-known-job lookup cannot establish absence of queued or in-process jobs.";
-pub const UNRELATED_GPU_UNAVAILABLE: &str = "No global unrelated-GPU freshness, ownership, and continuous readiness integration exists; process and memory observations cannot substitute.";
-pub const MAX_READINESS_AGE_MS: u64 = 1000;
+pub const MAX_AUTHORITY_GAP: Duration = Duration::from_millis(1000);
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ScopePurpose {
+    Cpu,
+    Native,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct NativeGuardConfig {
+pub struct NativeBinding {
     pub invocation_sha256: String,
-    /// Unauthenticated external provenance only, never an authorization override.
-    pub manager_grant_reference: Option<String>,
+    pub transaction_sha256: String,
+    pub guardian_pid: u32,
+    pub omlx_unmanaged: Option<crate::service_lifecycle::UnmanagedAcknowledgement>,
 }
-impl NativeGuardConfig {
-    pub fn validate(&self) -> Result<()> {
+
+/// This clock is created and consumed only inside one guardian. Child timestamps
+/// are evidence, never deadlines or leases. Long scheduling gaps (including sleep)
+/// and wall-clock discontinuities revoke authority rather than extending a window.
+pub(crate) struct GuardianClock {
+    started: Instant,
+    last: Instant,
+    wall: SystemTime,
+    recovery_wall: SystemTime,
+    deadline: Instant,
+    revoked: Option<String>,
+}
+impl GuardianClock {
+    pub(crate) fn new(total: Duration) -> Result<Self> {
         ensure!(
-            self.invocation_sha256.len() == 64
-                && self
-                    .invocation_sha256
-                    .bytes()
-                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)),
-            "native invocation SHA-256 must be 64 lowercase hexadecimal characters"
+            !total.is_zero() && total <= Duration::from_secs(1800),
+            "invalid guardian ceiling"
         );
-        if let Some(reference) = &self.manager_grant_reference {
-            ensure!(
-                !reference.trim().is_empty()
-                    && reference.len() <= 4096
-                    && !reference.chars().any(char::is_control),
-                "manager reference must be nonempty bounded provenance without control characters"
-            );
+        let now = Instant::now();
+        Ok(Self {
+            started: now,
+            last: now,
+            wall: SystemTime::now(),
+            recovery_wall: SystemTime::now(),
+            deadline: now + total,
+            revoked: None,
+        })
+    }
+    pub(crate) fn check(&mut self) -> Result<()> {
+        if let Some(reason) = &self.revoked {
+            anyhow::bail!("authority revoked: {reason}");
         }
+        let now = Instant::now();
+        let wall = SystemTime::now();
+        let steady_delta = now.duration_since(self.last);
+        let wall_delta = wall.duration_since(self.wall);
+        let reason = if now >= self.deadline {
+            Some("guardian automation ceiling expired")
+        } else if wall_delta.is_err() {
+            Some("guardian wall clock regressed")
+        } else if steady_delta > MAX_AUTHORITY_GAP
+            || wall_delta
+                .as_ref()
+                .is_ok_and(|delta| *delta > MAX_AUTHORITY_GAP)
+        {
+            Some("guardian authority stale after observation/suspend gap")
+        } else if wall_delta
+            .as_ref()
+            .is_ok_and(|delta| delta.abs_diff(steady_delta) > Duration::from_millis(250))
+        {
+            Some("guardian clock domains diverged")
+        } else {
+            None
+        };
+        self.last = now;
+        self.wall = wall;
+        if let Some(reason) = reason {
+            self.revoked = Some(reason.into());
+            anyhow::bail!("{reason}");
+        }
+        Ok(())
+    }
+    pub(crate) fn elapsed_ms(&self) -> u64 {
+        self.started.elapsed().as_millis().min(u64::MAX as u128) as u64
+    }
+    pub(crate) fn phase_deadline(&self, budget: Duration) -> Instant {
+        (Instant::now() + budget).min(self.deadline)
+    }
+    pub(crate) fn hard_deadline(&self) -> Instant {
+        self.deadline
+    }
+    pub(crate) fn recovery_check(&mut self) -> Result<()> {
+        ensure!(
+            self.revoked.as_deref() != Some("guardian wall clock regressed")
+                && self.revoked.as_deref() != Some("guardian clock domains diverged"),
+            "clock discontinuity requires manual recovery"
+        );
+        let wall = SystemTime::now();
+        ensure!(
+            wall.duration_since(self.recovery_wall).is_ok(),
+            "recovery wall clock regressed"
+        );
+        self.recovery_wall = wall;
+        ensure!(
+            Instant::now() < self.deadline,
+            "guardian automation ceiling expired"
+        );
         Ok(())
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct LiveQueueReadiness {
-    pub source: String,
-    pub observed_unix_ms: u64,
-    pub valid_until_unix_ms: u64,
-    pub queued_jobs: u64,
-    pub active_jobs: u64,
+pub fn unix_ms() -> Result<u64> {
+    Ok(SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .context("wall clock precedes epoch")?
+        .as_millis()
+        .try_into()?)
 }
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct UnrelatedGpuReadiness {
-    pub source: String,
-    pub observed_unix_ms: u64,
-    pub valid_until_unix_ms: u64,
-    pub unrelated_gpu_owners: Vec<String>,
-}
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct NativeReadiness {
-    pub epoch_ms: u64,
-    pub live_queue: Observation<LiveQueueReadiness>,
-    pub unrelated_gpu: Observation<UnrelatedGpuReadiness>,
+pub fn valid_hash(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
-/// Production collection is deliberately unavailable. There is no file, environment,
-/// callback, command-line flag, historical CPU sample or manager-reference override.
-pub fn readiness() -> NativeReadiness {
-    NativeReadiness {
-        epoch_ms: SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|duration| duration.as_millis().min(u64::MAX as u128) as u64)
-            .unwrap_or(0),
-        live_queue: Observation::Unavailable {
-            reason: LIVE_QUEUE_UNAVAILABLE.into(),
-        },
-        unrelated_gpu: Observation::Unavailable {
-            reason: UNRELATED_GPU_UNAVAILABLE.into(),
-        },
-    }
-}
-
-fn freshness(
-    source: &str,
-    observed: u64,
-    expires: u64,
-    now: u64,
-    name: &str,
-    reasons: &mut Vec<String>,
-) {
-    if source.trim().is_empty()
-        || observed == 0
-        || observed > now
-        || expires <= now
-        || expires <= observed
-        || expires.saturating_sub(observed) > MAX_READINESS_AGE_MS
-        || now.saturating_sub(observed) > MAX_READINESS_AGE_MS
-    {
-        reasons.push(format!("{name} lacks a fresh bounded source observation"));
-    }
-}
-
-/// Pure evidence evaluation, not a producer of readiness or an authorization API.
-/// Native capture always obtains its own production observations.
-pub fn evaluate(config: &NativeGuardConfig, reading: &NativeReadiness) -> GuardDecision {
-    let mut reasons = Vec::new();
-    if let Err(error) = config.validate() {
-        reasons.push(error.to_string());
-    }
-    match &reading.live_queue {
-        Observation::Unavailable { reason } => {
-            reasons.push(format!("authoritative live_queue unavailable: {reason}"))
-        }
-        Observation::Available { value } => {
-            freshness(
-                &value.source,
-                value.observed_unix_ms,
-                value.valid_until_unix_ms,
-                reading.epoch_ms,
-                "authoritative live_queue",
-                &mut reasons,
-            );
-            if value.queued_jobs != 0 || value.active_jobs != 0 {
-                reasons.push("authoritative live_queue contains queued or active jobs".into());
-            }
-        }
-    }
-    match &reading.unrelated_gpu {
-        Observation::Unavailable { reason } => {
-            reasons.push(format!("unrelated_gpu unavailable: {reason}"))
-        }
-        Observation::Available { value } => {
-            freshness(
-                &value.source,
-                value.observed_unix_ms,
-                value.valid_until_unix_ms,
-                reading.epoch_ms,
-                "unrelated_gpu",
-                &mut reasons,
-            );
-            if !value.unrelated_gpu_owners.is_empty() {
-                reasons.push("unrelated_gpu owners are present".into());
-            }
-        }
-    }
-    GuardDecision {
-        allowed: reasons.is_empty(),
-        reasons,
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct NativeGuardReading {
-    pub readiness: NativeReadiness,
+pub struct NamedScopeReading {
+    pub guardian_elapsed_ms: u64,
+    pub transaction_sha256: String,
+    pub services: Vec<ServiceObservation>,
     pub decision: GuardDecision,
+    pub authority_scope: String,
 }
-impl NativeGuardReading {
-    pub(crate) fn collect(config: &NativeGuardConfig) -> Self {
-        let readiness = readiness();
-        let decision = evaluate(config, &readiness);
-        Self {
-            readiness,
-            decision,
-        }
-    }
-    pub fn validate(&self, config: &NativeGuardConfig) -> Result<()> {
+
+/// No Deserialize or public constructor. Only the transaction owner can mint this
+/// after authorization and applicable live inhibition. Persisted readings cannot grant it.
+pub(crate) struct ScopeAuthority {
+    transaction_sha256: String,
+    revoked: Option<String>,
+}
+impl ScopeAuthority {
+    pub(crate) fn new(transaction_sha256: String) -> Result<Self> {
         ensure!(
-            self.decision == evaluate(config, &self.readiness),
-            "native decision contradicts required observations"
+            valid_hash(&transaction_sha256),
+            "invalid transaction identity"
         );
-        Ok(())
+        Ok(Self {
+            transaction_sha256,
+            revoked: None,
+        })
+    }
+    pub(crate) fn collect(
+        &mut self,
+        services: &mut [ServiceHandle],
+        clock: &mut GuardianClock,
+        wall_ceiling: SystemTime,
+        recovery_budget: Rc<RefCell<RecoveryBudget>>,
+    ) -> NamedScopeReading {
+        let clock = RefCell::new(clock);
+        let mut reasons = Vec::new();
+        if let Err(error) = clock.borrow_mut().check() {
+            reasons.push(error.to_string());
+        }
+        if let Some(reason) = &self.revoked {
+            reasons.push(reason.clone());
+        }
+        let mut observations = Vec::with_capacity(services.len());
+        let mut unmanaged_omlx = false;
+        for service in services {
+            let explicit_unmanaged = service.is_unmanaged_scope();
+            unmanaged_omlx |= explicit_unmanaged;
+            let deadline = clock.borrow().phase_deadline(Duration::from_millis(500));
+            let mut active = || {
+                ensure!(
+                    SystemTime::now() < wall_ceiling,
+                    "authorization wall ceiling expired"
+                );
+                clock.borrow_mut().check()
+            };
+            let mut recovery_tick = || {
+                ensure!(
+                    SystemTime::now() < wall_ceiling,
+                    "authorization wall ceiling expired"
+                );
+                clock.borrow_mut().recovery_check()
+            };
+            let mut recovery =
+                RecoveryControl::deferred(Rc::clone(&recovery_budget), &mut recovery_tick);
+            match service.observe_inhibited(deadline, &mut active, &mut recovery) {
+                Ok(observation) => {
+                    let admitted_absence = observation.absence.as_ref().is_some_and(|absence| {
+                        matches!(absence.state, crate::service_lifecycle::AbsenceState::Absent)
+                    });
+                    let admitted_unmanaged = explicit_unmanaged
+                        && observation.role == ServiceRole::Omlx
+                        && observation.unmanaged.is_some()
+                        && observation.root.is_none()
+                        && observation.gui.is_none()
+                        && observation.launch_record.is_none()
+                        && observation.actors.is_empty()
+                        && observation.absence.is_none()
+                        && !observation.inhibited
+                        && !observation.restored;
+                    if (!observation.inhibited && !admitted_absence && !admitted_unmanaged)
+                        || observation.failure.is_some()
+                    {
+                        reasons.push(format!("{:?} scope admission is unqualified", observation.role));
+                    }
+                    observations.push(observation);
+                }
+                Err(error) => {
+                    reasons.push(format!(
+                        "required service observation unavailable: {error:#}"
+                    ));
+                    observations.push(service.last_observation());
+                }
+            }
+        }
+        if observations.len() != 2
+            || observations[0].role != ServiceRole::Studio
+            || observations[1].role != ServiceRole::Omlx
+        {
+            reasons.push("named scope requires exactly Studio and oMLX, in enrolled order".into());
+        }
+        if let Err(error) = clock.borrow_mut().check() {
+            reasons.push(error.to_string());
+        }
+        if !reasons.is_empty() && self.revoked.is_none() {
+            self.revoked = Some(reasons.join("; "));
+        }
+        NamedScopeReading {
+            guardian_elapsed_ms: clock.borrow().elapsed_ms(), transaction_sha256: self.transaction_sha256.clone(), services: observations,
+            decision: GuardDecision { allowed: reasons.is_empty(), reasons },
+            authority_scope: if unmanaged_omlx {
+                "Enrolled Studio inhibition and guardian-owned experiment only; oMLX explicitly unmanaged and excluded from lifecycle authority, its state and GPU exclusivity unverified"
+            } else {
+                "Only enrolled Studio/oMLX admissions and the guardian-owned experiment; not whole-host GPU exclusion or arbitrary descendants"
+            }.into(),
+        }
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct NativeGuardReport {
-    pub config: NativeGuardConfig,
-    pub baseline: NativeGuardReading,
-    pub samples: Vec<NativeGuardReading>,
-}
-impl NativeGuardReport {
-    pub fn validate(&self) -> Result<()> {
-        self.config.validate()?;
-        self.baseline.validate(&self.config)?;
-        ensure!(
-            self.samples.len() <= crate::guards::MAX_SAMPLES,
-            "native guard history exceeds bound"
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn stale_authority_is_sticky_even_after_clock_recovery() {
+        let mut clock = GuardianClock::new(Duration::from_secs(60)).unwrap();
+        clock.check().unwrap();
+        clock.last -= Duration::from_secs(2);
+        clock.wall -= Duration::from_secs(2);
+        assert!(clock.check().is_err());
+        clock.last = Instant::now();
+        clock.wall = SystemTime::now();
+        assert!(
+            clock.check().is_err(),
+            "new readings cannot revive revoked transaction authority"
         );
-        ensure!(
-            self.baseline.decision.allowed || self.samples.is_empty(),
-            "native sampling continued after initial denial"
-        );
-        let mut previous = self.baseline.readiness.epoch_ms;
-        for (index, sample) in self.samples.iter().enumerate() {
-            sample.validate(&self.config)?;
-            ensure!(
-                sample.readiness.epoch_ms >= previous,
-                "native observation time regressed"
-            );
-            previous = sample.readiness.epoch_ms;
-            ensure!(
-                sample.decision.allowed || index + 1 == self.samples.len(),
-                "native sampling continued after denial"
-            );
-        }
-        Ok(())
     }
-}
-
-pub(crate) fn combine(decision: &mut GuardDecision, native: &GuardDecision) {
-    decision.allowed &= native.allowed;
-    decision.reasons.extend(native.reasons.iter().cloned());
+    #[test]
+    fn backwards_wall_clock_and_automation_ceiling_revoke() {
+        let mut clock = GuardianClock::new(Duration::from_secs(60)).unwrap();
+        clock.wall = SystemTime::now() + Duration::from_secs(1);
+        assert!(clock.check().is_err());
+        let mut clock = GuardianClock::new(Duration::from_secs(60)).unwrap();
+        let maximum = clock.hard_deadline();
+        assert_eq!(clock.phase_deadline(Duration::from_secs(120)), maximum);
+        clock.deadline = clock.started;
+        assert!(clock.check().is_err());
+    }
 }

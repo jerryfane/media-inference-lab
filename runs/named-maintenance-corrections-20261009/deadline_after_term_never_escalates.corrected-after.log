@@ -1,0 +1,10 @@
+
+running 1 test
+test service_lifecycle::tests::deadline_after_term_never_escalates ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.11s
+
+   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.05s
+     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-f2e656554c1e4b94)
+TERM deadline probe: result=Err(service deadline expired), exited_before_cleanup=false, cleanup=Ok(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(9), failure: None })

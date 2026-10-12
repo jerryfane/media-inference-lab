@@ -1,0 +1,23 @@
+{
+  "sign": {
+    "command": [
+      "/usr/bin/codesign",
+      "--force",
+      "--sign",
+      "-",
+      "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/before-absence-presence/absence-bin/startup-actor"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/before-absence-presence/absence-bin/startup-actor: replacing existing signature\n"
+  },
+  "after": {
+    "command": [
+      "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/before-absence-presence/absence-bin/startup-actor",
+      "0.01"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  }
+}

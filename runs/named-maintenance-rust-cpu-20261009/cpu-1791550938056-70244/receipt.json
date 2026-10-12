@@ -1,0 +1,30 @@
+{
+  "automation_ceiling_note": "Bounds automation, not a failed outage; GUI may remain paused for manual recovery",
+  "capture_directory": null,
+  "controller_identity": {
+    "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "pgid": 66229,
+    "pid": 70244,
+    "ppid": 66229,
+    "sid": 66229,
+    "start_seconds": 1791550937,
+    "start_subseconds": 306318,
+    "state": "running",
+    "uid": 501
+  },
+  "creation_attempted": false,
+  "elapsed_ms": 877,
+  "experiment_failure": "CPU stop incomplete: Settlement { complete: false, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: Some(\"group settlement observation failed: reading targeted process session: No such process (os error 3)\") }",
+  "guardian_pid": 70321,
+  "kind": "cpu_maintenance_transaction",
+  "lease_path": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r/.cpu-maintenance.lock",
+  "recovery_failure": "restore requires inhibition; failure is sticky and no retry is permitted",
+  "restored": false,
+  "schema_version": 1,
+  "scope": "Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee",
+  "settlement": null,
+  "success": false,
+  "transaction_id": "cpu-1791550938056-70244",
+  "transaction_sha256": "fcbf98d36496e3a02d653f4afdb5516ec7c9986890ca700eb6db9b1acd9d17cc"
+}

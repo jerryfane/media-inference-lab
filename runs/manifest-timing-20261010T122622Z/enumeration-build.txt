@@ -1,0 +1,11 @@
+   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+warning: unused import: `std::os::unix::ffi::OsStringExt`
+ --> examples/manifest_enumeration_before.rs:8:5
+  |
+8 | use std::os::unix::ffi::OsStringExt;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `media-inference-lab` (example "manifest_enumeration_before") generated 1 warning (run `cargo fix --example "manifest_enumeration_before" -p media-inference-lab` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.81s

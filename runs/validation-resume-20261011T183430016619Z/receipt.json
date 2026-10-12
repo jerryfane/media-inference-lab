@@ -1,0 +1,410 @@
+{
+  "schema_version": 1,
+  "kind": "offline_video_validation_implementation_evidence",
+  "recorded_at": "2026-10-11T18:46:47.697494+00:00",
+  "issues": [
+    11,
+    13,
+    15,
+    16
+  ],
+  "owner_decision": {
+    "recorded_at": "2026-10-11T18:34:30.016726+00:00",
+    "decision": "KEEP STUDIO OPEN",
+    "decision_is_current_not_pending_permission": true,
+    "studio_interrupt_restart_reconfigure_authorized": false,
+    "omlx_must_remain_running_unchanged": true,
+    "native_qwen": "pending: current mandatory lifecycle requires Studio bootout/bootstrap; not permitted",
+    "blanket_implementation_pause_lifted": true,
+    "authorized_reachable_work": "Independent image/video implementation, read-only preparation and CPU full-stream validation",
+    "no_bypass_old_grants_gpu_lease_or_heavy_run": true,
+    "repeat_unchanged_interruption_question": false,
+    "flashnext_benchmark": "finished; hold released; do not rerun",
+    "windows_powerpoint_owner": "powerpoint-vm OMP seat",
+    "resource_coordinator": "mac-studio",
+    "credential_handoff_agent_contact": false,
+    "current_work": "Offline H3-compatible MP4 full video/audio inspection under #16; real-model acceptance remains open"
+  },
+  "qwen_first_run": "Pending under current mandatory Studio bootout/bootstrap lifecycle; owner explicitly chose KEEP STUDIO OPEN. No unchanged interruption question remains pending or will be repeated.",
+  "native_qwen_executed": false,
+  "native_h3_executed": false,
+  "model_speedup_demonstrated": false,
+  "private_evidence_root": "/Users/jerry/.local/share/media-inference-lab/validation-resume-20261011T183430016619Z",
+  "implementation": {
+    "files": [
+      "src/video_inspection.rs",
+      "src/main.rs",
+      "src/lib.rs",
+      "tests/video_inspection.rs",
+      "README.md"
+    ],
+    "sha256": {
+      "src/video_inspection.rs": "194c910df632633ac280ed8246d9267c13d4f6dca24703bb94e2c88508788fd0",
+      "src/main.rs": "b484a1a46399da3d848dad553fee48fc875da9f3badd71cf12be5af8f7a2bd55",
+      "src/lib.rs": "ec54b9087e26f6120636d19bf61c67f96e6bbd7c8dd53be2f598de6c118b3c79",
+      "tests/video_inspection.rs": "834ad9683ed2c328c66d5b4a2adbd887604b281734dd1d828abfc6f2b21abbd7",
+      "README.md": "7cd1de32f28187d0e771a213cbc5e5e9a489c60004a6f553dc5d9581d091374e"
+    },
+    "cli": "inspect-video",
+    "report_schema": 1,
+    "new_cli_path": "/Users/jerry/.local/share/media-inference-lab/validation-resume-20261011T183430016619Z/target/debug/mil",
+    "new_cli_sha256": "714738fc7c0b5a3f9c5746d2950c038b7c60fd8d14e0429c01ece301c9e9f499",
+    "approved_candidate_binary_preserved": true,
+    "new_dependencies": false
+  },
+  "verification": {
+    "format_command": [
+      "rustfmt",
+      "--edition",
+      "2024",
+      "--config",
+      "skip_children=true",
+      "src/video_inspection.rs",
+      "tests/video_inspection.rs"
+    ],
+    "focused_check": {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "--target-dir",
+        "/Users/jerry/.local/share/media-inference-lab/validation-resume-20261011T183430016619Z/target",
+        "--test",
+        "video_inspection",
+        "--",
+        "--include-ignored",
+        "--test-threads=1"
+      ],
+      "tool_paths": {
+        "MIL_FFMPEG": "/Users/jerry/.local/share/minimax-h3/bin/ffmpeg",
+        "MIL_FFPROBE": "/Users/jerry/.local/share/minimax-h3/bin/ffprobe"
+      },
+      "build_jobs": 2,
+      "exit_code": 0,
+      "elapsed_seconds": 24.512000749993604,
+      "stdout": "\nrunning 3 tests\ntest existing_output_is_never_overwritten_even_without_media_tools ... ok\ntest invalid_requests_are_reported_before_source_or_media_tool_access ... ok\ntest real_mp4_full_decode_evidence_and_invalid_media_cases ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.85s\n\n",
+      "stderr": "   Compiling libc v0.2.190\n   Compiling proc-macro2 v1.0.107\n   Compiling cfg-if v1.0.5\n   Compiling unicode-ident v1.0.26\n   Compiling version_check v0.9.5\n   Compiling quote v1.0.47\n   Compiling generic-array v0.14.7\n   Compiling simd-adler32 v0.3.10\n   Compiling typenum v1.20.1\n   Compiling syn v3.0.6\n   Compiling errno v0.3.14\n   Compiling bitflags v2.13.2\n   Compiling serde_core v1.0.229\n   Compiling utf8parse v0.2.2\n   Compiling adler2 v2.0.1\n   Compiling crc32fast v1.5.2\n   Compiling anstyle-parse v1.0.0\n   Compiling is_terminal_polyfill v1.70.2\n   Compiling zmij v1.0.23\n   Compiling anstyle-query v1.1.5\n   Compiling anstyle v1.0.14\n   Compiling colorchoice v1.0.5\n   Compiling anstream v1.0.0\n   Compiling miniz_oxide v0.9.1\n   Compiling crypto-common v0.1.7\n   Compiling block-buffer v0.10.4\n   Compiling heck v0.5.0\n   Compiling memchr v2.8.3\n   Compiling signal-hook v0.3.18\n   Compiling serde v1.0.229\n   Compiling serde_json v1.0.151\n   Compiling strsim v0.11.1\n   Compiling anyhow v1.0.104\n   Compiling clap_lex v1.1.1\n   Compiling clap_builder v4.6.7\n   Compiling clap_derive v4.6.7\n   Compiling digest v0.10.7\n   Compiling flate2 v1.1.10\n   Compiling serde_derive v1.0.229\n   Compiling miniz_oxide v0.8.9\n   Compiling signal-hook-registry v1.4.8\n   Compiling fdeflate v0.3.7\n   Compiling cpufeatures v0.2.17\n   Compiling tinyvec v1.13.3\n   Compiling getrandom v0.4.3\n   Compiling rustix v1.1.5\n   Compiling itoa v1.0.18\n   Compiling parking_lot_core v0.9.12\n   Compiling unicode-normalization v0.1.25\n   Compiling sha2 v0.10.9\n   Compiling png v0.18.1\n   Compiling clap v4.6.7\n   Compiling smallvec v1.16.2\n   Compiling scopeguard v1.2.0\n   Compiling pulldown-cmark v0.13.4\n   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n   Compiling lock_api v0.4.14\n   Compiling once_cell v1.21.4\n   Compiling unicase v2.10.0\n   Compiling fastrand v2.5.0\n   Compiling tempfile v3.27.0\n   Compiling parking_lot v0.12.5\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 15.31s\n     Running tests/video_inspection.rs (/Users/jerry/.local/share/media-inference-lab/validation-resume-20261011T183430016619Z/target/debug/deps/video_inspection-c795f42bae8c7ace)\n",
+      "scope": "new offline CPU video validator only; no accepted native/static/lifecycle checks repeated",
+      "protected_bindings_before": {
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1",
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib": "b8a8dded1c3ffe4931559c41a993bc2f469a0283d816d4b8b28d6f5ac9369dd3",
+        "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/fresh-preparation/transaction.candidate.json": "13cb9ce5283f7a3150b76624bedec5207ff412cd7b4aef54ed1dc0fa59531524"
+      }
+    },
+    "actual_cli_smoke_commands": [
+      {
+        "kind": "generate_finite_cpu_codec_fixture",
+        "command": [
+          "/Users/jerry/.local/share/minimax-h3/bin/ffmpeg",
+          "-nostdin",
+          "-hide_banner",
+          "-v",
+          "error",
+          "-nostats",
+          "-n",
+          "-threads",
+          "1",
+          "-filter_threads",
+          "1",
+          "-filter_complex_threads",
+          "1",
+          "-f",
+          "lavfi",
+          "-i",
+          "testsrc2=size=64x48:rate=24:duration=2.333333333",
+          "-f",
+          "lavfi",
+          "-i",
+          "sine=frequency=440:sample_rate=32000:duration=2.333333333",
+          "-map",
+          "0:v:0",
+          "-map",
+          "1:a:0",
+          "-frames:v",
+          "56",
+          "-c:v",
+          "mpeg4",
+          "-q:v",
+          "2",
+          "-pix_fmt",
+          "yuv420p",
+          "-threads",
+          "1",
+          "-c:a",
+          "aac",
+          "-ac",
+          "2",
+          "-b:a",
+          "64k",
+          "-t",
+          "2.333333333",
+          "-movflags",
+          "+faststart",
+          "/Users/jerry/.local/share/media-inference-lab/validation-resume-20261011T183430016619Z/smoke/fixture.mp4"
+        ],
+        "exit_code": 0,
+        "wall_seconds": 0.043930833009653725,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "kind": "actual_inspect_video_cli",
+        "command": [
+          "/Users/jerry/.local/share/media-inference-lab/validation-resume-20261011T183430016619Z/target/debug/mil",
+          "inspect-video",
+          "--workload",
+          "/Users/jerry/.local/share/media-inference-lab/validation-resume-20261011T183430016619Z/smoke/workload.json",
+          "--video",
+          "/Users/jerry/.local/share/media-inference-lab/validation-resume-20261011T183430016619Z/smoke/fixture.mp4",
+          "--ffmpeg",
+          "/Users/jerry/.local/share/minimax-h3/bin/ffmpeg",
+          "--ffprobe",
+          "/Users/jerry/.local/share/minimax-h3/bin/ffprobe",
+          "--output-dir",
+          "/Users/jerry/.local/share/media-inference-lab/validation-resume-20261011T183430016619Z/smoke/inspection",
+          "--inspection-seconds",
+          "30"
+        ],
+        "exit_code": 0,
+        "wall_seconds": 0.9014212089969078,
+        "stdout": "/Users/jerry/.local/share/media-inference-lab/validation-resume-20261011T183430016619Z/smoke/inspection/report.json\n",
+        "stderr": ""
+      }
+    ],
+    "smoke_report": {
+      "artifacts": [
+        {
+          "bytes": 35954,
+          "path": "source.mp4",
+          "role": "source_video",
+          "sha256": "474cc3c89caac34867cdaefa74ef2fa1e082b2ff9ab29e2e66ddd690bbeb79a0"
+        },
+        {
+          "bytes": 27300,
+          "path": "probe.json",
+          "role": "frame_metadata",
+          "sha256": "7e3581e07b152befccb52220a084d5e06c1994cd63656426dabf3328cb687758"
+        },
+        {
+          "bytes": 3011,
+          "path": "first.png",
+          "role": "poster_first_frame",
+          "sha256": "c97f6bf44c9a48ce1c0e38503c6339437ae3381005a4159685e366627b8c7bfc"
+        },
+        {
+          "bytes": 3520,
+          "path": "middle.png",
+          "role": "middle_frame",
+          "sha256": "dcaf05ae8119e2b0445285c100825b4b16aa6ba227de57283990206fb8f1a08b"
+        },
+        {
+          "bytes": 3513,
+          "path": "last.png",
+          "role": "last_frame",
+          "sha256": "a09da8c0b376d2e2089f94d6dc0f69814d9b999a599ea248d5c0fde15b0c1b51"
+        }
+      ],
+      "audio": {
+        "channels": 2,
+        "decoded_pcm_bytes": 589824,
+        "decoded_pcm_sha256": "dd31370aadb7ea6227e492d7d728d613e3a1b5ae818e0c2b58c7bcfbaf221af3",
+        "duration_seconds": 2.304,
+        "probed_sample_frames": 73728,
+        "sample_frames": 73728,
+        "sample_rate_hz": 32000,
+        "validation": "passed",
+        "video_duration_ratio": 0.9874285714285713
+      },
+      "errors": [],
+      "expected_output": {
+        "channels": 2,
+        "frames": 56,
+        "height": 48,
+        "playback_fps": 24.0,
+        "sample_rate_hz": 32000,
+        "width": 64
+      },
+      "helpers": [
+        {
+          "cleanup_attempted": true,
+          "cleanup_error": null,
+          "cleanup_seconds": 0.105599958,
+          "cleanup_succeeded": true,
+          "diagnostic_error": null,
+          "diagnostics": "ffprobe-version.stderr",
+          "error": null,
+          "exit_code": 0,
+          "name": "ffprobe-version",
+          "wall_seconds": 0.125036875
+        },
+        {
+          "cleanup_attempted": true,
+          "cleanup_error": null,
+          "cleanup_seconds": 0.105353542,
+          "cleanup_succeeded": true,
+          "diagnostic_error": null,
+          "diagnostics": "ffmpeg-version.stderr",
+          "error": null,
+          "exit_code": 0,
+          "name": "ffmpeg-version",
+          "wall_seconds": 0.126356875
+        },
+        {
+          "cleanup_attempted": true,
+          "cleanup_error": null,
+          "cleanup_seconds": 0.101641458,
+          "cleanup_succeeded": true,
+          "diagnostic_error": null,
+          "diagnostics": "probe.stderr",
+          "error": null,
+          "exit_code": 0,
+          "name": "probe",
+          "wall_seconds": 0.123315292
+        },
+        {
+          "cleanup_attempted": true,
+          "cleanup_error": null,
+          "cleanup_seconds": 0.105216375,
+          "cleanup_succeeded": true,
+          "diagnostic_error": null,
+          "diagnostics": "video-decode.stderr",
+          "error": null,
+          "exit_code": 0,
+          "name": "video-decode",
+          "wall_seconds": 0.127669459
+        },
+        {
+          "cleanup_attempted": true,
+          "cleanup_error": null,
+          "cleanup_seconds": 0.105567084,
+          "cleanup_succeeded": true,
+          "diagnostic_error": null,
+          "diagnostics": "audio-decode.stderr",
+          "error": null,
+          "exit_code": 0,
+          "name": "audio-decode",
+          "wall_seconds": 0.1281975
+        }
+      ],
+      "kind": "offline_h3_video_inspection",
+      "limitations": [
+        "CPU-only offline media validation; no Qwen/H3 inference, GPU execution, speedup or quality claim.",
+        "RGB24 and little-endian float32 PCM hashes identify converted decoded samples, not original encoded bytes or native model tensors. FFmpeg pixel/color and audio sample conversion may change numerical representation; autorotation is disabled and dimensions refer to the stored raster. No perceptual judgment or color-managed comparison is performed.",
+        "Playback FPS is media timing, never generation throughput. Native phases and generation elapsed time are unavailable.",
+        "Only one video and one generated-audio stream in self-contained MOV/MP4 are supported; reference/disabled audio is rejected.",
+        "Inspection deadline is cooperative for local file I/O and CPU work; owned process-group cleanup has its existing additional TERM/KILL allowance."
+      ],
+      "schema_version": 1,
+      "source": {
+        "bytes": 35954,
+        "path": "source.mp4",
+        "sha256": "474cc3c89caac34867cdaefa74ef2fa1e082b2ff9ab29e2e66ddd690bbeb79a0"
+      },
+      "timings": {
+        "audio_vae": {
+          "reason": "offline inspection has no native inference timing boundaries",
+          "status": "unavailable"
+        },
+        "denoising": {
+          "reason": "offline inspection has no native inference timing boundaries",
+          "status": "unavailable"
+        },
+        "generated_frames_per_second": {
+          "reason": "offline inspection has no native inference timing boundaries",
+          "status": "unavailable"
+        },
+        "generated_media_seconds_per_second": {
+          "reason": "offline inspection has no native inference timing boundaries",
+          "status": "unavailable"
+        },
+        "inspection_includes_owned_cleanup": true,
+        "inspection_wall_seconds": 0.888918583,
+        "model_load": {
+          "reason": "offline inspection has no native inference timing boundaries",
+          "status": "unavailable"
+        },
+        "mux_encode": {
+          "reason": "offline inspection has no native inference timing boundaries",
+          "status": "unavailable"
+        },
+        "native_total_host_seconds": {
+          "reason": "offline inspection has no native inference timing boundaries",
+          "status": "unavailable"
+        },
+        "seconds_per_generated_clip": {
+          "reason": "offline inspection has no native inference timing boundaries",
+          "status": "unavailable"
+        },
+        "text_encoding": {
+          "reason": "offline inspection has no native inference timing boundaries",
+          "status": "unavailable"
+        },
+        "video_vae": {
+          "reason": "offline inspection has no native inference timing boundaries",
+          "status": "unavailable"
+        }
+      },
+      "tools": [
+        {
+          "name": "ffprobe",
+          "path": "/Users/jerry/.local/share/minimax-h3/bin/ffprobe",
+          "sha256": "2738aa46a7f9acbc8ab09a6715554c90f7de603171ac403726765685df6a0059",
+          "version": "ffprobe version 9.0.2-https://www.martin-riedl.de Copyright (c) 2007-2026 the FFmpeg developers"
+        },
+        {
+          "name": "ffmpeg",
+          "path": "/Users/jerry/.local/share/minimax-h3/bin/ffmpeg",
+          "sha256": "2e11c6f90993cdb79fff84d3f90044d28316b310e75b3e030cfc9a54f2c9d384",
+          "version": "ffmpeg version 9.0.2-https://www.martin-riedl.de Copyright (c) 2000-2026 the FFmpeg developers"
+        }
+      ],
+      "valid": true,
+      "video": {
+        "decoded_rgb_bytes": 516096,
+        "decoded_rgb_sha256": "209528cad51160a807e7274fed4e722ee9adaf018c53479d32ec077c5eb252a2",
+        "frames": 56,
+        "height": 48,
+        "playback_fps": 24.0,
+        "poster": "first.png",
+        "width": 64
+      },
+      "workload_identity": "f37d735cdb10bc856fb40fdec3a22b31fd1e1e15b390c914ce73300cc676abfe"
+    },
+    "poster_visual_observation": "Opened retained64x48 first.png: synthetic colored test pattern/time display, not model output or quality evidence.",
+    "clippy_run": false,
+    "accepted_native_static_lifecycle_diagnostic_checks_repeated": false
+  },
+  "protected_bindings_before": {
+    "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1",
+    "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib": "b8a8dded1c3ffe4931559c41a993bc2f469a0283d816d4b8b28d6f5ac9369dd3",
+    "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/fresh-preparation/transaction.candidate.json": "13cb9ce5283f7a3150b76624bedec5207ff412cd7b4aef54ed1dc0fa59531524"
+  },
+  "protected_bindings_after": {
+    "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil": "a53e050db2eedae7647a1edcb81d2e55087003c9c9d125b42b2f820507e362a1",
+    "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib": "b8a8dded1c3ffe4931559c41a993bc2f469a0283d816d4b8b28d6f5ac9369dd3",
+    "/Users/jerry/.local/share/media-inference-lab/unmanaged-omlx-continuation-20261010T213059640410Z/fresh-preparation/transaction.candidate.json": "13cb9ce5283f7a3150b76624bedec5207ff412cd7b4aef54ed1dc0fa59531524"
+  },
+  "policy": {
+    "studio_or_omlx_access_control": false,
+    "gpu_lease_or_heavy_work": false,
+    "expired_authorization_used": false,
+    "benchmark_scheduling_hold": false,
+    "flashnext_rerun": false,
+    "credential_handoff_agent_contact": false,
+    "downloads_or_media_uploads": false
+  },
+  "remaining_acceptance": {
+    "11_12_13": "Actual unchanged1536x864/40-step/BF16 Qwen image capture, real resource evidence and image inspection remain unexercised. Current no-interruption decision blocks the mandatory native path.",
+    "15": "Native H3 process adapter/capture remains open; source/codec paths located read-only, no runtime/model executed.",
+    "16": "Offline full-stream codec fixture slice exercised; real draft/standard56-frame H3 clips and native phase timing acceptance still unexercised.",
+    "17_18_19_20": "Real longer-clip and baseline/candidate/control model studies/output review remain open; CPU fixtures supply no model performance or quality verdict."
+  },
+  "evidence_sha256": {
+    "owner-decision.json": "087384e0efa872c92bcf71f7418dcf9e4f44f58cc232adf4493aac4b720331ba",
+    "qwen-first-run-prerequisite.json": "d03b6ca94e032c3af307237756f6b621c7b6e84bce29386b349792391b079ca3",
+    "focused-check-1.json": "8ab0720f632107a686c3e1a1c33ddbf6851df229b7c524cd7cfce23ff7a6bd71",
+    "smoke-commands.json": "051e5cbf90ecd68ee2b21f88f6639eac2b45cc3b20084c21ba4c5d3ef30fce4e",
+    "smoke/inspection/report.json": "33a3b7ed2f6eccd6a0d392860a5063d1178e548503fd6cee90acf9c841c7818f"
+  }
+}

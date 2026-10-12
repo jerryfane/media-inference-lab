@@ -1,0 +1,128 @@
+{
+  "status": "MEASURED_CODE_MANIFEST_CORRECTION_VERIFIED_NO_RUNTIME_AUTHORITY",
+  "base_commit": "55a37a155955b7741f47a644b4d0be180b1e6001",
+  "authorization_reference": "https://github.com/jerryfane/media-inference-lab/issues/11#issuecomment-6097454279",
+  "prior_failure": "Original60010ms maintenance denial remains ground truth and immutable; never repeated.",
+  "selected_fix": [
+    "Cargo profile.dev.package.sha2 opt-level3; same sha2 0.10.9 software backend, no new feature/dependency",
+    "Direct regular-child file/directory opens relative to a pinned, metadata-bound parent fd; roots/symlink resolutions/source/credentials still use complete no-follow traversal"
+  ],
+  "rejected_alternatives": {
+    "sha2_opt3_only": "Measured complete CODE-only scan9427.384375ms leaves insufficient margin under10s",
+    "sha2_opt3_and_root_opt1": "Measured original walker7443.568709ms; broader application optimization still materially slower than scoped-parent traversal at4166ms",
+    "alias_hash_cache": "Topology has only5 file links, no directory links;150067 extra logical bytes, negligible amplification. No cache implemented.",
+    "accelerated_dependency": "sha2-asm unavailable offline; no downloads, FFI or new crypto implementation",
+    "budget_or_coverage_change": "Prohibited; no change"
+  },
+  "measurements": {
+    "baseline": "baseline-timing.json",
+    "optimized_sha2_fixture": "optimized-sha2-timing.json",
+    "optimized_sha2_code_only": "optimized-code-only.json",
+    "root_opt1_code_only": "root-opt1-code-only.json",
+    "selected_first_code_only": "parent-open-code-only.json",
+    "selected_repeat_instrumented_code_only": "final-code-only-smoke.json",
+    "actual_cpu_executable_smoke": "final-cpu-smoke.json",
+    "fixture_shallow_path_components": 6,
+    "fixture_deep_path_components": 22,
+    "selected_code_scan_ms": [
+      4166.0485,
+      4161.380417
+    ],
+    "selected_openat_calls_including_source_checks": 52727,
+    "complete_logical_entries": 48104,
+    "complete_logical_bundle_bytes": 1571584586,
+    "full_manifest_identity": "960ef89ac35ff1af39b928bd4db25fcb106a471723bd79a13e815ea46ecdc436",
+    "original_and_corrected_manifest_exactly_equal": true,
+    "application_debug_assertions_observed": true,
+    "cache_state": "unknown for every code-tree scan; first/repeat refer to candidate executions, not cold/warm claims",
+    "global_cache_purge_or_memory_pressure": false,
+    "no_op_tick": true
+  },
+  "preserved": [
+    "All logical files/directories/symlink targets, metadata and complete bytes hashed afresh each phase",
+    "Logical per-file/total bytes, entry/depth bounds and cycle/type/containment checks",
+    "No-follow roots/resolved links/source/credential opens and pre/post file/path metadata checks",
+    "Pinned parent directory fstat and original path metadata checks before frame returns",
+    "Worktree revision/cleanliness/index flags, complete Python file set and source-byte equality",
+    "Original60s arming and10s before_restore bounds; unchanged native workload/launcher/guards"
+  ],
+  "new_regressions": {
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--lib",
+      "restore_qualification::tests::manifest_timing_"
+    ],
+    "passed": 5,
+    "log": "focused-regressions.txt",
+    "coverage": [
+      "Complete directory/file/hardlink alias entries and multi-chunk last-byte changes rehashed in later phases",
+      "Pinned directory prevents swapped ancestor from redirecting file bytes",
+      "Replaced same-content parent directory fails metadata binding before file hashing",
+      "Logical byte/file/entry/depth quota boundaries",
+      "Mid-read growth/replacement and expired deadline deny"
+    ]
+  },
+  "verification": {
+    "clippy": [
+      "cargo",
+      "clippy",
+      "--offline",
+      "--lib",
+      "--bin",
+      "mil",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "clippy_exit": 0,
+    "final_build": [
+      "cargo",
+      "build",
+      "--offline",
+      "--lib",
+      "--bin",
+      "mil",
+      "--example",
+      "manifest_parent_probe"
+    ],
+    "build_exit": 0,
+    "cpu_smoke_argv": [
+      "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/examples/manifest_parent_probe",
+      "/private/tmp/mil-manifest-cpu-5so_1ded/Contents",
+      "/private/tmp/mil-manifest-cpu-5so_1ded/reference",
+      "5609a77f7be39f22ec82c467d11b6dcc9cc97748"
+    ],
+    "cpu_smoke_exit": 0,
+    "code_only_argv": [
+      "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/examples/manifest_parent_probe",
+      "/Applications/oMLX.app/Contents",
+      "/Users/jerry/Desktop/repos/omlx-wt-integration10",
+      "6039ce819a38d14d096570beb5a822d8f026159b",
+      "code-only"
+    ],
+    "code_only_exit": 0
+  },
+  "provenance": {
+    "topology_path": "/Users/jerry/Desktop/repos/local-llm-performance-lab/runs/20261010T-omlx-x3-coverage/code-topology-findings.json",
+    "topology_sha256": "8309eb79f309277c7b74133fadb2b68f379fcf6a23cc8e7da79413e3394b62b7",
+    "cargo_toml_sha256": "b5c681c426ab547fea9370a71497203de93e820dd76d542cfd4250fbd828977b",
+    "production_module_sha256": "0234ae0aacaa3dc08398703c49cb3fa6f3c89df3259a995c7b96d58f8fe2171a",
+    "original_probe_source_sha256": "d2be2d6d766044d651582099c2bccddc65dd55dde235485df0244a0d7224c630",
+    "selected_instrumented_probe_source_sha256": "4ac07db4aabd0759f89d60f608f723af845262885a7c8d58c81e06904552d188",
+    "probe_method": "Temporary CPU binaries compiled exact production manifest-function spans, not live gate entrypoints. Selected repeat adds only openat counters and debug-assertion reporting; library regressions exercise production directly. Temporary probe sources/binaries and owned64MiB fixture removed after proof.",
+    "guardian_path": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "guardian_sha256": "96e9fdfb7de3eba36dd13f239f1bc931c175ecb3efef3de3966b42151683cab6"
+  },
+  "limitations": [
+    "No live G1/G2/G3 qualification, restoration, maintenance invocation, lease or grant performed.",
+    "No config/credential/service environment/API/log-tail reads, native/MLX/model imports or service controls.",
+    "No cold-cache guarantee or future latency guarantee; existing deadline denial remains mandatory.",
+    "No-op tick omits guardian controller/service observation overhead; measured headroom is not runtime authorization.",
+    "Previous transaction/grant bind old binary; this changed binary cannot reuse them."
+  ],
+  "runtime_grant": false,
+  "lease_acquired": false,
+  "native_execution": false
+}

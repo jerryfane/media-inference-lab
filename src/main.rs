@@ -6,7 +6,11 @@ use media_inference_lab::{
     comparison,
     frame_sequence::{self, SequenceAssessment, SequenceInput, SequenceSource},
     guards::{GuardConfig, GuardMonitor, Lease},
+    h3::{self, InspectOptions as H3InspectOptions, PrepareOptions as H3PrepareOptions},
+    h3_native, h3_owned,
     image_comparison::{self, ImageAssessment, Tolerance},
+    image_inspection::{self, ImageInspectionOptions},
+    maintenance,
     native::{self, NativeOptions},
     png_image::{self, DecodedPng},
     png_report,
@@ -15,6 +19,7 @@ use media_inference_lab::{
     sequence_report,
     study::{StudyInput, StudyPlan},
     study_report,
+    video_inspection::{self, VideoInspectionOptions},
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -109,9 +114,141 @@ enum Command {
         #[arg(long)]
         assessment: Option<PathBuf>,
     },
+    /// Validate every requested PNG image offline, including batch count and stored sample type.
+    InspectImages {
+        #[arg(long)]
+        workload: PathBuf,
+        #[arg(long = "image", required = true)]
+        images: Vec<PathBuf>,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
+        inspection_seconds: u64,
+    },
+    /// Prepare explicit H3 profile arguments and file identities; never import or launch H3.
+    H3Prepare {
+        #[arg(long)]
+        workload: PathBuf,
+        #[arg(long, value_parser = ["draft", "standard", "detailed"])]
+        profile: String,
+        #[arg(long)]
+        binary: PathBuf,
+        #[arg(long)]
+        model_dir: PathBuf,
+        #[arg(long)]
+        shader_cwd: PathBuf,
+        /// Selected source snapshot; not proof that the binary was compiled from it.
+        #[arg(long)]
+        source_dir: PathBuf,
+        #[arg(long)]
+        ffmpeg: PathBuf,
+        #[arg(long)]
+        ffprobe: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+    },
+    /// Prepare an exact bridge-enabled H3 transaction plan; never launch a model or service.
+    H3PrepareNative {
+        #[arg(long)]
+        workload: PathBuf,
+        #[arg(long, value_parser = ["draft", "standard", "detailed"])]
+        profile: String,
+        #[arg(long)]
+        binary: PathBuf,
+        #[arg(long)]
+        model_dir: PathBuf,
+        #[arg(long)]
+        shader_cwd: PathBuf,
+        #[arg(long)]
+        source_dir: PathBuf,
+        #[arg(long)]
+        ffmpeg: PathBuf,
+        #[arg(long)]
+        ffprobe: PathBuf,
+        #[arg(long)]
+        build_receipt: PathBuf,
+        #[arg(long)]
+        guard_config: PathBuf,
+        #[arg(long)]
+        root: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 600, value_parser = clap::value_parser!(u64).range(1..=600))]
+        timeout_seconds: u64,
+        #[arg(long, default_value_t = 64 * 1024 * 1024)]
+        max_output_bytes: u64,
+    },
+    /// Inspect supplied H3 logs/media offline; reported exit is not owned-execution attestation.
+    H3InspectResult {
+        #[arg(long)]
+        plan: PathBuf,
+        #[arg(long)]
+        stdout: PathBuf,
+        #[arg(long)]
+        stderr: PathBuf,
+        #[arg(long, allow_hyphen_values = true)]
+        exit_code: i32,
+        #[arg(long)]
+        video: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
+        inspection_seconds: u64,
+    },
+    /// Fully decode a local H3-compatible MP4 offline; no inference or GPU authorization.
+    InspectVideo {
+        #[arg(long)]
+        workload: PathBuf,
+        #[arg(long)]
+        video: PathBuf,
+        /// Explicit existing FFmpeg executable; software decoding only.
+        #[arg(long)]
+        ffmpeg: PathBuf,
+        /// Explicit existing FFprobe executable; no PATH lookup or installation.
+        #[arg(long)]
+        ffprobe: PathBuf,
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
+        inspection_seconds: u64,
+    },
+    /// Qualify guardian-owned H3 codec IPC using finite CPU fixtures, never native inference.
+    H3QualifyOwned {
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "success")]
+        scenario: String,
+    },
+    /// Exercise the project-built CPU codec fixture with explicitly selected real tools; never H3 inference.
+    H3QualifyRealCodecs {
+        #[arg(long)]
+        output_dir: PathBuf,
+        #[arg(long, default_value = "success", value_parser = ["success", "codec-failure", "cancel", "root-failure", "descriptor-collision", "broker-collision"])]
+        scenario: String,
+        #[arg(long)]
+        fixture: PathBuf,
+        #[arg(long)]
+        ffmpeg: PathBuf,
+        #[arg(long)]
+        ffprobe: PathBuf,
+        #[arg(long, required = true)]
+        cpu_only: bool,
+    },
+    #[command(hide = true)]
+    H3CpuFixture {
+        #[arg(long)]
+        scenario: String,
+        #[arg(long)]
+        output_dir: PathBuf,
+    },
+    #[command(hide = true)]
+    H3CpuCodec {
+        #[arg(last = true)]
+        args: Vec<String>,
+    },
     /// Supervise a trusted CPU-only process without platform guards.
     Supervise(ProcessArguments),
-    /// Check lease/memory/swap/disk/live-process observations; never grants GPU access.
+    /// Check lease/memory/swap/disk observations; never grants service exclusion or GPU access.
     GuardCheck {
         #[arg(long)]
         config: PathBuf,
@@ -138,7 +275,7 @@ enum Command {
         #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
         timeout_seconds: u64,
     },
-    /// Prepare or explicitly attempt a native Qwen run; missing native readiness always denies launch.
+    /// Prepare or execute an exactly authorized guardian-owned native transaction.
     MfluxRun {
         #[arg(long)]
         python: PathBuf,
@@ -163,9 +300,10 @@ enum Command {
         max_output_bytes: u64,
         #[arg(long)]
         guard_config: Option<PathBuf>,
-        /// External grant reference is provenance only, never a readiness override.
         #[arg(long)]
-        manager_grant_reference: Option<String>,
+        maintenance_transaction: Option<PathBuf>,
+        #[arg(long)]
+        authorization: Option<PathBuf>,
         #[arg(long, conflicts_with = "execute", required_unless_present = "execute")]
         check_only: bool,
         #[arg(
@@ -174,6 +312,32 @@ enum Command {
             required_unless_present = "check_only"
         )]
         execute: bool,
+    },
+    /// Run genuine finite CPU services/work under one guardian using a private-root lease.
+    MaintenanceCpu {
+        #[arg(long)]
+        root: PathBuf,
+        #[arg(long, default_value = "normal")]
+        scenario: String,
+    },
+    /// Execute an exact reviewed maintenance transaction; no-grant/live gates deny before effects.
+    MaintenanceRun {
+        #[arg(long)]
+        transaction: PathBuf,
+        #[arg(long)]
+        authorization: PathBuf,
+    },
+    #[command(hide = true)]
+    MaintenanceGuardian {
+        #[arg(long)]
+        control_fd: i32,
+    },
+    #[command(hide = true)]
+    MaintenanceParticipant {
+        #[arg(long)]
+        mode: String,
+        #[arg(long)]
+        duration_ms: u64,
     },
 }
 
@@ -627,6 +791,27 @@ fn compare_frames(
 
 fn run(cli: Cli) -> Result<bool> {
     match cli.command {
+        Command::H3QualifyOwned {
+            output_dir,
+            scenario,
+        } => {
+            let succeeded = h3_owned::qualify(&output_dir, &scenario)?;
+            println!("{}", output_dir.join("report.json").display());
+            Ok(succeeded)
+        }
+        Command::H3QualifyRealCodecs { output_dir, scenario, fixture, ffmpeg, ffprobe, cpu_only } => {
+            ensure!(cpu_only, "real-codec qualification is explicitly CPU-only");
+            let passed = h3_owned::qualify_real_codecs(
+                &output_dir, &scenario, &fixture, &ffmpeg, &ffprobe,
+            )?;
+            println!("{}", output_dir.join("report.json").display());
+            Ok(passed)
+        }
+        Command::H3CpuFixture {
+            scenario,
+            output_dir,
+        } => std::process::exit(h3_owned::cpu_fixture(&scenario, &output_dir)?),
+        Command::H3CpuCodec { args } => std::process::exit(h3_owned::cpu_codec(&args)?),
         Command::Validate { workload } => {
             let workload: Workload = load(&workload)?;
             workload.validate()?;
@@ -644,6 +829,122 @@ fn run(cli: Cli) -> Result<bool> {
             let record = capture::inspect(&run_dir)?;
             println!("{}", serde_json::to_string_pretty(&record)?);
             Ok(record.is_success())
+        }
+        Command::InspectImages {
+            workload,
+            images,
+            output_dir,
+            inspection_seconds,
+        } => {
+            let workload: Workload = load_regular_json(&workload, 1024 * 1024)?;
+            let report_path = output_dir.join("report.json");
+            let valid = image_inspection::inspect(ImageInspectionOptions {
+                workload,
+                inputs: images,
+                output_dir,
+                timeout: Duration::from_secs(inspection_seconds),
+            })?;
+            println!("{}", report_path.display());
+            Ok(valid)
+        }
+        Command::H3Prepare {
+            workload,
+            profile,
+            binary,
+            model_dir,
+            shader_cwd,
+            source_dir,
+            ffmpeg,
+            ffprobe,
+            output_dir,
+        } => {
+            let workload_path = std::path::absolute(&workload)?;
+            let input_dir = workload_path
+                .parent()
+                .context("workload path has no parent")?
+                .to_path_buf();
+            let workload: Workload = load_regular_json(&workload, 1024 * 1024)?;
+            let report_path = output_dir.join("report.json");
+            let valid = h3::prepare(H3PrepareOptions {
+                workload,
+                profile: profile.parse()?,
+                binary,
+                model_dir,
+                shader_cwd,
+                source_dir,
+                input_dir,
+                ffmpeg,
+                ffprobe,
+                output_dir,
+            })?;
+            println!("{}", report_path.display());
+            Ok(valid)
+        }
+        Command::H3PrepareNative {
+            workload, profile, binary, model_dir, shader_cwd, source_dir, ffmpeg, ffprobe,
+            build_receipt, guard_config, root, output_dir, timeout_seconds, max_output_bytes,
+        } => {
+            let workload_path = std::path::absolute(&workload)?;
+            let input_dir = workload_path.parent().context("workload path has no parent")?.to_path_buf();
+            let workload: Workload = load_regular_json(&workload, 1024 * 1024)?;
+            let guard_config: GuardConfig = load_regular_json(&guard_config, 1024 * 1024)?;
+            let report_path = output_dir.join("report.json");
+            h3_native::prepare(h3_native::PrepareOptions {
+                preparation: H3PrepareOptions {
+                    workload, profile: profile.parse()?, binary, model_dir, shader_cwd,
+                    source_dir, input_dir, ffmpeg, ffprobe, output_dir,
+                },
+                build_receipt,
+                output_root: root,
+                guard_config,
+                timeout: Duration::from_secs(timeout_seconds),
+                max_output_bytes,
+            })?;
+            println!("{}", report_path.display());
+            Ok(true)
+        }
+        Command::H3InspectResult {
+            plan,
+            stdout,
+            stderr,
+            exit_code,
+            video,
+            output_dir,
+            inspection_seconds,
+        } => {
+            let report_path = output_dir.join("report.json");
+            let valid = h3::inspect_saved(H3InspectOptions {
+                plan,
+                stdout,
+                stderr,
+                exit_code,
+                video,
+                output_dir,
+                timeout: Duration::from_secs(inspection_seconds),
+            })?;
+            println!("{}", report_path.display());
+            Ok(valid)
+        }
+        Command::InspectVideo {
+            workload,
+            video,
+            ffmpeg,
+            ffprobe,
+            output_dir,
+            inspection_seconds,
+        } => {
+            let workload: Workload = load_regular_json(&workload, 1024 * 1024)?;
+            let report_path = output_dir.join("report.json");
+            let valid = video_inspection::inspect(VideoInspectionOptions {
+                workload,
+                input: video,
+                ffmpeg,
+                ffprobe,
+                output_dir,
+                timeout: Duration::from_secs(inspection_seconds),
+            })?;
+            println!("{}", report_path.display());
+            Ok(valid)
         }
         Command::StudyPlan { plan, output } => {
             let plan: StudyPlan = load_regular_json(&plan, 1024 * 1024)?;
@@ -736,6 +1037,31 @@ fn run(cli: Cli) -> Result<bool> {
                 assessment,
             )
         }
+        Command::MaintenanceCpu { root, scenario } => {
+            let receipt = maintenance::run_cpu(&root, &scenario)?;
+            let evidence: serde_json::Value = maintenance::read_private(&receipt)?;
+            println!("{}", receipt.display());
+            Ok(evidence["success"] == true)
+        }
+        Command::MaintenanceRun {
+            transaction,
+            authorization,
+        } => {
+            let receipt = maintenance::run_controller(
+                maintenance::read_private(&transaction)?,
+                maintenance::read_private(&authorization)?,
+            )?;
+            let evidence: serde_json::Value = maintenance::read_private(&receipt)?;
+            println!("{}", receipt.display());
+            Ok(evidence["success"] == true)
+        }
+        Command::MaintenanceGuardian { control_fd } => {
+            maintenance::guardian_main(control_fd)?;
+            Ok(true)
+        }
+        Command::MaintenanceParticipant { mode, duration_ms } => {
+            maintenance::participant(&mode, duration_ms)
+        }
         Command::Supervise(process) => supervise(process, None),
         Command::SuperviseGuarded {
             guard_config,
@@ -800,7 +1126,8 @@ fn run(cli: Cli) -> Result<bool> {
             check_timeout_seconds,
             max_output_bytes,
             guard_config,
-            manager_grant_reference,
+            maintenance_transaction,
+            authorization,
             check_only: _,
             execute,
         } => {
@@ -816,7 +1143,8 @@ fn run(cli: Cli) -> Result<bool> {
                 check_timeout: Duration::from_secs(check_timeout_seconds),
                 max_output_bytes,
                 guard_config,
-                manager_grant_reference,
+                maintenance_transaction,
+                authorization,
                 execute,
             })?;
             println!("{}", output.display());

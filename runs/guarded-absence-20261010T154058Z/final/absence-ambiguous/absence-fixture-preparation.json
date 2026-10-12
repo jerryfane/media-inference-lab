@@ -1,0 +1,15 @@
+{
+  "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-ambiguous/absence-bin/startup-actor",
+  "failure": null,
+  "kind": "ad_hoc_sign_owned_sleep_copy",
+  "pid": 99951,
+  "settlement": {
+    "complete": true,
+    "exit_code": 0,
+    "exit_signal": null,
+    "failure": null,
+    "group_absent": true,
+    "group_signalled": false,
+    "leader_reaped": true
+  }
+}

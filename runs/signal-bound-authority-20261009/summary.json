@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "review": "https://github.com/jerryfane/media-inference-lab/issues/11#issuecomment-6083482139",
+  "parent_commit": "a13d965",
+  "change": "signal_bound requires a before_effect callback after final identity verification and directly before platform_signal; all external TERM/KILL, GUI STOP/CONT and detached cleanup callers migrated to their existing authority. No unchecked external overload.",
+  "commands": [
+    {
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "process_scope::tests::bound_signal_dispatch_",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "log": "focused.log",
+      "passed": 2,
+      "filtered_out": 45
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "log": "clippy.log"
+    },
+    {
+      "argv": [
+        "cargo",
+        "build",
+        "--offline",
+        "--lib",
+        "--bin",
+        "mil",
+        "--message-format=json"
+      ],
+      "exit": 0,
+      "stdout": "build.stdout.jsonl",
+      "stderr": "build.stderr.log"
+    },
+    {
+      "argv": [
+        "rustc",
+        "--edition=2024",
+        "/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-signal-bound-api-zjgw5lvh/driver.rs",
+        "--extern",
+        "media_inference_lab=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/libmedia_inference_lab.rlib",
+        "--extern",
+        "libc=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/liblibc-111badef97908fec.rlib",
+        "-L",
+        "dependency=/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps",
+        "-o",
+        "/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-signal-bound-api-zjgw5lvh/signal-bound-smoke"
+      ],
+      "exit": 0,
+      "log": "driver-compile.log"
+    },
+    {
+      "argv": [
+        "/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-signal-bound-api-zjgw5lvh/signal-bound-smoke"
+      ],
+      "exit": 0,
+      "log": "api-smoke.log"
+    }
+  ],
+  "regressions": [
+    {
+      "name": "bound_signal_dispatch_revocation_preserves_live_group",
+      "pid": 53378,
+      "signal": "group SIGKILL",
+      "internal_callback_reached": true,
+      "denied": true,
+      "state_after_denial": "Running",
+      "natural_exit_code": 0,
+      "settlement_complete": true,
+      "leader_reaped": true,
+      "group_absent": true,
+      "cleanup_signalled_group": false
+    },
+    {
+      "name": "bound_signal_dispatch_expiry_preserves_running_process",
+      "pid": 53379,
+      "signal": "PID SIGSTOP",
+      "internal_callback_reached": true,
+      "deadline_expired": true,
+      "denied": true,
+      "state_after_denial": "Running",
+      "natural_exit_code": 0,
+      "settlement_complete": true,
+      "leader_reaped": true,
+      "group_absent": true,
+      "cleanup_signalled_group": false
+    }
+  ],
+  "executable_smoke": {
+    "driver_pid": 57894,
+    "actor_pid": 57922,
+    "actor_ppid": 57894,
+    "actor_pgid": 57922,
+    "actor_sid": 57922,
+    "observed": [
+      "internal group KILL revocation denied; Running",
+      "internal PID STOP expiry denied; Running",
+      "authorized PID STOP; Stopped",
+      "internal PID CONT revocation denied; Stopped",
+      "authorized PID CONT; Running",
+      "authorized group TERM; exit signal15",
+      "complete settlement; leader reaped; group absent"
+    ],
+    "binary_sha256": "cad149738ae3a2fb20bab36fbcb9da47b438cc7748823d9d2839afe2fae6b925",
+    "library_sha256": "7d8d04bec6d07375bfd8c185f5e07e10e029415378e763c83aaf4760efe9bb8d",
+    "cli_sha256": "2996772e1eb87653a3717c242f045f601869c48ebfc1e3cdf99344cdfad4e87c",
+    "driver_source": "driver.rs.txt"
+  },
+  "initial_failure": {
+    "exit": 101,
+    "log": "initial-focused-failure.log",
+    "observed": "Both new callbacks rejected their signals and observed Running actors. Zero-grace test teardown then returned incomplete settlement with Darwin EPERM. Assertions failed.",
+    "correction": "New regression observes finite natural exit before settlement; reserves the final second of its original5s cleanup ceiling for failure disposal with existing100ms TERM grace. No production settlement changes, retries or extended authority.",
+    "subsequent_observed": "Both actors exited naturally0; no cleanup signals; complete settlement."
+  },
+  "limits": [
+    "The check reduces the avoidable identity-observation gap; PID/time control is still non-atomic and syscalls have no hard cancellation guarantee.",
+    "No old suite, accepted proof or unrelated normal scenario rerun. Parent-reported a13d965 normal integration result is accepted without repetition.",
+    "Smoke is a temporary CPU executable directly linked to the real library, not a production CLI feature or injected native readiness.",
+    "Only owned finite CPU actors; no live service probes/control, launchd fixtures, selected-runtime reprobe, sensitive collection, native imports/models, shared GPU lease, scheduling, deployment or merge.",
+    "v4 null stdio and G1/G2/G3 unchanged; X2/X3 unapproved and uninvoked; no retired retention gate.",
+    "Issues11/12 remain open; native fidelity and activation remain unverified/unapproved."
+  ],
+  "source_sha256": {
+    "src/process_scope.rs": "df14d594b03fd82ea22e5ca0fb02fd8600ae1e9697a4b15bc6904d360abaa310",
+    "src/service_lifecycle.rs": "beeca4eab27d66e3a68cb7b93295e32aede5e314f566e93904b5778d15ba553c",
+    "README.md": "14c836eba8e9ee9a4e75380e1cfa4e1aeef34cc62244d7dc10a2437420f84708"
+  },
+  "files": [
+    {
+      "path": "initial-focused-failure.log",
+      "bytes": 2237,
+      "sha256": "0c8c0af0c728a725df5a4ae1143e1e4afbaf624b78ad8043a71685b1e68d448f"
+    },
+    {
+      "path": "focused.log",
+      "bytes": 1095,
+      "sha256": "14b20466a62734289a6c833faea4f87bc2e51206a592ab45a3e0caddbcf0d934"
+    },
+    {
+      "path": "clippy.log",
+      "bytes": 161,
+      "sha256": "fbb51110d4f8f50bb9a80f54e7c62f2d37bc93010c0e953e6e4dc1d720cafa71"
+    },
+    {
+      "path": "build.stdout.jsonl",
+      "bytes": 54217,
+      "sha256": "d81a64d83aa44aa4b861a139d2c82f7756542b16f55e880de7874779c69c4e68"
+    },
+    {
+      "path": "build.stderr.log",
+      "bytes": 161,
+      "sha256": "8fa10b21c6355ca974bffc42f697622b48d77f1c11a6c4eda2a4ed72fe5fe945"
+    },
+    {
+      "path": "driver-compile.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "api-smoke.log",
+      "bytes": 497,
+      "sha256": "bd46e3046fdfbd79b54f3debd72feff562483201c0b08e6beec968e87c1925c8"
+    },
+    {
+      "path": "driver.rs.txt",
+      "bytes": 4608,
+      "sha256": "ac1fe7e194a43932c60cae94e8a45d3d93aedaf268d25936a0af9198324a4b35"
+    }
+  ]
+}

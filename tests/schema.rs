@@ -154,6 +154,56 @@ fn resolved_settings_cannot_silently_change_even_with_matching_claimed_identity(
 }
 
 #[test]
+fn nullable_compute_override_preserves_image_and_video_fidelity() {
+    for fixture in [
+        include_str!("fixtures/image-result.json"),
+        include_str!("fixtures/video-result.json"),
+    ] {
+        let original: AdapterResult = serde_json::from_str(fixture).unwrap();
+        for (requested_compute, resolved_compute, accepted) in [
+            (None, None, true),
+            (None, Some(Precision::Float16), true),
+            (None, Some(Precision::Bfloat16), true),
+            (None, Some(Precision::Auto), false),
+            (Some(Precision::Float16), None, false),
+            (Some(Precision::Float16), Some(Precision::Float16), true),
+            (Some(Precision::Float16), Some(Precision::Bfloat16), false),
+            (Some(Precision::Float16), Some(Precision::Auto), false),
+        ] {
+            let mut request = original.resolved.clone();
+            let generation = match &mut request.settings {
+                MediaSettings::Image { generation } | MediaSettings::Video { generation, .. } => {
+                    generation
+                }
+            };
+            generation.precision = Precision::Bfloat16;
+            generation.compute_precision = requested_compute;
+            let mut result = original.clone();
+            result.workload_identity = request.identity().unwrap();
+            result.resolved = request.clone();
+            let generation = match &mut result.resolved.settings {
+                MediaSettings::Image { generation }
+                | MediaSettings::Video { generation, .. } => generation,
+            };
+            generation.compute_precision = resolved_compute;
+            assert_eq!(
+                result.validate(&request).is_ok(),
+                accepted,
+                "requested {requested_compute:?}, resolved {resolved_compute:?}"
+            );
+            if accepted {
+                let generation = match &mut result.resolved.settings {
+                    MediaSettings::Image { generation }
+                    | MediaSettings::Video { generation, .. } => generation,
+                };
+                generation.seed += 1;
+                error_contains(result.validate(&request), "resolved workload differs");
+            }
+        }
+    }
+}
+
+#[test]
 fn nonfinite_and_out_of_range_workloads_are_rejected_before_identity() {
     for (pointer, replacement, message) in [
         (

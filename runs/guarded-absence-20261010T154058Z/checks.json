@@ -1,0 +1,159 @@
+[
+  {
+    "command": [
+      "rustfmt",
+      "--edition",
+      "2024",
+      "tests/maintenance_absence.rs"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--test",
+      "maintenance_authorization",
+      "--test",
+      "maintenance_absence",
+      "--",
+      "--test-threads=1"
+    ],
+    "returncode": 101,
+    "stdout": "\nrunning 5 tests\ntest absent_scope_controller_loss_settles_experiment_and_restores_only_studio ... ok\ntest ambiguous_or_unavailable_probes_never_admit_work_or_control_candidates ... FAILED\ntest clean_absence_runs_owned_work_without_fabricating_service_lifecycle ... ok\ntest late_foreign_appearance_aborts_owned_work_but_does_not_block_studio_recovery ... FAILED\ntest untitled_non_listening_executable_candidate_denies_before_service_controls ... FAILED\n\nfailures:\n\n---- ambiguous_or_unavailable_probes_never_admit_work_or_control_candidates stdout ----\n\nthread 'ambiguous_or_unavailable_probes_never_admit_work_or_control_candidates' (734680) panicked at tests/maintenance_absence.rs:56:13:\ncontroller exited before enrollment\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n---- late_foreign_appearance_aborts_owned_work_but_does_not_block_studio_recovery stdout ----\n\nthread 'late_foreign_appearance_aborts_owned_work_but_does_not_block_studio_recovery' (734899) panicked at tests/maintenance_absence.rs:178:5:\nassertion `left == right` failed\n  left: Bool(true)\n right: false\n\n---- untitled_non_listening_executable_candidate_denies_before_service_controls stdout ----\n\nthread 'untitled_non_listening_executable_candidate_denies_before_service_controls' (735763) panicked at tests/maintenance_absence.rs:56:13:\ncontroller exited before enrollment\n\n\nfailures:\n    ambiguous_or_unavailable_probes_never_admit_work_or_control_candidates\n    late_foreign_appearance_aborts_owned_work_but_does_not_block_studio_recovery\n    untitled_non_listening_executable_candidate_denies_before_service_controls\n\ntest result: FAILED. 2 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.53s\n\n",
+    "stderr": "   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.25s\n     Running tests/maintenance_absence.rs (target/debug/deps/maintenance_absence-ed0a20f37b38266c)\nerror: test failed, to rerun pass `--test maintenance_absence`\n"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--test",
+      "maintenance_authorization",
+      "--test",
+      "maintenance_absence",
+      "--",
+      "--test-threads=1"
+    ],
+    "returncode": 0,
+    "stdout": "\nrunning 5 tests\ntest absent_scope_controller_loss_settles_experiment_and_restores_only_studio ... ok\ntest ambiguous_or_unavailable_probes_never_admit_work_or_control_candidates ... ok\ntest clean_absence_runs_owned_work_without_fabricating_service_lifecycle ... ok\ntest late_foreign_appearance_aborts_owned_work_but_does_not_block_studio_recovery ... ok\ntest untitled_non_listening_executable_candidate_denies_before_service_controls ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.62s\n\n\nrunning 4 tests\ntest absence_mode_requires_exact_grant_and_cannot_cross_purposes ... ok\ntest absent_validation_never_opens_fixture_paths ... ok\ntest changed_work_or_permission_cannot_create_guardian_evidence_or_lease ... ok\ntest cpu_scope_cannot_select_shared_gpu_lease_or_borrow_phase_time ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s\n\n",
+    "stderr": "   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.76s\n     Running tests/maintenance_absence.rs (target/debug/deps/maintenance_absence-ed0a20f37b38266c)\n     Running tests/maintenance_authorization.rs (target/debug/deps/maintenance_authorization-dd27ee09447616ff)\n"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--lib",
+      "service_lifecycle::tests::",
+      "--",
+      "--test-threads=1"
+    ],
+    "returncode": 0,
+    "stdout": "\nrunning 13 tests\ntest service_lifecycle::tests::cpu_restore_replaces_backend_and_resumes_same_gui_once ... ok\ntest service_lifecycle::tests::deadline_after_term_never_escalates ... ok\ntest service_lifecycle::tests::deferred_helper_returns_owner_then_finishes_original_slot ... ok\ntest service_lifecycle::tests::detached_early_authority_loss_retains_cleanup_disposition ... ok\ntest service_lifecycle::tests::detached_exec_failure_preserves_and_disposes_identities ... ok\ntest service_lifecycle::tests::detached_executed_authority_loss_disposes_bound_child ... ok\ntest service_lifecycle::tests::detached_fork_uncertainty_blocks_complete_accounting ... ok\ntest service_lifecycle::tests::detached_pid_authority_loss_reaps_supervised_child ... ok\ntest service_lifecycle::tests::detached_setup_failure_preserves_and_disposes_identities ... ok\ntest service_lifecycle::tests::detached_success_preserves_session_launch_and_null_stdio ... ok\ntest service_lifecycle::tests::failed_cpu_replacement_keeps_same_gui_paused_and_blocks_retry ... ok\ntest service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition ... ok\ntest service_lifecycle::tests::helper_recovery_expiry_is_sticky_and_preserves_owner ... ok\n\ntest result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 72 filtered out; finished in 4.85s\n\n",
+    "stderr": "   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.26s\n     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-a51443bb38096914)\n"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--lib",
+      "process_scope::tests::",
+      "--",
+      "--test-threads=1"
+    ],
+    "returncode": 0,
+    "stdout": "\nrunning 12 tests\ntest process_scope::tests::bound_absence_waits_for_zombie_reap_and_rejects_mismatched_birth ... ok\ntest process_scope::tests::bound_signal_dispatch_expiry_preserves_running_process ... ok\ntest process_scope::tests::bound_signal_dispatch_revocation_preserves_live_group ... ok\ntest process_scope::tests::command_rejects_ambiguous_or_unbounded_exec_input ... ok\ntest process_scope::tests::enrollment_revocation_retains_barrier_child_for_independent_cleanup ... ok\ntest process_scope::tests::expired_independent_cleanup_retains_incomplete_evidence_without_signalling ... ok\ntest process_scope::tests::identity_distinguishes_reuse_escape_and_exec_but_not_stop_or_reparent ... ok\ntest process_scope::tests::live_term_transition_settles_without_requiring_dying_process_session ... ok\ntest process_scope::tests::post_barrier_revocation_retains_child_for_independent_cleanup ... ok\ntest process_scope::tests::reaped_fork_still_disqualifies_otherwise_complete_known_group_cleanup ... ok\ntest process_scope::tests::setup_or_exec_failure_retains_child_until_explicit_settlement ... ok\ntest process_scope::tests::short_lived_exec_preserves_clean_environment_and_unreaped_exit ... ok\n\ntest result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 73 filtered out; finished in 6.16s\n\n",
+    "stderr": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s\n     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-a51443bb38096914)\n"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--lib",
+      "native_guard::tests::",
+      "--",
+      "--test-threads=1"
+    ],
+    "returncode": 0,
+    "stdout": "\nrunning 2 tests\ntest native_guard::tests::backwards_wall_clock_and_automation_ceiling_revoke ... ok\ntest native_guard::tests::stale_authority_is_sticky_even_after_clock_recovery ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 83 filtered out; finished in 0.00s\n\n",
+    "stderr": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s\n     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-a51443bb38096914)\n"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--lib",
+      "restore_qualification::tests::absent_gate_denies_without_invoking_tick_or_stop",
+      "--",
+      "--exact"
+    ],
+    "returncode": 0,
+    "stdout": "\nrunning 1 test\ntest restore_qualification::tests::absent_gate_denies_without_invoking_tick_or_stop ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 84 filtered out; finished in 0.00s\n\n",
+    "stderr": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s\n     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-a51443bb38096914)\n"
+  },
+  {
+    "command": [
+      "cargo",
+      "clippy",
+      "--offline",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "returncode": 101,
+    "stdout": "",
+    "stderr": "    Checking media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\nerror: this `if` statement can be collapsed\n   --> tests/maintenance_absence.rs:235:9\n    |\n235 | /         if let Ok(bytes) = fs::read(&receipt) {\n236 | |             if let Ok(value) = serde_json::from_slice::<Value>(&bytes) {\n237 | |                 break value;\n238 | |             }\n239 | |         }\n    | |_________^\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#collapsible_if\n    = note: `-D clippy::collapsible-if` implied by `-D warnings`\n    = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`\nhelp: collapse nested if block\n    |\n235 ~         if let Ok(bytes) = fs::read(&receipt)\n236 ~             && let Ok(value) = serde_json::from_slice::<Value>(&bytes) {\n237 |                 break value;\n238 ~             }\n    |\n\nerror: could not compile `media-inference-lab` (test \"maintenance_absence\") due to 1 previous error\nwarning: build failed, waiting for other jobs to finish...\n"
+  },
+  {
+    "command": [
+      "cargo",
+      "clippy",
+      "--offline",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "    Checking media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.10s\n"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--offline",
+      "--test",
+      "maintenance_authorization",
+      "--test",
+      "maintenance_absence",
+      "--",
+      "--test-threads=1"
+    ],
+    "returncode": 0,
+    "stdout": "\nrunning 5 tests\ntest absent_scope_controller_loss_settles_experiment_and_restores_only_studio ... ok\ntest ambiguous_or_unavailable_probes_never_admit_work_or_control_candidates ... ok\ntest clean_absence_runs_owned_work_without_fabricating_service_lifecycle ... ok\ntest late_foreign_appearance_aborts_owned_work_but_does_not_block_studio_recovery ... ok\ntest untitled_non_listening_executable_candidate_denies_before_service_controls ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.59s\n\n\nrunning 4 tests\ntest absence_mode_requires_exact_grant_and_cannot_cross_purposes ... ok\ntest absent_validation_never_opens_fixture_paths ... ok\ntest changed_work_or_permission_cannot_create_guardian_evidence_or_lease ... ok\ntest cpu_scope_cannot_select_shared_gpu_lease_or_borrow_phase_time ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s\n\n",
+    "stderr": "   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.48s\n     Running tests/maintenance_absence.rs (target/debug/deps/maintenance_absence-ed0a20f37b38266c)\n     Running tests/maintenance_authorization.rs (target/debug/deps/maintenance_authorization-dd27ee09447616ff)\n"
+  },
+  {
+    "command": [
+      "cargo",
+      "clippy",
+      "--offline",
+      "--all-targets",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "    Checking media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.32s\n"
+  }
+]

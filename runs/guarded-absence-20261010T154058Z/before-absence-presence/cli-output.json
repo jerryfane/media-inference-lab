@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "maintenance-cpu",
+    "--root",
+    "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/before-absence-presence",
+    "--scenario",
+    "absence-presence"
+  ],
+  "returncode": 2,
+  "stdout": "",
+  "stderr": "mil: CPU fixture enrollment failed: Err(full zombie executable/cwd/session identity unavailable)\n"
+}

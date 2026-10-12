@@ -1,0 +1,20 @@
+{
+  "argv": [
+    "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/examples/manifest_enumeration_after",
+    "/Applications/oMLX.app/Contents",
+    "/Users/jerry/Desktop/repos/omlx-wt-integration10",
+    "6039ce819a38d14d096570beb5a822d8f026159b",
+    "code-only"
+  ],
+  "exit_code": 0,
+  "result": {
+    "entries": 48104,
+    "logical_bytes_hashed": 1571584586,
+    "manifest_sha256": "960ef89ac35ff1af39b928bd4db25fcb106a471723bd79a13e815ea46ecdc436",
+    "ms": 4514.613291,
+    "status": "pass"
+  },
+  "complete_identity_equal_to_prior_variants": true,
+  "cache_state": "unknown; no purge, memory pressure or cold-cache claim",
+  "tick": "no-op; existing10s deadline; no live qualification entrypoint"
+}

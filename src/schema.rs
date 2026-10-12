@@ -53,6 +53,7 @@ pub enum MediaSettings {
         frames: u32,
         layers: u32,
         playback_fps: f64,
+        /// Optional internal model canvas; generation.resolution remains the output raster.
         render_resolution: Option<Resolution>,
         reuse: ReusePolicy,
         audio: AudioConfiguration,
@@ -938,7 +939,8 @@ impl GenerationSettings {
         } = self;
         *precision != Precision::Auto
             && (requested.precision == Precision::Auto || *precision == requested.precision)
-            && matches!(compute_precision, Some(value) if *value != Precision::Auto)
+            // Null may record no compute override; never invent a concrete dtype.
+            && *compute_precision != Some(Precision::Auto)
             && (requested.compute_precision.is_none()
                 || *compute_precision == requested.compute_precision)
             && prompt == &requested.prompt

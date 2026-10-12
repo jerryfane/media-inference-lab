@@ -1,0 +1,7 @@
+
+running 1 test
+test capture::deadline_review_tests::review_prelaunch_callback_overrun_never_attempts_creation ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.03s
+
+review prelaunch: expired=true creation_attempted=false directory_created=false result=Err(native prelaunch deadline expired during authority observation)

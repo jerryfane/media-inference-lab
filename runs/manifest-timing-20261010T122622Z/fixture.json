@@ -1,0 +1,35 @@
+{
+  "fixture_root": "/private/tmp/mil-manifest-cpu-5so_1ded",
+  "contents": "/private/tmp/mil-manifest-cpu-5so_1ded/Contents",
+  "reference": "/private/tmp/mil-manifest-cpu-5so_1ded/reference",
+  "revision": "5609a77f7be39f22ec82c467d11b6dcc9cc97748",
+  "physical_blob_bytes": 67108864,
+  "large_blob_logical_copies": 5,
+  "deep_files": 512,
+  "deep_file_bytes": 1024,
+  "source_spans": [
+    [
+      42,
+      80
+    ],
+    [
+      205,
+      215
+    ],
+    [
+      570,
+      618
+    ],
+    [
+      620,
+      626
+    ],
+    [
+      681,
+      1090
+    ]
+  ],
+  "production_source_sha256": "d240a0b0509fb0e0c930e2dee2002e3beeda9f2dc3b6a755a01db81ea9a81e94",
+  "probe_source_sha256": "0339e4de565d079d382a45a7a6792fb93a66e9aa692ca6e38b70409f87473c1c",
+  "live_paths_accessed": false
+}

@@ -1,0 +1,3 @@
+$ cargo build --offline --lib --bin mil --example qualification_correction_smoke
+   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.57s

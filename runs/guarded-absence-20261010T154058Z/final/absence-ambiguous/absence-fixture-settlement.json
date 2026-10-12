@@ -1,0 +1,27 @@
+{
+  "created": true,
+  "failure": null,
+  "identity": {
+    "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-ambiguous",
+    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-ambiguous/absence-bin/startup-actor",
+    "pgid": 99952,
+    "pid": 99952,
+    "ppid": 99950,
+    "sid": 99952,
+    "start_seconds": 1791647142,
+    "start_subseconds": 21510,
+    "state": "running",
+    "uid": 501
+  },
+  "pid": 99952,
+  "settlement": {
+    "complete": true,
+    "exit_code": null,
+    "exit_signal": 15,
+    "failure": null,
+    "group_absent": true,
+    "group_signalled": true,
+    "leader_reaped": true
+  },
+  "uncontrolled_by_guardian": true
+}

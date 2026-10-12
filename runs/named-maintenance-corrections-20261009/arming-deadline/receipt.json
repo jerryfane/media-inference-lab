@@ -1,0 +1,157 @@
+{
+  "automation_ceiling_note": "Bounds automation, not a failed outage; GUI may remain paused for manual recovery",
+  "capture_directory": null,
+  "controller_identity": {
+    "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "pgid": 66229,
+    "pid": 90295,
+    "ppid": 66229,
+    "sid": 66229,
+    "start_seconds": 1791556641,
+    "start_subseconds": 464598,
+    "state": "running",
+    "uid": 501
+  },
+  "creation_attempted": false,
+  "elapsed_ms": 21,
+  "experiment_failure": "service enrollment failed: CPU enrollment cleanup complete=true: Ok(()): insufficient CPU lifetime observation budget",
+  "guardian_pid": 90370,
+  "kind": "cpu_maintenance_transaction",
+  "lease_path": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge/.cpu-maintenance.lock",
+  "recovery_failure": null,
+  "restored": false,
+  "schema_version": 1,
+  "scope": "Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee",
+  "service_accounting_complete": true,
+  "service_enrollment_failure": {
+    "actors": [
+      {
+        "complete": true,
+        "descendant_uncertainty": null,
+        "failure": null,
+        "identity": {
+          "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+          "pgid": 90401,
+          "pid": 90401,
+          "ppid": 90370,
+          "sid": 90401,
+          "start_seconds": 1791556644,
+          "start_subseconds": 62298,
+          "state": "running",
+          "uid": 501
+        },
+        "intermediate_identity": null,
+        "intermediate_pid": null,
+        "intermediate_reaped": true,
+        "intermediate_status": null,
+        "kind": "CPU enrollment",
+        "known_absent": true,
+        "launch_record": {
+          "args": [
+            "maintenance-participant",
+            "--mode",
+            "service",
+            "--duration-ms",
+            "30000"
+          ],
+          "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+          "environment": {},
+          "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+        },
+        "pid": 90401,
+        "settlement": {
+          "complete": true,
+          "exit_code": null,
+          "exit_signal": 15,
+          "failure": null,
+          "group_absent": true,
+          "group_signalled": true,
+          "leader_reaped": true
+        }
+      }
+    ],
+    "evidence": [],
+    "failure": "CPU enrollment cleanup complete=true: Ok(()): insufficient CPU lifetime observation budget",
+    "gui": null,
+    "inhibited": false,
+    "launch_record": {
+      "args": [
+        "maintenance-participant",
+        "--mode",
+        "service",
+        "--duration-ms",
+        "30000"
+      ],
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+      "environment": {},
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+    },
+    "restored": false,
+    "role": "omlx",
+    "root": {
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "pgid": 90401,
+      "pid": 90401,
+      "ppid": 90370,
+      "sid": 90401,
+      "start_seconds": 1791556644,
+      "start_subseconds": 62298,
+      "state": "running",
+      "uid": 501
+    }
+  },
+  "service_process_dispositions": [
+    {
+      "complete": true,
+      "descendant_uncertainty": null,
+      "failure": null,
+      "identity": {
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "pgid": 90401,
+        "pid": 90401,
+        "ppid": 90370,
+        "sid": 90401,
+        "start_seconds": 1791556644,
+        "start_subseconds": 62298,
+        "state": "running",
+        "uid": 501
+      },
+      "intermediate_identity": null,
+      "intermediate_pid": null,
+      "intermediate_reaped": true,
+      "intermediate_status": null,
+      "kind": "CPU enrollment",
+      "known_absent": true,
+      "launch_record": {
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+        "environment": {},
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil"
+      },
+      "pid": 90401,
+      "settlement": {
+        "complete": true,
+        "exit_code": null,
+        "exit_signal": 15,
+        "failure": null,
+        "group_absent": true,
+        "group_signalled": true,
+        "leader_reaped": true
+      }
+    }
+  ],
+  "settlement": null,
+  "success": false,
+  "transaction_id": "cpu-1791556642181-90295",
+  "transaction_sha256": "1b9af958a95e58e1010f6ef213cf5e0471eef5440ca3f6a21e549bdbaaa55971"
+}

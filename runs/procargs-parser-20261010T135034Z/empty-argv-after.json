@@ -1,0 +1,29 @@
+[
+  {
+    "first_environment_additional": true,
+    "result": {
+      "comparison": {
+        "additional_profile_names": true,
+        "launcher_values_equal": {
+          "PYTHONDONTWRITEBYTECODE": true,
+          "PYTHONHOME": true,
+          "PYTHONPATH": true
+        },
+        "names": [
+          "OMLX_CPU_OVERRIDE",
+          "PYTHONDONTWRITEBYTECODE",
+          "PYTHONHOME",
+          "PYTHONPATH"
+        ]
+      },
+      "qualified": false
+    }
+  },
+  {
+    "first_environment_duplicate": true,
+    "result": {
+      "error": "X2 duplicate profile environment name",
+      "qualified": false
+    }
+  }
+]

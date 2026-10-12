@@ -1,0 +1,87 @@
+use media_inference_lab::process_scope::{
+    CommandSpec, OwnedProcess, ProcessIdentity, ProcessState, signal_bound, verify_identity,
+};
+use std::{collections::BTreeMap, error::Error, io, thread, time::{Duration, Instant}};
+
+type SmokeResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
+fn require(ok: bool, message: &str) -> io::Result<()> {
+    if ok { Ok(()) } else { Err(io::Error::other(message)) }
+}
+fn authority(end: Instant) -> io::Result<()> {
+    require(Instant::now() < end, "original signal deadline expired")
+}
+fn wait_state(identity: &ProcessIdentity, state: ProcessState, end: Instant) -> SmokeResult<()> {
+    loop {
+        authority(end)?;
+        if verify_identity(identity)?.state == state { return Ok(()); }
+        thread::sleep(Duration::from_millis(2));
+    }
+}
+fn main() -> SmokeResult<()> {
+    let cleanup_end = Instant::now() + Duration::from_secs(5);
+    let operation_end = cleanup_end - Duration::from_secs(1);
+    let spec = CommandSpec {
+        executable: "/bin/sleep".into(), args: vec!["3".into()], cwd: "/".into(),
+        environment: BTreeMap::new(),
+    };
+    let (mut actor, failure) = OwnedProcess::spawn_with_deadline(
+        &spec, operation_end, &mut || authority(operation_end).map_err(Into::into),
+    )?.into_parts();
+    let outcome: SmokeResult<()> = (|| {
+        require(failure.is_none(), "finite actor launch failed")?;
+        let identity = actor.identity()?;
+        require(identity.ppid == std::process::id(), "actor not direct owned child")?;
+        println!("owned actor pid={} ppid={} pgid={} sid={}",
+            identity.pid, identity.ppid, identity.pgid, identity.sid);
+
+        let mut reached = false;
+        let denied = signal_bound(&identity, libc::SIGKILL, true, &mut || {
+            reached = true;
+            Err(io::Error::new(io::ErrorKind::PermissionDenied, "revoked at dispatch").into())
+        });
+        require(denied.is_err() && reached, "group KILL was not denied internally")?;
+        require(verify_identity(&identity)?.state == ProcessState::Running, "denied KILL changed actor")?;
+        println!("group KILL: internal revocation denied; actor Running");
+
+        let signal_end = Instant::now() + Duration::from_millis(20);
+        authority(signal_end)?;
+        let denied = signal_bound(&identity, libc::SIGSTOP, false, &mut || {
+            thread::sleep(signal_end.saturating_duration_since(Instant::now()));
+            authority(signal_end).map_err(Into::into)
+        });
+        require(denied.is_err() && Instant::now() >= signal_end, "STOP expiry not denied")?;
+        require(verify_identity(&identity)?.state == ProcessState::Running, "denied STOP changed actor")?;
+        println!("PID STOP: internal deadline expiry denied; actor Running");
+
+        signal_bound(&identity, libc::SIGSTOP, false, &mut || authority(operation_end).map_err(Into::into))?;
+        wait_state(&identity, ProcessState::Stopped, operation_end)?;
+        println!("PID STOP: authorized; actor Stopped");
+        let denied = signal_bound(&identity, libc::SIGCONT, false, &mut || {
+            Err(io::Error::new(io::ErrorKind::PermissionDenied, "resume revoked at dispatch").into())
+        });
+        require(denied.is_err(), "CONT revocation not denied")?;
+        require(verify_identity(&identity)?.state == ProcessState::Stopped, "denied CONT resumed actor")?;
+        println!("PID CONT: internal revocation denied; actor Stopped");
+        signal_bound(&identity, libc::SIGCONT, false, &mut || authority(operation_end).map_err(Into::into))?;
+        wait_state(&identity, ProcessState::Running, operation_end)?;
+        println!("PID CONT: authorized; actor Running");
+        signal_bound(&identity, libc::SIGTERM, true, &mut || authority(operation_end).map_err(Into::into))?;
+        while !actor.exited_unreaped()? {
+            authority(operation_end)?;
+            thread::sleep(Duration::from_millis(2));
+        }
+        println!("group TERM: authorized; actor exited unreaped");
+        Ok(())
+    })();
+    // Always dispose before propagating a failed observation, without resetting
+    // the original cleanup deadline or reusing revoked operation authority.
+    let settlement = actor.settle(cleanup_end, Duration::from_millis(100), &mut || {
+        authority(cleanup_end).map_err(Into::into)
+    })?;
+    println!("settlement: {settlement:?}");
+    outcome?;
+    require(settlement.complete && settlement.leader_reaped && settlement.group_absent,
+        "owned actor cleanup incomplete")?;
+    require(settlement.exit_signal == Some(libc::SIGTERM), "unexpected actor exit")?;
+    Ok(())
+}

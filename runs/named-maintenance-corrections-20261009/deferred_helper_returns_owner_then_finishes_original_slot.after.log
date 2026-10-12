@@ -1,0 +1,7 @@
+
+running 1 test
+test service_lifecycle::tests::deferred_helper_returns_owner_then_finishes_original_slot ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.03s
+
+deferred helper probe: pid=71343, recovery_calls=4, accounting=[ActorDisposition { kind: "bounded helper", pid: 71343, identity: Some(ProcessIdentity { pid: 71343, ppid: 71342, pgid: 71343, sid: 71343, uid: 501, start_seconds: 1791556188, start_subseconds: 803693, executable: "/bin/sleep", cwd: "/", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: "/bin/sh", args: ["-c", "echo $$ > '/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpej1l9Y/pid'; exec /bin/sleep 2"], cwd: "/", environment: {} }, settlement: Some(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: None }), complete: true, known_absent: true, failure: Some("active experiment authority revoked; cleanup: Err(cleanup deferred until experiment cancellation is settled)"), descendant_uncertainty: None }]

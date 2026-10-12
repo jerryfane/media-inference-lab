@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "review": "https://github.com/jerryfane/media-inference-lab/issues/11#issuecomment-6082367524",
+  "base_commit": "b576449ee8a13bf4fe8aa983e46ab9e60e10d5cc",
+  "initial_probe_binary_sha256": "af04111fdc5333e31c119e5078fc03fec3cf3ab7357a7a3b9fabffaf6bcd6f11",
+  "revised_service_probe_binary_sha256": "43b5c2593ed31000d99ada9f102db7b2a6b1cd67f82676424bdd8472257f6166",
+  "initial": [
+    {
+      "test": "process_scope::tests::post_barrier_revocation_retains_child_for_independent_cleanup",
+      "exit": 101,
+      "stdout": "\nrunning 1 test\ntest process_scope::tests::post_barrier_revocation_retains_child_for_independent_cleanup ... FAILED\n\nfailures:\n\nfailures:\n    process_scope::tests::post_barrier_revocation_retains_child_for_independent_cleanup\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 32 filtered out; finished in 2.02s\n\n",
+      "stderr": "post-barrier baseline pid=10025 revoked=true lease_busy=true settlement=Settlement { complete: false, leader_reaped: false, group_absent: false, group_signalled: false, exit_code: None, exit_signal: None, failure: Some(\"settlement control denied: execution authority revoked after barrier\") }\n\nthread 'process_scope::tests::post_barrier_revocation_retains_child_for_independent_cleanup' (67361670) panicked at src/process_scope.rs:1535:9:\nrevoked execution discarded owned child instead of allowing independent cleanup\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    },
+    {
+      "test": "service_lifecycle::tests::deadline_after_term_never_escalates",
+      "exit": 101,
+      "stdout": "\nrunning 1 test\ntest service_lifecycle::tests::deadline_after_term_never_escalates ... FAILED\n\nfailures:\n\nfailures:\n    service_lifecycle::tests::deadline_after_term_never_escalates\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 32 filtered out; finished in 0.11s\n\n",
+      "stderr": "TERM deadline probe: result=Err(full zombie executable/cwd/session identity unavailable), exited_before_cleanup=true, cleanup=Ok(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(15), failure: None })\nError: KILL occurred after TERM deadline\n"
+    },
+    {
+      "test": "service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition",
+      "exit": 0,
+      "stdout": "\nrunning 1 test\ntest service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 32 filtered out; finished in 0.03s\n\n",
+      "stderr": "helper authority probe: pid=Some(10114), error=spawn of owned pid 10114 failed: execution authority revoked; cleanup complete=false, reaped=false, group_absent=false, failure=Some(\"settlement control denied: execution authority revoked\")\n"
+    },
+    {
+      "test": "service_lifecycle::tests::detached_early_authority_loss_retains_cleanup_disposition",
+      "exit": 101,
+      "stdout": "\nrunning 1 test\ntest service_lifecycle::tests::detached_early_authority_loss_retains_cleanup_disposition ... FAILED\n\nfailures:\n\nfailures:\n    service_lifecycle::tests::detached_early_authority_loss_retains_cleanup_disposition\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 32 filtered out; finished in 4.01s\n\n",
+      "stderr": "detached early authority probe: pid=None, error=execution authority revoked before PID handshake\nError: detached error discarded launch accounting\n"
+    },
+    {
+      "test": "capture::deadline_review_tests::review_prelaunch_callback_overrun_never_attempts_creation",
+      "exit": 101,
+      "stdout": "\nrunning 1 test\ntest capture::deadline_review_tests::review_prelaunch_callback_overrun_never_attempts_creation ... FAILED\n\nfailures:\n\nfailures:\n    capture::deadline_review_tests::review_prelaunch_callback_overrun_never_attempts_creation\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 32 filtered out; finished in 0.07s\n\n",
+      "stderr": "review prelaunch: expired=true creation_attempted=true directory_created=true result=Err(native lease missing)\n\nthread 'capture::deadline_review_tests::review_prelaunch_callback_overrun_never_attempts_creation' (67362343) panicked at src/capture.rs:1801:9:\nexpired prelaunch reached process creation\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+  ],
+  "revised_service": [
+    {
+      "test": "service_lifecycle::tests::deadline_after_term_never_escalates",
+      "exit": 101,
+      "stdout": "\nrunning 1 test\ntest service_lifecycle::tests::deadline_after_term_never_escalates ... FAILED\n\nfailures:\n\nfailures:\n    service_lifecycle::tests::deadline_after_term_never_escalates\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 30 filtered out; finished in 0.12s\n\n",
+      "stderr": "TERM deadline probe: result=Err(service deadline expired), exited_before_cleanup=true, cleanup=Ok(Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: true, exit_code: None, exit_signal: Some(9), failure: None })\nError: KILL occurred after TERM deadline\n"
+    },
+    {
+      "test": "service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition",
+      "exit": 101,
+      "stdout": "\nrunning 1 test\ntest service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition ... FAILED\n\nfailures:\n\nfailures:\n    service_lifecycle::tests::helper_authority_loss_retains_cleanup_disposition\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 30 filtered out; finished in 0.02s\n\n",
+      "stderr": "helper authority probe: pid=Some(18407), marker_ticks=5, live_before_disposal=true, error=execution authority revoked\nError: helper retained live actor after authority loss\n"
+    }
+  ],
+  "limitations": [
+    "Only new failure windows exercised. No previously accepted scenario rerun.",
+    "Initial TERM probe used default TERM disposition and did not isolate KILL; revised probe ignored TERM and observed actual exit signal9 after deadline.",
+    "Initial helper predicate matched cleanup complete=false and revoked during spawn; revised probe revoked after spawn, observed live helper before independent finite-actor disposal.",
+    "Detached early-error baseline demonstrates missing launch/intermediate accounting; PID marker was absent, so no claim backend exec occurred.",
+    "Prelaunch baseline is internal CPU setup rejection: no lease, native runtime or production authority supplied; old path reached creation selection after expiry and failed on missing lease.",
+    "Every actor is project-created and finite; test teardown is separate from implementation settlement evidence."
+  ]
+}

@@ -1,10 +1,7 @@
-//! Conservative workstation guards. These observations never authorize GPU use.
-use crate::native_guard::{NativeGuardConfig, NativeGuardReading, NativeGuardReport, combine};
+//! Resource safety only. Service inhibition and authorization belong to the guardian.
 use anyhow::{Context, Result, bail, ensure};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::{
-    collections::{BTreeMap, BTreeSet},
     fs::{self, File, OpenOptions},
     os::unix::{
         fs::{MetadataExt, OpenOptionsExt},
@@ -19,29 +16,16 @@ pub const ABORT_FREE_PERCENT: f64 = 15.0;
 pub const MAX_SWAP_GROWTH_BYTES: u64 = 512 * 1024 * 1024;
 pub const MAX_MONITOR_DURATION_MS: u64 = 600_000;
 pub const MAX_SAMPLES: usize = 6002;
-const APP_MARKER: &str = " -m uvicorn backend.app:app --host 127.0.0.1 --port 7860";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GuardConfig {
-    pub live_app_pid: u32,
-    /// SHA-256 of the trimmed command column from `ps -axo pid=,ppid=,command=`.
-    pub live_app_command_sha256: String,
     pub min_disk_free_bytes: u64,
     pub max_disk_growth_bytes: u64,
     pub sample_interval_ms: u64,
 }
 impl GuardConfig {
     pub fn validate(&self) -> Result<()> {
-        ensure!(self.live_app_pid > 0, "live app PID must be positive");
-        ensure!(
-            self.live_app_command_sha256.len() == 64
-                && self
-                    .live_app_command_sha256
-                    .bytes()
-                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)),
-            "live app command SHA-256 must be 64 lowercase hexadecimal characters"
-        );
         ensure!(
             self.min_disk_free_bytes > 0 && self.max_disk_growth_bytes > 0,
             "explicit positive disk limits are required"
@@ -86,7 +70,7 @@ impl Lease {
         );
         if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
             return Err(std::io::Error::last_os_error())
-                .context("GPU lease unavailable (another owner may be active)");
+                .context("cooperating lease unavailable (another owner may be active)");
         }
         let current = fs::symlink_metadata(path)?;
         ensure!(
@@ -125,20 +109,12 @@ impl<T> Observation<T> {
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct LiveObservation {
-    pub app_pid: u32,
-    pub app_command_sha256: String,
-    pub worker_pids: Vec<u32>,
-}
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
 pub struct GuardSnapshot {
     pub epoch_ms: u64,
     pub platform: String,
     pub free_system_memory_percent: Observation<f64>,
     pub swap_used_bytes: Observation<u64>,
     pub disk_free_bytes: Observation<u64>,
-    pub live: Observation<LiveObservation>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -151,7 +127,6 @@ pub struct GuardPolicy {
     pub memory_method: String,
     pub swap_method: String,
     pub disk_method: String,
-    pub live_method: String,
     pub limitations: Vec<String>,
     pub gpu_authorization: bool,
 }
@@ -166,10 +141,8 @@ impl Default for GuardPolicy {
             memory_method: "/usr/bin/memory_pressure -Q; system-wide free percentage indication, not RSS or GPU memory".into(),
             swap_method: "/usr/sbin/sysctl vm.swapusage; used bytes, growth from launch baseline".into(),
             disk_method: "statvfs(output directory): unprivileged available bytes; growth is filesystem-wide decrease from baseline".into(),
-            live_method: "/bin/ps -axo pid=,ppid=,command=; exact configured app PID and trimmed command SHA-256; unique reference app signature; all descendants and global backend.worker/backend.video_worker/h3.c workers".into(),
             limitations: vec![
-                "No worker observed is NOT authoritative idleness: the live API exposes per-job lookup but no aggregate active queue API; health is not idleness.".into(),
-                "Queued/in-process jobs, unrelated GPU workloads, and PID reuse with an identical command cannot be excluded. Explicit mac-studio manager grant remains required.".into(),
+                "Resource observations do not establish service idleness, named-scope exclusion, or whole-host GPU ownership.".into(),
                 "Polling can miss short-lived jobs and overshoot memory/disk limits; disk decrease includes unrelated writers and is not a filesystem quota.".into(),
                 "Collectors are read-only macOS commands with a 2-second bound each and bounded output; sequential observations are not atomic. Filesystem syscalls may stall.".into(),
                 "Lease serializes cooperating project processes only; its persistent owner-private inode must never be unlinked or replaced. Inherited lock protects only descendants retaining the descriptor.".into(),
@@ -213,22 +186,13 @@ pub struct GuardReport {
     pub baseline: GuardSnapshot,
     pub initial_decision: GuardDecision,
     pub samples: Vec<GuardSample>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub native: Option<NativeGuardReport>,
 }
 impl GuardReport {
     pub fn validate(&self) -> Result<()> {
         ensure!(
-            self.schema_version == if self.native.is_some() { 2 } else { 1 },
-            "unsupported guard report version or missing native evidence"
+            self.schema_version == 3,
+            "unsupported resource guard report version"
         );
-        if let Some(native) = &self.native {
-            native.validate()?;
-            ensure!(
-                native.samples.len() == self.samples.len(),
-                "native/resource sample history differs"
-            );
-        }
         self.config.validate()?;
         ensure!(
             self.policy == GuardPolicy::default(),
@@ -238,10 +202,7 @@ impl GuardReport {
             self.samples.len() <= MAX_SAMPLES,
             "guard history exceeds bound"
         );
-        let mut initial = evaluate_launch(&self.config, &self.baseline);
-        if let Some(native) = &self.native {
-            combine(&mut initial, &native.baseline.decision);
-        }
+        let initial = evaluate_launch(&self.config, &self.baseline);
         ensure!(
             self.initial_decision == initial,
             "initial guard decision contradicts observations"
@@ -270,9 +231,6 @@ impl GuardReport {
             );
             let mut expected = evaluate_running(&self.config, &self.baseline, &sample.snapshot);
             apply_stop(&mut expected, sample.stop_reason.as_ref());
-            if let Some(native) = &self.native {
-                combine(&mut expected, &native.samples[index].decision);
-            }
             ensure!(
                 sample.decision == expected,
                 "guard decision contradicts observations"
@@ -343,16 +301,6 @@ fn evaluate(
             reasons.push("filesystem disk consumption exceeds configured growth limit".into());
         }
     }
-    if let Some(live) = required(&sample.live, "live workload", &mut reasons) {
-        if live.app_pid != config.live_app_pid
-            || live.app_command_sha256 != config.live_app_command_sha256
-        {
-            reasons.push("live app identity changed".into());
-        }
-        if !live.worker_pids.is_empty() {
-            reasons.push("live generation worker or app descendant observed".into());
-        }
-    }
     GuardDecision {
         allowed: reasons.is_empty(),
         reasons,
@@ -406,36 +354,17 @@ impl GuardMonitor {
         let initial_decision = evaluate_launch(&config, &baseline);
         Ok(Self {
             report: GuardReport {
-                schema_version: 1,
+                schema_version: 3,
                 config,
                 policy: GuardPolicy::default(),
                 baseline,
                 initial_decision,
                 samples: Vec::new(),
-                native: None,
             },
             output_dir: output_dir.to_owned(),
             started,
             last_observation: Instant::now(),
         })
-    }
-    pub fn start_native(
-        config: GuardConfig,
-        output_dir: &Path,
-        native: NativeGuardConfig,
-    ) -> Result<Self> {
-        native.validate()?;
-        let mut monitor = Self::start(config, output_dir)?;
-        // Collect required native readiness ourselves, never from caller-supplied readings.
-        let baseline = NativeGuardReading::collect(&native);
-        combine(&mut monitor.report.initial_decision, &baseline.decision);
-        monitor.report.schema_version = 2;
-        monitor.report.native = Some(NativeGuardReport {
-            config: native,
-            baseline,
-            samples: Vec::new(),
-        });
-        Ok(monitor)
     }
     pub fn report(&self) -> &GuardReport {
         &self.report
@@ -468,11 +397,6 @@ impl GuardMonitor {
         };
         let mut decision = evaluate_running(&self.report.config, &self.report.baseline, &snapshot);
         apply_stop(&mut decision, stop_reason.as_ref());
-        if let Some(native) = &mut self.report.native {
-            let reading = NativeGuardReading::collect(&native.config);
-            combine(&mut decision, &reading.decision);
-            native.samples.push(reading);
-        }
         self.report.samples.push(GuardSample {
             elapsed_ms,
             snapshot,
@@ -562,83 +486,7 @@ pub fn parse_swap_usage(text: &str) -> Result<u64> {
         .context("swap amount overflow")
 }
 
-/// Commands are consumed transiently, never included in observations or parsing errors.
-pub fn observe_process_table(text: &str, config: &GuardConfig) -> Result<LiveObservation> {
-    config.validate()?;
-    let mut rows = BTreeMap::new();
-    let mut apps = Vec::new();
-    let mut workers = BTreeSet::new();
-    let mut children: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
-    for line in text.lines().filter(|line| !line.trim().is_empty()) {
-        let line = line.trim();
-        let (pid, rest) = line
-            .split_once(char::is_whitespace)
-            .context("malformed process row")?;
-        let (ppid, command) = rest
-            .trim_start()
-            .split_once(char::is_whitespace)
-            .context("malformed process row")?;
-        let pid: u32 = pid.parse().context("invalid process PID")?;
-        let ppid: u32 = ppid.parse().context("invalid process parent PID")?;
-        let command = command.trim();
-        ensure!(
-            !command.is_empty() && (pid != ppid || pid == 0),
-            "invalid process row"
-        );
-        ensure!(
-            rows.insert(pid, command).is_none(),
-            "ambiguous duplicate process PID"
-        );
-        children.entry(ppid).or_default().push(pid);
-        if has_marker(command, APP_MARKER) {
-            apps.push(pid);
-        }
-        if has_marker(command, " -m backend.worker")
-            || has_marker(command, " -m backend.video_worker")
-            || command.contains("/h3.c/h3 -d ")
-        {
-            workers.insert(pid);
-        }
-    }
-    ensure!(
-        apps.len() == 1 && apps[0] == config.live_app_pid,
-        "live app missing, changed, or ambiguous"
-    );
-    let command = rows
-        .get(&config.live_app_pid)
-        .context("configured live app disappeared")?;
-    let app_command_sha256 = format!("{:x}", Sha256::digest(command.as_bytes()));
-    ensure!(
-        app_command_sha256 == config.live_app_command_sha256,
-        "live app command identity changed"
-    );
-    let mut pending = vec![config.live_app_pid];
-    let mut visited = BTreeSet::new();
-    while let Some(pid) = pending.pop() {
-        ensure!(visited.insert(pid), "ambiguous cyclic app process ancestry");
-        if pid != config.live_app_pid {
-            workers.insert(pid);
-        }
-        if let Some(descendants) = children.get(&pid) {
-            pending.extend(descendants);
-        }
-    }
-    Ok(LiveObservation {
-        app_pid: config.live_app_pid,
-        app_command_sha256,
-        worker_pids: workers.into_iter().collect(),
-    })
-}
-fn has_marker(command: &str, marker: &str) -> bool {
-    command.match_indices(marker).any(|(index, _)| {
-        command[index + marker.len()..]
-            .chars()
-            .next()
-            .is_none_or(char::is_whitespace)
-    })
-}
-
-fn collect(config: &GuardConfig, output_dir: &Path) -> GuardSnapshot {
+fn collect(_config: &GuardConfig, output_dir: &Path) -> GuardSnapshot {
     let epoch_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
@@ -658,15 +506,11 @@ fn collect(config: &GuardConfig, output_dir: &Path) -> GuardSnapshot {
                     .and_then(|text| parse_swap_usage(&text)),
             ),
             disk_free_bytes: Observation::from_result(disk_free(output_dir)),
-            live: Observation::from_result(
-                collector("/bin/ps", &["-axo", "pid=,ppid=,command="])
-                    .and_then(|text| observe_process_table(&text, config)),
-            ),
         }
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (config, output_dir);
+        let _ = output_dir;
         let reason = "required native collectors are implemented only for macOS";
         GuardSnapshot {
             epoch_ms,
@@ -678,9 +522,6 @@ fn collect(config: &GuardConfig, output_dir: &Path) -> GuardSnapshot {
                 reason: reason.into(),
             },
             disk_free_bytes: Observation::Unavailable {
-                reason: reason.into(),
-            },
-            live: Observation::Unavailable {
                 reason: reason.into(),
             },
         }

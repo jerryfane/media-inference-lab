@@ -2,12 +2,10 @@
 
 use media_inference_lab::guards::{
     GuardConfig, GuardDecision, GuardPolicy, GuardReport, GuardSample, GuardSnapshot, Lease,
-    LiveObservation, MAX_MONITOR_DURATION_MS, MAX_SAMPLES, MAX_SWAP_GROWTH_BYTES, Observation,
-    evaluate_launch, evaluate_running, observe_process_table, parse_memory_pressure,
-    parse_swap_usage,
+    MAX_MONITOR_DURATION_MS, MAX_SAMPLES, MAX_SWAP_GROWTH_BYTES, Observation, evaluate_launch,
+    evaluate_running, parse_memory_pressure, parse_swap_usage,
 };
 use parking_lot::Mutex;
-use sha2::{Digest, Sha256};
 use std::{
     fs,
     os::unix::{fs::symlink, process::CommandExt},
@@ -17,7 +15,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-const APP: &str = "/private/example/python -m uvicorn backend.app:app --host 127.0.0.1 --port 7860";
 // Avoid cross-test fork/exec windows temporarily inheriting another case's lease FD.
 static LEASE_CASE: Mutex<()> = Mutex::new(());
 fn available<T>(value: T) -> Observation<T> {
@@ -25,8 +22,6 @@ fn available<T>(value: T) -> Observation<T> {
 }
 fn config() -> GuardConfig {
     GuardConfig {
-        live_app_pid: 100,
-        live_app_command_sha256: format!("{:x}", Sha256::digest(APP.as_bytes())),
         min_disk_free_bytes: 1000,
         max_disk_growth_bytes: 2000,
         sample_interval_ms: 100,
@@ -39,23 +34,17 @@ fn snapshot() -> GuardSnapshot {
         free_system_memory_percent: available(30.0),
         swap_used_bytes: available(1024),
         disk_free_bytes: available(10_000),
-        live: available(LiveObservation {
-            app_pid: 100,
-            app_command_sha256: config().live_app_command_sha256,
-            worker_pids: vec![],
-        }),
     }
 }
 fn report() -> GuardReport {
     let baseline = snapshot();
     GuardReport {
-        schema_version: 1,
+        schema_version: 3,
         config: config(),
         policy: GuardPolicy::default(),
         initial_decision: evaluate_launch(&config(), &baseline),
         baseline,
         samples: vec![],
-        native: None,
     }
 }
 #[test]
@@ -79,7 +68,7 @@ fn fixed_memory_and_swap_threshold_boundaries() {
     assert!(evaluate_running(&config, &baseline, &sample).allowed);
 }
 #[test]
-fn disk_live_identity_and_every_missing_observation_fail_closed() {
+fn disk_and_every_missing_resource_observation_fail_closed() {
     let config = config();
     let baseline = snapshot();
     let mut sample = baseline.clone();
@@ -91,27 +80,10 @@ fn disk_live_identity_and_every_missing_observation_fail_closed() {
     assert!(evaluate_running(&config, &baseline, &sample).allowed);
     sample.disk_free_bytes = available(7999);
     assert!(!evaluate_running(&config, &baseline, &sample).allowed);
-    let mut sample = baseline.clone();
-    if let Observation::Available { value } = &mut sample.live {
-        value.worker_pids.push(101);
-    }
-    assert!(!evaluate_launch(&config, &sample).allowed);
-    assert!(!evaluate_running(&config, &baseline, &sample).allowed);
-    let mut sample = baseline.clone();
-    if let Observation::Available { value } = &mut sample.live {
-        value.app_pid += 1;
-    }
-    assert!(!evaluate_launch(&config, &sample).allowed);
-    let mut sample = baseline.clone();
-    if let Observation::Available { value } = &mut sample.live {
-        value.app_command_sha256 = "f".repeat(64);
-    }
-    assert!(!evaluate_launch(&config, &sample).allowed);
     for field in [
         "free_system_memory_percent",
         "swap_used_bytes",
         "disk_free_bytes",
-        "live",
     ] {
         let mut json = serde_json::to_value(&baseline).unwrap();
         json[field] =
@@ -170,37 +142,6 @@ fn collectors_reject_malformed_or_ambiguous_numbers() {
     ] {
         assert!(parse_swap_usage(text).is_err());
     }
-}
-#[test]
-fn live_reference_detection_tracks_descendants_and_global_workers_without_commands() {
-    let config = config();
-    let base = format!("1 0 /sbin/launchd\n100 1 {APP}\n");
-    assert!(
-        observe_process_table(&base, &config)
-            .unwrap()
-            .worker_pids
-            .is_empty()
-    );
-    let rows = format!(
-        "{base}102 101 private-grandchild\n101 100 private-child\n200 1 python -m backend.worker private-prompt\n201 1 python -m backend.video_worker private-prompt\n202 1 /some/h3.c/h3 -d private-model\n203 1 python -m backend.worker_unrelated\n"
-    );
-    let observation = observe_process_table(&rows, &config).unwrap();
-    assert_eq!(observation.worker_pids, vec![101, 102, 200, 201, 202]);
-    let recorded = serde_json::to_string(&observation).unwrap();
-    for private in [APP, "private-prompt", "private-child", "private-model"] {
-        assert!(!recorded.contains(private));
-    }
-    assert!(observe_process_table("1 0 launchd", &config).is_err());
-    assert!(observe_process_table(&format!("{base}300 1 {APP}\n"), &config).is_err());
-    assert!(observe_process_table(&format!("{base}100 1 duplicate\n"), &config).is_err());
-    assert!(
-        observe_process_table(&base.replace(APP, &format!("{APP} --reload")), &config).is_err()
-    );
-    assert!(observe_process_table(&format!("{base}malformed private-secret"), &config).is_err());
-    let error = observe_process_table(&format!("{base}malformed private-secret"), &config)
-        .unwrap_err()
-        .to_string();
-    assert!(!error.contains("private-secret"));
 }
 #[test]
 fn guard_evidence_validation_rejects_forged_or_unbounded_decisions() {

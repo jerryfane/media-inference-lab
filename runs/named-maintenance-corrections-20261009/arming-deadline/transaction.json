@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "transaction_id": "cpu-1791556642181-90295",
+  "purpose": "cpu",
+  "evidence_root": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge/cpu-1791556642181-90295",
+  "lease_path": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge/.cpu-maintenance.lock",
+  "guardian_sha256": "e81385470a61e2f78d2776278b556c295806f44c1929b0e97cd0bcf266760e36",
+  "budgets": {
+    "arming_ms": 50,
+    "studio_stop_ms": 2000,
+    "omlx_stop_ms": 2000,
+    "prelaunch_ms": 1000,
+    "experiment_ms": 3000,
+    "cleanup_ms": 2000,
+    "omlx_restore_ms": 3000,
+    "studio_restore_ms": 2000,
+    "recovery_ms": 3000,
+    "total_ms": 30000
+  },
+  "services": [
+    {
+      "kind": "owned_cpu",
+      "role": "studio",
+      "command": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+        "environment": {}
+      },
+      "restore_command": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+        "environment": {}
+      },
+      "gui_command": null
+    },
+    {
+      "kind": "owned_cpu",
+      "role": "omlx",
+      "command": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+        "environment": {}
+      },
+      "restore_command": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+        "environment": {}
+      },
+      "gui_command": {
+        "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+        "args": [
+          "maintenance-participant",
+          "--mode",
+          "service",
+          "--duration-ms",
+          "30000"
+        ],
+        "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+        "environment": {}
+      }
+    }
+  ],
+  "experiment": {
+    "kind": "cpu",
+    "command": {
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "args": [
+        "maintenance-participant",
+        "--mode",
+        "compute",
+        "--duration-ms",
+        "200"
+      ],
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+      "environment": {}
+    }
+  },
+  "reviewed_permissions": null
+}

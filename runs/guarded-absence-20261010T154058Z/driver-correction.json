@@ -1,0 +1,5 @@
+{
+  "failure": "Actual CLI presence smoke exited 2 after a denial receipt because fixture owner and driver both used exclusive creation for the same settlement file.",
+  "correction": "Worker exclusively persists every settlement; driver joins without rewriting it. Permanent integration tests now require CLI exit 0 for success and 1 for transaction denial.",
+  "cleanup": "The failing smoke retained receipt and fixture dispositions; all four recorded owned PIDs were absent before its driver assertion."
+}

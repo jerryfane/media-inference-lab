@@ -1,0 +1,60 @@
+[
+  {
+    "role": "studio",
+    "root": {
+      "pid": 87986,
+      "ppid": 87927,
+      "pgid": 87986,
+      "sid": 87986,
+      "uid": 501,
+      "start_seconds": 1791551364,
+      "start_subseconds": 593306,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "gui": null,
+    "inhibited": true,
+    "restored": false,
+    "failure": null,
+    "evidence": [
+      "owned backend settled and reaped; group absent"
+    ],
+    "launch_record": null
+  },
+  {
+    "role": "omlx",
+    "root": {
+      "pid": 87950,
+      "ppid": 87927,
+      "pgid": 87950,
+      "sid": 87950,
+      "uid": 501,
+      "start_seconds": 1791551364,
+      "start_subseconds": 19555,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "gui": {
+      "pid": 87958,
+      "ppid": 87927,
+      "pgid": 87958,
+      "sid": 87958,
+      "uid": 501,
+      "start_seconds": 1791551364,
+      "start_subseconds": 307917,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "stopped"
+    },
+    "inhibited": true,
+    "restored": false,
+    "failure": null,
+    "evidence": [
+      "same GUI birth identity observed stopped after SIGSTOP",
+      "owned backend settled and reaped; group absent"
+    ],
+    "launch_record": null
+  }
+]

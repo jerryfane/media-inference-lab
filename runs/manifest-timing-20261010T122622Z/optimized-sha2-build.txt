@@ -1,0 +1,3 @@
+   Compiling sha2 v0.10.9
+   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.86s

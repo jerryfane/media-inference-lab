@@ -1,0 +1,365 @@
+{
+  "status": "OFFLINE_CORRECTION_VERIFIED_PENDING_PARENT_EXACT_REVIEW",
+  "base_commit": "343032f9cfdcfafce31f5058eaa47545bd024492",
+  "branch": "feat/named-maintenance-integration",
+  "new_regressions_passed": 26,
+  "regression_groups": {
+    "profile": 10,
+    "credential": 11,
+    "scope_observer": 4,
+    "sticky_scope_transition": 1
+  },
+  "verification": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "qualification_profile::tests"
+      ],
+      "exit_code": 101,
+      "log": "runs/qualification-correction-20261010T061224Z/focused-1.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "qualification_profile::tests"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/focused-1-corrected.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "restore_qualification::tests::credential_"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/focused-2-corrected.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "qualification_scope::tests"
+      ],
+      "exit_code": 101,
+      "log": "runs/qualification-correction-20261010T061224Z/focused-3-corrected.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "qualification_scope::tests"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/focused-3-portable.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "restore_qualification::tests::qualification_scope_failure_is_sticky_before_replacement"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/focused-4-portable.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--lib",
+        "--bin",
+        "mil",
+        "--example",
+        "qualification_correction_smoke"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/build.txt"
+    },
+    {
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/examples/qualification_correction_smoke",
+        "smoke",
+        "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/profile-catalog.json",
+        "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/qualification-plan.json"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/api-smoke.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--lib",
+        "--bin",
+        "mil",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/clippy.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "restore_qualification::tests::credential_projection_requires_lexically_exact_settings_path"
+      ],
+      "exit_code": 101,
+      "log": "runs/qualification-correction-20261010T061224Z/credential-exact-path-before.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "qualification_scope::tests::scope_home_and_directory_bindings_are_lexically_exact"
+      ],
+      "exit_code": 101,
+      "log": "runs/qualification-correction-20261010T061224Z/scope-exact-path-before.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "restore_qualification::tests::credential_"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/credential-exact-path-after.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "--offline",
+        "--lib",
+        "qualification_scope::tests"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/scope-exact-path-after.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--lib",
+        "--bin",
+        "mil",
+        "--example",
+        "qualification_correction_smoke"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/final-build.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--lib",
+        "--bin",
+        "mil",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/final-clippy.txt"
+    },
+    {
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/examples/qualification_correction_smoke",
+        "bind",
+        "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/qualification-plan.json",
+        "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/permissions.correction-input.json",
+        "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/transaction.proposal.json",
+        "6c5d7f018e0a1a3c7474a6ef442d9ab7968addc267fa1c28894bfb973a3602ba",
+        "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/permissions.corrected.proposal.json",
+        "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/transaction.corrected.proposal.json"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/typed-bindings.txt"
+    },
+    {
+      "command": [
+        "cargo",
+        "build",
+        "--offline",
+        "--example",
+        "qualification_correction_smoke"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/binding-driver-build.txt"
+    },
+    {
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/examples/qualification_correction_smoke",
+        "smoke",
+        "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/profile-catalog.json",
+        "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/qualification-plan.json"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/api-smoke-final.txt"
+    },
+    {
+      "command": [
+        "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/examples/qualification_correction_smoke",
+        "bindings",
+        "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/qualification-plan.json",
+        "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/permissions.correction-input.json",
+        "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/transaction.proposal.json",
+        "6c5d7f018e0a1a3c7474a6ef442d9ab7968addc267fa1c28894bfb973a3602ba"
+      ],
+      "exit_code": 0,
+      "log": "runs/qualification-correction-20261010T061224Z/typed-bindings-corrected.txt"
+    }
+  ],
+  "observed_failures_and_corrections": [
+    {
+      "issue": "Serde internally tagged scalar unit variants accepted unknown schema properties",
+      "fix": "Empty struct variants; all six scalar/payload variants reject extra properties"
+    },
+    {
+      "issue": "Fixture filesystem rejected non-UTF-8 file creation with Illegal byte sequence",
+      "fix": "Exercise production name decoder directly; actual filesystem tests still cover bounds, candidates, unsafe chains and races"
+    },
+    {
+      "issue": "Normalized Path equality admitted lexical credential/HOME/scope aliases",
+      "fix": "OsStr lexical equality; failing-before/passing-after boundary regressions retained"
+    },
+    {
+      "issue": "Temporary binding reporter labeled whole PreparedPlan container digest as prepared command identity",
+      "fix": "Report original stored command sha256; whole prepared_plan JSON is unchanged; corrected binding output retained"
+    }
+  ],
+  "scope": {
+    "synthetic_cpu_only": true,
+    "live_collectors_invoked": false,
+    "service_controls_invoked": false,
+    "lease_acquired": false,
+    "native_execution": false,
+    "old_suites_or_proofs_rerun": false,
+    "selected_runtime_check_rerun": false
+  },
+  "catalog_counts": {
+    "global_root_keys": 18,
+    "global_nested_objects": 17,
+    "global_terminal_leaves": 103,
+    "real_required_keys": 52,
+    "optional_settings_root": true,
+    "settings_required_keys": 85,
+    "virtual_required_keys": 27,
+    "compared_labels_including_containers_and_wildcards": 806,
+    "volatile_labels": 85
+  },
+  "sources": [
+    {
+      "path": "/Users/jerry/Desktop/repos/local-llm-performance-lab/runs/20261010T-omlx-x3-coverage/x3-source-catalog.json",
+      "sha256": "619a647cf3a0dedcbd5bcf4e42ba93679c0866e3532499d59cf4a7653ea68219"
+    },
+    {
+      "path": "/Users/jerry/Desktop/repos/local-llm-performance-lab/runs/20261010T-omlx-x3-coverage/x3-shape-supplement.json",
+      "sha256": "19ace4f387d71a6a64395845a7e447ea8c623744e0f453aafe5c0cce739280da"
+    },
+    {
+      "path": "/Users/jerry/Desktop/repos/local-llm-performance-lab/runs/20261010T-omlx-x3-coverage/x3-scope-supplement.json",
+      "sha256": "df84461a046043940b4f833557a98c42d3ea9c8460191a120dd14f99dae26a3a"
+    },
+    {
+      "path": "/Users/jerry/Desktop/repos/local-llm-performance-lab/runs/20261010T-omlx-x3-coverage/typed-catalog-mapping-review.json",
+      "sha256": "5f569791b54c1b9af65366a0ab63a7d074672ee495c779b029d91f5fc10c17be"
+    },
+    {
+      "path": "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/profile-catalog.json",
+      "sha256": "8ae80bdd27a500435400927ef89e737545601b8e42a88e86e528bace566799d2"
+    }
+  ],
+  "bindings": {
+    "guardian_sha256": "6c5d7f018e0a1a3c7474a6ef442d9ab7968addc267fa1c28894bfb973a3602ba",
+    "non_executable_transaction_sha256": "37bf284825c969ea6877f7a8704e77edc878f0e9b6e064bf06b0d4f703fcb426",
+    "prepared_plan_sha256": "dc2436a522e481032b89098da4d59d2de57a936d0ea96a87d4e2e0999162a248",
+    "qualification_plan_sha256": "520802866777d4df1beb68f86ae10b107e490b685a3409417c9676e40fd733df",
+    "reviewed_permissions_embedded": false,
+    "reviewed_permissions_sha256": "33e02ea36804b46b44b27f0ce170a3812c66d3e85cacee9e4287fdceec387783",
+    "runtime_grant": false
+  },
+  "private_non_executable_proposals": {
+    "permissions": "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/permissions.corrected.proposal.json",
+    "transaction": "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/transaction.corrected.proposal.json",
+    "runtime_grant": false,
+    "transaction_reviewed_permissions": null
+  },
+  "selected_runtime_preparation": {
+    "path": "/Users/jerry/.local/share/media-inference-lab/baseline-preparation-20261010T052236Z/native-preparation.json",
+    "prepared_plan_sha256": "dc2436a522e481032b89098da4d59d2de57a936d0ea96a87d4e2e0999162a248",
+    "entire_prepared_plan_preserved": true,
+    "rerun": false
+  },
+  "code_sha256": {
+    "src/lib.rs": "042b068ce58c0f792a192165a0ea0f0e7879d4718bb9e13cb6be9104d75f0e3e",
+    "src/qualification_profile.rs": "9fba3b1fe8b4d4f8562d98dc0f21981ba87a103719b84cb5a3c73074167ff8ee",
+    "src/qualification_scope.rs": "717e1e4afe7b4913159d038392633799eaf286e2b5448cc7e729c64abe6ea1f8",
+    "src/restore_qualification.rs": "d240a0b0509fb0e0c930e2dee2002e3beeda9f2dc3b6a755a01db81ea9a81e94",
+    "src/service_lifecycle.rs": "f2801a12bc305e30325db034a705985af4966c6dc584886b780e615481387875",
+    "src/maintenance.rs": "98d50fd3a88566e1017e6ea5b0402e2e880d6a559155abc833586c07d510d87c"
+  },
+  "temporary_smoke_driver": {
+    "sha256": "753a3bcd22cceb17a7ddfb4fb74c391e07c9140fdf1425d01ef500c9924daed3",
+    "removed_after_proof": true
+  },
+  "limitations": [
+    "No native/live qualification or restoration was exercised. Exact parent review/grant and coordination remain required.",
+    "Pass means only reviewed source-exposed configured-profile equality, not full-profile, on-disk or runtime-state equivalence.",
+    "SC1/SC2 deny known unsupported scope; directory and process observations are non-atomic and not whole-host worker absence proof.",
+    "Wrong-owner credential regression uses synthetic metadata; no privileged chown was performed.",
+    "Malformed name decoding is exercised directly because the fixture filesystem rejected such a name.",
+    "Executable API smoke covers pure qualification/profile and typed binding APIs; manifest and credential filesystem boundaries are covered by new CPU regressions, not live collectors."
+  ],
+  "unexposed_configured_residuals": {
+    "persisted_but_not_in_any_response": [
+      "version",
+      "logging.log_dir",
+      "logging.retention_days",
+      "server.cors_origins",
+      "server.max_image_upload_size",
+      "server.max_image_side_length",
+      "memory.soft_threshold",
+      "memory.hard_threshold",
+      "memory.prefill_safe_zone_ratio",
+      "memory.prefill_min_chunk_tokens",
+      "auth.secret_key",
+      "auth.allow_unauthenticated_inference"
+    ],
+    "source": "GlobalSettings.to_dict / section to_dict vs _global_settings_response",
+    "other": [
+      "unknown keys in settings.json/model_settings.json (ignored by loaders)",
+      "settings for model ids not discovered",
+      "model_profiles.json/global_templates.json beyond exposed_profiles",
+      "unread on-disk bytes",
+      "environment-only knobs outside X2's enumerated domain",
+      "engine/runtime state outside the responses"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "implementation_commit": "3f23dc871a8cad544a26505a9321424e70874b34",
+  "change_since_smoke": "Restore pre-existing formatting of unrelated manifest tests and shared directory helper. Parser implementation and focused parser tests unchanged. No runtime/private observation.",
+  "verification": {
+    "command": "cargo build --bin mil",
+    "exit_code": 0,
+    "cpu_smoke_and_regressions": "summary.json; exact parser source unchanged"
+  },
+  "artifact_sha256": {
+    "target/debug/mil": "18abc1107977c67bf0478c463dcde18228d14e066735bde8df5412644e084fbe",
+    "src/restore_qualification.rs": "ba6516d5e6e708529a2be29fba7c6b0a5f34409d39d683546df78bb2a246b273",
+    "src/qualification_scope.rs": "bbdf62625e99ce9b322d34ed4e85497cca08e9676fae12ca50e2e940e128729d",
+    "Cargo.toml": "b5c681c426ab547fea9370a71497203de93e820dd76d542cfd4250fbd828977b",
+    "Cargo.lock": "58108075860c9f8c020f22a9dd16194d489f5d6de0879f59a10c8a372881330e"
+  },
+  "supersedes_build_binding_only": "summary.json artifact_sha256; all before/after evidence is retained unchanged",
+  "live_authority": "None; no invocation retry, authorization creation/reissue or lease acquisition"
+}

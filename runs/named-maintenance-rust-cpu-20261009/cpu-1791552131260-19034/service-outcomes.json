@@ -1,0 +1,90 @@
+[
+  {
+    "role": "studio",
+    "root": {
+      "pid": 19220,
+      "ppid": 19151,
+      "pgid": 19220,
+      "sid": 19220,
+      "uid": 501,
+      "start_seconds": 1791552134,
+      "start_subseconds": 543174,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "gui": null,
+    "inhibited": false,
+    "restored": true,
+    "failure": null,
+    "evidence": [
+      "owned backend settled and reaped; group absent",
+      "owned replacement launch PID 19220",
+      "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence",
+      "owned CPU fixture disposal pid 19220: {\"complete\":true,\"leader_reaped\":true,\"group_absent\":true,\"group_signalled\":true,\"exit_code\":null,\"exit_signal\":15,\"failure\":null}"
+    ],
+    "launch_record": {
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "args": [
+        "maintenance-participant",
+        "--mode",
+        "service",
+        "--duration-ms",
+        "30000"
+      ],
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "environment": {}
+    }
+  },
+  {
+    "role": "omlx",
+    "root": {
+      "pid": 19197,
+      "ppid": 19151,
+      "pgid": 19197,
+      "sid": 19197,
+      "uid": 501,
+      "start_seconds": 1791552134,
+      "start_subseconds": 18460,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "gui": {
+      "pid": 19164,
+      "ppid": 19151,
+      "pgid": 19164,
+      "sid": 19164,
+      "uid": 501,
+      "start_seconds": 1791552133,
+      "start_subseconds": 414492,
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "state": "running"
+    },
+    "inhibited": false,
+    "restored": true,
+    "failure": null,
+    "evidence": [
+      "same GUI birth identity observed stopped after SIGSTOP",
+      "owned backend settled and reaped; group absent",
+      "owned replacement launch PID 19197",
+      "owned CPU replacement survived bounded lifetime observation; not native fidelity evidence",
+      "same GUI resumed only after qualified restore; bounded watch passed",
+      "owned CPU fixture disposal pid 19197: {\"complete\":true,\"leader_reaped\":true,\"group_absent\":true,\"group_signalled\":true,\"exit_code\":null,\"exit_signal\":15,\"failure\":null}",
+      "owned CPU fixture disposal pid 19164: {\"complete\":true,\"leader_reaped\":true,\"group_absent\":true,\"group_signalled\":true,\"exit_code\":null,\"exit_signal\":15,\"failure\":null}"
+    ],
+    "launch_record": {
+      "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "args": [
+        "maintenance-participant",
+        "--mode",
+        "service",
+        "--duration-ms",
+        "30000"
+      ],
+      "cwd": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r",
+      "environment": {}
+    }
+  }
+]

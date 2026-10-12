@@ -1,0 +1,10 @@
+
+running 1 test
+test service_lifecycle::tests::detached_early_authority_loss_retains_cleanup_disposition ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.03s
+
+detached early probe: result=Err(detached pid 71346 intermediate 71346 cleanup complete=true: Ok(())
+
+Caused by:
+    execution authority revoked in early window), accounting=[ActorDisposition { kind: "detached launch", pid: 71346, identity: None, intermediate_pid: Some(71346), intermediate_identity: Some(ProcessIdentity { pid: 71346, ppid: 71344, pgid: 66229, sid: 66229, uid: 501, start_seconds: 1791556188, start_subseconds: 833749, executable: "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-f2e656554c1e4b94", cwd: "/Users/jerry/Desktop/repos/media-inference-lab", state: Running }), intermediate_reaped: true, intermediate_status: Some(0), launch_record: CommandSpec { executable: "/bin/sh", args: ["-c", "echo $$ > '/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpq4ZwrP/executed'; exec /bin/sleep 2"], cwd: "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpq4ZwrP", environment: {} }, settlement: None, complete: true, known_absent: true, failure: Some("execution authority revoked in early window; cleanup: Ok(()); descendant uncertainty: None"), descendant_uncertainty: None }]

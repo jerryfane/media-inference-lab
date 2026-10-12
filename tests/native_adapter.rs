@@ -256,7 +256,7 @@ assert not (root / 'new').exists() and not (root / 'directory').exists()
 
 #[test]
 #[cfg(target_os = "macos")]
-fn native_cli_denies_before_python_lease_or_capture_even_with_external_reference() {
+fn native_cli_denies_unapproved_transaction_before_python_lease_or_capture() {
     python_case(
         r#"
 mil = pathlib.Path(sys.argv[3])
@@ -269,17 +269,14 @@ home = root / 'isolated-home'
 capture_root = root / 'captures'
 command = [str(mil), 'mflux-run', '--execute', '--python', str(sentinel),
     '--source-dir', str(source), '--model-dir', str(model), '--source-sha256', source_hash,
-    '--workload', str(request_path), '--root', str(capture_root), '--output', str(output),
-    '--manager-grant-reference', 'untrusted-reference-is-not-readiness']
+    '--workload', str(request_path), '--root', str(capture_root), '--output', str(output)]
 result = subprocess.run(command, capture_output=True, text=True, timeout=15, env={'HOME': str(home)})
 report = json.loads(output.read_text())
 assert result.returncode == 1, (result.returncode, result.stderr, report)
-assert report['status'] == 'not_launched' and report['native_execution'] is False
+assert report['status'] == 'preparation_failed' and report['native_execution'] is False
 assert report['check'] is None and report['capture_directory'] is None
-assert report['readiness']['live_queue']['status'] == 'unavailable'
-assert report['readiness']['unrelated_gpu']['status'] == 'unavailable'
-assert report['decision']['allowed'] is False
-assert report['manager_grant_reference'] == 'untrusted-reference-is-not-readiness'
+assert report['prepared_plan'] is None and report['maintenance_receipt'] is None
+assert report['authorization_decision']['allowed'] is False
 assert not marker.exists() and not home.exists() and not capture_root.exists()
 assert output.stat().st_mode & 0o777 == 0o600
 "#,
@@ -494,6 +491,55 @@ assert exclusive.read_bytes() == before
 assert all(path.stat().st_mode & 0o777 == 0o600 for path in directory.iterdir())
 expected_bytes = sum(path.stat().st_size for path in directory.iterdir())
 assert api['output_bytes'](directory, expected_bytes) == expected_bytes
+assert not any(name.split('.')[0] in ('mlx', 'mflux') for name in sys.modules)
+"#,
+    );
+}
+
+#[test]
+fn native_resolved_compute_override_preserves_null_and_rejects_mismatch() {
+    python_case(
+        r#"
+import ast
+from types import SimpleNamespace
+
+# Execute the adapter's actual metadata-validation/resolution block only.
+# No runtime imports, model constructor, generation mock, or native result claim.
+function = next(node for node in ast.parse(adapter.read_text()).body
+                if isinstance(node, ast.FunctionDef) and node.name == 'execute')
+start = next(index for index, node in enumerate(function.body)
+             if isinstance(node, ast.Assign)
+             and any(isinstance(target, ast.Name) and target.id == 'parameters' for target in node.targets))
+end = next(index for index, node in enumerate(function.body[start:], start)
+           if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
+           and isinstance(node.value.func, ast.Attribute) and node.value.func.attr == 'journal'
+           and node.value.args and isinstance(node.value.args[0], ast.Constant)
+           and node.value.args[0].value == 'serialization')
+metadata = compile(ast.Module(body=function.body[start:end], type_ignores=[]), str(adapter), 'exec')
+workload['settings']['generation'].update(
+    resolution={'width': 1536, 'height': 864}, steps=40)
+for override in (None, 'float16'):
+    requested = copy.deepcopy(workload)
+    generation = requested['settings']['generation']
+    generation['compute_precision'] = override
+    before = copy.deepcopy(requested)
+    parameters = {'compute_precision': override, 'step_cache_ratio': None, 'scheduler': 'linear'}
+    generated = SimpleNamespace(
+        generation_parameters=parameters, seed=17, prompt=generation['prompt'],
+        negative_prompt=None, steps=40, guidance=4.0, width=1536, height=864)
+    scope = dict(api, requested=requested, generation=generation, generated=generated,
+                 model=SimpleNamespace(compute_precision=SimpleNamespace(dtype=None)),
+                 mx=SimpleNamespace(float16=object()))
+    exec(metadata, scope)
+    destination = root / ('null-metadata.json' if override is None else 'fp16-metadata.json')
+    api['atomic_json'](destination, scope['resolved'])
+    saved = json.loads(destination.read_text())
+    assert saved['settings']['generation']['compute_precision'] == override
+    assert saved == before, 'resolved metadata silently changed requested settings'
+    assert requested == before, 'resolution mutated the original request'
+
+    parameters['compute_precision'] = 'float16' if override is None else None
+    reject(lambda: exec(metadata, scope), 'returned compute_precision mismatch')
 assert not any(name.split('.')[0] in ('mlx', 'mflux') for name in sys.modules)
 "#,
     );

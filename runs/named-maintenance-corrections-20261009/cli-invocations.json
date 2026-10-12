@@ -1,0 +1,30 @@
+[
+  {
+    "scenario": "arming-deadline",
+    "command": [
+      "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "maintenance-cpu",
+      "--root",
+      "/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+      "--scenario",
+      "arming-deadline"
+    ],
+    "exit": 1,
+    "stdout": "{\"controller_pid\":90295,\"guardian_pid\":90370,\"receipt\":\"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge/cpu-1791556642181-90295/receipt.json\"}\n/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge/cpu-1791556642181-90295/receipt.json\n",
+    "stderr": ""
+  },
+  {
+    "scenario": "restore-launch-deadline",
+    "command": [
+      "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+      "maintenance-cpu",
+      "--root",
+      "/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge",
+      "--scenario",
+      "restore-launch-deadline"
+    ],
+    "exit": 1,
+    "stdout": "{\"controller_pid\":90403,\"guardian_pid\":90438,\"receipt\":\"/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge/cpu-1791556644098-90403/receipt.json\"}\n/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-correction-cli-sai6nyge/cpu-1791556644098-90403/receipt.json\n",
+    "stderr": ""
+  }
+]

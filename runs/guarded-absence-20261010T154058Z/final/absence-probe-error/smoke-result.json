@@ -1,0 +1,45 @@
+{
+  "scenario": "absence-probe-error",
+  "command": [
+    "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "maintenance-cpu",
+    "--root",
+    "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-probe-error",
+    "--scenario",
+    "absence-probe-error"
+  ],
+  "returncode": 1,
+  "receipt": "runs/guarded-absence-20261010T154058Z/final/absence-probe-error/cpu-1791647142262-99961/receipt.json",
+  "success": false,
+  "creation_attempted": false,
+  "restored": false,
+  "service_accounting_complete": true,
+  "settlement": null,
+  "experiment_failure": "service enrollment failed: bounded named absence probe unavailable: owned CPU absence probe unavailable (exit 2): mil: invalid type: map, expected a sequence at line 1 column 0\n",
+  "final_absence_failure": null,
+  "service_enrollment_failure": {
+    "absence": {
+      "private_qualification": "not_applicable",
+      "scope": "bounded named absence only; non-atomic, not whole-host idle",
+      "state": "unavailable"
+    },
+    "actors": [],
+    "evidence": [],
+    "failure": "bounded named absence probe unavailable: owned CPU absence probe unavailable (exit 2): mil: invalid type: map, expected a sequence at line 1 column 0\n",
+    "gui": null,
+    "inhibited": false,
+    "launch_record": null,
+    "restored": false,
+    "role": "omlx",
+    "root": null
+  },
+  "service_outcomes": [],
+  "fixture": null,
+  "fixture_preparation": null,
+  "controller_killed_after_experiment_created": false,
+  "owned_pids": [
+    99961,
+    99964
+  ],
+  "all_recorded_owned_pids_absent": true
+}

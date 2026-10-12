@@ -1,0 +1,10 @@
+
+running 1 test
+test service_lifecycle::tests::helper_recovery_expiry_is_sticky_and_preserves_owner ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 2.03s
+
+expired recovery probe: result=Err(helper pid 71273 cleanup complete=false: Err(cleanup incomplete for pid 71273)
+
+Caused by:
+    execution authority revoked), accounting=[ActorDisposition { kind: "bounded helper", pid: 71273, identity: Some(ProcessIdentity { pid: 71273, ppid: 71272, pgid: 71273, sid: 71273, uid: 501, start_seconds: 1791556186, start_subseconds: 769197, executable: "/bin/sleep", cwd: "/", state: Running }), intermediate_pid: None, intermediate_identity: None, intermediate_reaped: true, intermediate_status: None, launch_record: CommandSpec { executable: "/bin/sh", args: ["-c", "echo $$ > '/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmpaaHwfZ/pid'; exec /bin/sleep 2"], cwd: "/", environment: {} }, settlement: Some(Settlement { complete: false, leader_reaped: false, group_absent: false, group_signalled: false, exit_code: None, exit_signal: None, failure: Some("settlement control denied: guardian process deadline reached") }), complete: false, known_absent: false, failure: Some("execution authority revoked; cleanup: Err(cleanup incomplete for pid 71273)"), descendant_uncertainty: None }]

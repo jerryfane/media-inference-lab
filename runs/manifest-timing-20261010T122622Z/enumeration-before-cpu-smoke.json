@@ -1,0 +1,77 @@
+{
+  "argv": [
+    "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/examples/manifest_enumeration_before",
+    "/private/tmp/mil-manifest-enumeration-oxckx52l/Contents",
+    "/private/tmp/mil-manifest-enumeration-oxckx52l/reference",
+    "faf128fbfbd5b09203961c8f48460599be95bf9e"
+  ],
+  "exit_code": 0,
+  "result": {
+    "complete_manifest": {
+      "entries": 543,
+      "logical_bytes_hashed": 336068648,
+      "ms": 626.101084,
+      "sha256": "581c06d79991e48b87794d887128bcde7a84a4f962756c2423cec7f13f51ffe2",
+      "status": "pass"
+    },
+    "deep_open": {
+      "ms": 308.02629199999996,
+      "opens": 2000
+    },
+    "deep_small_walk": {
+      "entries": 529,
+      "logical_bytes_hashed": 524288,
+      "ms": 14.892042
+    },
+    "file_hash": {
+      "bytes": 67108864,
+      "ms": 110.936,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6"
+    },
+    "git": [
+      {
+        "args": [
+          "rev-parse",
+          "--verify",
+          "HEAD^{commit}"
+        ],
+        "ms": 15.4325,
+        "output_bytes": 41
+      },
+      {
+        "args": [
+          "status",
+          "--porcelain=v1",
+          "--untracked-files=all"
+        ],
+        "ms": 13.592625,
+        "output_bytes": 0
+      },
+      {
+        "args": [
+          "ls-files",
+          "-v",
+          "-z",
+          "--",
+          "omlx"
+        ],
+        "ms": 7.7823329999999995,
+        "output_bytes": 72
+      }
+    ],
+    "memory_hash": {
+      "bytes": 67108864,
+      "ms": 120.477084,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6"
+    },
+    "shallow_open": {
+      "ms": 68.32995799999999,
+      "opens": 2000
+    },
+    "unique_file_walk": {
+      "entries": 2,
+      "logical_bytes_hashed": 67108864,
+      "ms": 110.703542
+    }
+  }
+}

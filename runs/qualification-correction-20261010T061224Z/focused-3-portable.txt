@@ -1,0 +1,12 @@
+$ cargo test --offline --lib qualification_scope::tests
+
+running 3 tests
+test qualification_scope::tests::scope_permissions_path_binding_types_and_symlinks_deny ... ok
+test qualification_scope::tests::scope_missing_empty_and_source_exact_candidate_grammar ... ok
+test qualification_scope::tests::scope_entry_bound_malformed_names_deadline_and_races_deny ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 66 filtered out; finished in 0.29s
+
+   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.00s
+     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-f2e656554c1e4b94)

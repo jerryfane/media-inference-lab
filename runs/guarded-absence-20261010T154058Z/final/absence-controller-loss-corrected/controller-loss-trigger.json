@@ -1,0 +1,16 @@
+{
+  "evidence": {
+    "cwd": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-controller-loss-corrected",
+    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "pgid": 3704,
+    "pid": 3704,
+    "ppid": 3678,
+    "sid": 3704,
+    "start_seconds": 1791647218,
+    "start_subseconds": 128369,
+    "state": "running",
+    "uid": 501
+  },
+  "guardian_elapsed_ms": 323,
+  "phase": "experiment_created"
+}

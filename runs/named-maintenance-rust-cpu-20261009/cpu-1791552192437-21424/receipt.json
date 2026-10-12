@@ -1,0 +1,38 @@
+{
+  "automation_ceiling_note": "Bounds automation, not a failed outage; GUI may remain paused for manual recovery",
+  "capture_directory": null,
+  "controller_identity": {
+    "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "pgid": 66229,
+    "pid": 21424,
+    "ppid": 66229,
+    "sid": 66229,
+    "start_seconds": 1791552192,
+    "start_subseconds": 429445,
+    "state": "running",
+    "uid": 501
+  },
+  "creation_attempted": true,
+  "elapsed_ms": 1895,
+  "experiment_failure": null,
+  "guardian_pid": 21489,
+  "kind": "cpu_maintenance_transaction",
+  "lease_path": "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/mil-integrated-cpu-_o7ivy9r/.cpu-maintenance.lock",
+  "recovery_failure": null,
+  "restored": true,
+  "schema_version": 1,
+  "scope": "Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee",
+  "settlement": {
+    "complete": true,
+    "exit_code": 0,
+    "exit_signal": null,
+    "failure": null,
+    "group_absent": true,
+    "group_signalled": false,
+    "leader_reaped": true
+  },
+  "success": true,
+  "transaction_id": "cpu-1791552192437-21424",
+  "transaction_sha256": "461f85031236b890b2e83e56f11c2e752f7d8b126bd15e11f000cd40921db487"
+}

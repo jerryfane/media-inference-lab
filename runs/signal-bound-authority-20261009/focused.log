@@ -1,0 +1,12 @@
+
+running 2 tests
+test process_scope::tests::bound_signal_dispatch_revocation_preserves_live_group ... ok
+test process_scope::tests::bound_signal_dispatch_expiry_preserves_running_process ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 45 filtered out; finished in 2.02s
+
+   Compiling media-inference-lab v0.1.0 (/Users/jerry/Desktop/repos/media-inference-lab)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.91s
+     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-f2e656554c1e4b94)
+internal signal boundary: pid=53378 signal=9 group=true denied=true reached_dispatch=true expired=false state=Running cleanup=Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }
+internal signal boundary: pid=53379 signal=17 group=false denied=true reached_dispatch=true expired=true state=Running cleanup=Settlement { complete: true, leader_reaped: true, group_absent: true, group_signalled: false, exit_code: Some(0), exit_signal: None, failure: None }

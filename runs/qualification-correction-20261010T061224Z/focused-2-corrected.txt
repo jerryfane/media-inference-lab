@@ -1,0 +1,18 @@
+$ cargo test --offline --lib restore_qualification::tests::credential_
+
+running 10 tests
+test restore_qualification::tests::credential_settings_projection_requires_explicit_serialized_permission ... ok
+test restore_qualification::tests::credential_projection_preserves_mode_owner_and_file_size_boundaries ... ok
+test restore_qualification::tests::credential_ancestor_symlink_swap_during_read_fails_closed ... ok
+test restore_qualification::tests::credential_projection_permission_cannot_widen_path_or_pointer ... ok
+test restore_qualification::tests::credential_standalone_private_raw_and_json_references_remain_supported ... ok
+test restore_qualification::tests::credential_symlinks_and_nonregular_references_are_never_read ... ok
+test restore_qualification::tests::credential_settings_projection_rejects_every_other_pf2_inode_alias ... ok
+test restore_qualification::tests::credential_standalone_hardlinks_to_every_pf2_reference_deny_before_read ... ok
+test restore_qualification::tests::credential_reference_races_fail_closed_before_returning_projection ... ok
+test restore_qualification::tests::credential_projection_validates_payload_without_secret_diagnostics ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 0.02s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running unittests src/lib.rs (target/debug/deps/media_inference_lab-f2e656554c1e4b94)

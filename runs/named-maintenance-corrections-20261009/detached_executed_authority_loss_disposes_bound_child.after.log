@@ -1,0 +1,10 @@
+
+running 1 test
+test service_lifecycle::tests::detached_executed_authority_loss_disposes_bound_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 44 filtered out; finished in 0.20s
+
+detached executed probe: result=Err(detached pid 71355 intermediate 71352 cleanup complete=true: Ok(())
+
+Caused by:
+    execution authority revoked in executed window), accounting=[ActorDisposition { kind: "detached launch", pid: 71355, identity: Some(ProcessIdentity { pid: 71355, ppid: 71352, pgid: 71355, sid: 71355, uid: 501, start_seconds: 1791556188, start_subseconds: 939956, executable: "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-f2e656554c1e4b94", cwd: "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmp9f6j7Y", state: Running }), intermediate_pid: Some(71352), intermediate_identity: Some(ProcessIdentity { pid: 71352, ppid: 71351, pgid: 66229, sid: 66229, uid: 501, start_seconds: 1791556188, start_subseconds: 938266, executable: "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/deps/media_inference_lab-f2e656554c1e4b94", cwd: "/Users/jerry/Desktop/repos/media-inference-lab", state: Running }), intermediate_reaped: true, intermediate_status: Some(0), launch_record: CommandSpec { executable: "/bin/sh", args: ["-c", "echo $$ > '/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmp9f6j7Y/executed'; exec /bin/sleep 2"], cwd: "/private/var/folders/r4/g2h1rr8d4tn98sm4gs2bck6c0000gn/T/.tmp9f6j7Y", environment: {} }, settlement: None, complete: true, known_absent: true, failure: Some("execution authority revoked in executed window; cleanup: Ok(()); descendant uncertainty: None"), descendant_uncertainty: None }]

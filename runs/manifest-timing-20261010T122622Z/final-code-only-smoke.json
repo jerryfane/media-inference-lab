@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/examples/manifest_parent_probe",
+    "/Applications/oMLX.app/Contents",
+    "/Users/jerry/Desktop/repos/omlx-wt-integration10",
+    "6039ce819a38d14d096570beb5a822d8f026159b",
+    "code-only"
+  ],
+  "exit_code": 0,
+  "result": {
+    "application_debug_assertions": true,
+    "entries": 48104,
+    "logical_bytes_hashed": 1571584586,
+    "manifest_sha256": "960ef89ac35ff1af39b928bd4db25fcb106a471723bd79a13e815ea46ecdc436",
+    "ms": 4161.380417,
+    "openat_calls": 52727,
+    "status": "pass"
+  },
+  "identity_equal_to_original_walker": true,
+  "cache_state": "unknown; repeat scan; no cache purge or memory pressure",
+  "tick": "no-op; not a live gate"
+}

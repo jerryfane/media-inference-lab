@@ -1,0 +1,49 @@
+{
+  "automation_ceiling_note": "Bounds automation, not a failed outage; GUI may remain paused for manual recovery",
+  "capture_directory": null,
+  "controller_identity": {
+    "cwd": "/Users/jerry/Desktop/repos/media-inference-lab",
+    "executable": "/Users/jerry/Desktop/repos/media-inference-lab/target/debug/mil",
+    "pgid": 10064,
+    "pid": 99977,
+    "ppid": 10064,
+    "sid": 10064,
+    "start_seconds": 1791647142,
+    "start_subseconds": 510127,
+    "state": "running",
+    "uid": 501
+  },
+  "creation_attempted": false,
+  "elapsed_ms": 13,
+  "experiment_failure": "service enrollment failed: bounded named absence probe unavailable: owned CPU absence probe unavailable (exit 2): mil: CPU candidate PID reused\n",
+  "final_absence_failure": null,
+  "guardian_pid": 99994,
+  "kind": "cpu_maintenance_transaction",
+  "lease_path": "/Users/jerry/Desktop/repos/media-inference-lab/runs/guarded-absence-20261010T154058Z/final/absence-reused/.cpu-maintenance.lock",
+  "recovery_failure": null,
+  "restored": false,
+  "schema_version": 1,
+  "scope": "Only enrolled Studio/oMLX and direct guardian experiment; no whole-host or arbitrary-descendant guarantee",
+  "service_accounting_complete": true,
+  "service_enrollment_failure": {
+    "absence": {
+      "private_qualification": "not_applicable",
+      "scope": "bounded named absence only; non-atomic, not whole-host idle",
+      "state": "unavailable"
+    },
+    "actors": [],
+    "evidence": [],
+    "failure": "bounded named absence probe unavailable: owned CPU absence probe unavailable (exit 2): mil: CPU candidate PID reused\n",
+    "gui": null,
+    "inhibited": false,
+    "launch_record": null,
+    "restored": false,
+    "role": "omlx",
+    "root": null
+  },
+  "service_process_dispositions": [],
+  "settlement": null,
+  "success": false,
+  "transaction_id": "cpu-1791647142513-99977",
+  "transaction_sha256": "160651f9f60e4b3e4b98cbf29477142e312bce74572a17aaa35d82d71337da0f"
+}
