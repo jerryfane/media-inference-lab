@@ -19,4 +19,5 @@ signal-hook = "0.3"
 unicode-normalization = "0.1"
 
 [dev-dependencies]
+parking_lot = "0.12"
 tempfile = "3"

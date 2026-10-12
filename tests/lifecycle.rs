@@ -395,7 +395,7 @@ fn inspect_rejects_malformed_record_invariants_without_rewriting() {
     let run = sandbox.run(SUCCESS);
     let good = manifest(&run);
     for (pointer, invalid) in [
-        ("/record_version", json!(2)),
+        ("/record_version", json!(3)),
         ("/sample_index", json!(1)),
         ("/state", json!("running")),
         ("/workload_identity", json!("0".repeat(64))),
