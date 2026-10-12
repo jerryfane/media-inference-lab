@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{collections::{BTreeMap, BTreeSet}, fs::{self, DirBuilder, File, OpenOptions}, io::{Read, Write}, os::unix::fs::{DirBuilderExt, OpenOptionsExt}, path::{Component, Path, PathBuf}, time::Instant};
 
-pub const PROTOCOL_SHA256: &str = "34e1c4d20759bf2ebb581c1de17ea3a023cac60f723bbedf763d99b9bebdbb02";
+pub const PROTOCOL_SHA256: &str = "d860f868b2955701d2aaccdbbf0e8e5ee6d767167f9cd19b6dfaa3e0bec6affc";
 const GUARDIAN_COMMIT: &str = "f81795607bd986e1e5d63344021cf7af85c4d400";
 const IDS: [&str; 4] = ["H0", "H1", "H2", "H3"];
 const WORKLOAD_KEY: &str = "h3_draft";

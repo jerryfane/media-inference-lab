@@ -58,7 +58,7 @@ import tempfile
 import time
 import uuid
 
-PROTOCOL_SHA256 = "34e1c4d20759bf2ebb581c1de17ea3a023cac60f723bbedf763d99b9bebdbb02"
+PROTOCOL_SHA256 = "d860f868b2955701d2aaccdbbf0e8e5ee6d767167f9cd19b6dfaa3e0bec6affc"
 LIMIT = 16 * 1024 * 1024
 REQUEST_LIMIT = 131072
 REQUEST_SECONDS = 5

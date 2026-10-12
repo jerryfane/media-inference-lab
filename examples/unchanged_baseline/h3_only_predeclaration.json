@@ -1,9 +1,9 @@
 {
   "kind": "h3_only_baseline_predeclaration",
-  "protocol_version": 2,
+  "protocol_version": 3,
   "notice": "Separately authorized four-slot H3-only cohort. Not a continuation, completion or repair of the stopped eight-slot cohort; not a native grant or cooperative hold.",
-  "study_id": "h3-only-baseline-corrected-20261012T130715614Z",
-  "declared_at_utc": "2026-10-12T13:07:15.618Z",
+  "study_id": "h3-only-baseline-private-20261012T134549533Z",
+  "declared_at_utc": "2026-10-12T13:45:49.539Z",
   "intent": "Descriptive unchanged baseline timing and output variation only; no candidate/control configurations, same-work performance eligibility or speedup claim.",
   "source_policy": {
     "required": "Reuse the previously qualified frozen guardian/native build from main f81795607bd986e1e5d63344021cf7af85c4d400, without rebuilding or changing it. Qualify and freeze new CPU-only collector/reporting source before H0.",
@@ -310,7 +310,8 @@
     "transport": "Private bounded local IPC with exact study root, source and domain binding; qualified before native admission.",
     "ownership": "Retain original creation, finite lifetime and external owner settlement. No self-attested leader reaping; no restored or invented original timestamps.",
     "admission": "Require sufficient remaining collector lifetime for the declared command/readiness ceiling before a bracket starts; domain/sequence/identity/record failures prevent subsequent native admission.",
-    "future_receipt_paths": "At begin, an input may have absent trailing ancestor directories. Validate every existing study-local ancestor as private/owned/non-symlink; reserve only the literal path without creating directories. The guardian alone creates its evidence root. At finish and later evidence validation, require the entire private owned non-symlink path and original bounded fresh file identity. No staging/removal workaround, relaxed final validation, or state reconstruction."
+    "future_receipt_paths": "At begin, an input may have absent trailing ancestor directories. Validate every existing study-local ancestor as private/owned/non-symlink; reserve only the literal path without creating directories. The guardian alone creates its evidence root. At finish and later evidence validation, require the entire private owned non-symlink path and original bounded fresh file identity. No staging/removal workaround, relaxed final validation, or state reconstruction.",
+    "private_preparation": "Parent explicitly creates root/slots and every slots/H0,H1,H2,H3 directory non-recursively as owned0700 and verifies all existing study-local ancestors before collector activation. Slot directories are reused, not recreated or replaced by worker preparation. Verify those ancestors again before any execution/readiness begin. Future transaction-evidence remains absent until the guardian creates it. No post-rejection permission repair/retry or closed-domain reuse."
   },
   "prior_zero_attempt_h3_cohort": {
     "root": "/Users/jerry/.local/share/media-inference-lab/h3-only-baseline-20261012T110920566Z",
@@ -322,5 +323,17 @@
     "original_collector_closed_and_settled": true,
     "reason": "Collector required receipt parent to exist but frozen guardian creates that directory non-recursively.",
     "evidence": "/Users/jerry/.local/share/media-inference-lab/h3-only-baseline-20261012T110920566Z/prestart-stop-handoff.json"
+  },
+  "prior_preparation_denied_cohort": {
+    "root": "/Users/jerry/.local/share/media-inference-lab/h3-only-baseline-corrected-20261012T130715614Z",
+    "protocol_sha256": "34e1c4d20759bf2ebb581c1de17ea3a023cac60f723bbedf763d99b9bebdbb02",
+    "state": "stopped_before_native_spawn",
+    "native_attempts": 0,
+    "recorded_brackets": 0,
+    "original_begin_clients": 1,
+    "reason": "Preparation created intermediate slots directory as0755; original private-ancestor check correctly rejected it.",
+    "original_domain_closed": true,
+    "unused_grant_withdrawn": true,
+    "evidence": "/Users/jerry/.local/share/media-inference-lab/h3-only-baseline-corrected-20261012T130715614Z/prestart-permission-stop-handoff.json"
   }
 }
