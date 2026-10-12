@@ -22,4 +22,5 @@ unicode-normalization = "0.1"
 
 [dev-dependencies]
 parking_lot = "0.12"
+pulldown-cmark = { version = "0.13", default-features = false }
 tempfile = "3"

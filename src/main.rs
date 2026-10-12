@@ -6,6 +6,7 @@ use media_inference_lab::{
     guards::{GuardConfig, GuardMonitor, Lease},
     image_comparison::{self, ImageAssessment, Tolerance},
     png_image::{self, DecodedPng},
+    png_report,
     preflight::{self, PreflightOptions},
     schema::{AdapterResult, Artifact, Workload},
     study::{StudyInput, StudyPlan},
@@ -207,17 +208,20 @@ fn write_json_report(output: &Path, value: &impl Serialize) -> Result<()> {
     Ok(())
 }
 
-struct SheetWriter {
+struct ArtifactWriter {
     file: BufWriter<File>,
     hash: Sha256,
     bytes: u64,
+    limit: u64,
 }
 
-impl Write for SheetWriter {
+impl Write for ArtifactWriter {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        const LIMIT: u64 = 270 * 1024 * 1024;
-        if bytes.len() as u64 > LIMIT - self.bytes {
-            return Err(std::io::Error::other("PNG sheet exceeds 270 MiB"));
+        if bytes.len() as u64 > self.limit - self.bytes {
+            return Err(std::io::Error::other(format!(
+                "artifact exceeds {} bytes",
+                self.limit
+            )));
         }
         let written = self.file.write(bytes)?;
         self.hash.update(&bytes[..written]);
@@ -290,10 +294,11 @@ fn compare_images(
             repeat,
         )?);
     }
-    let mut sheet = SheetWriter {
+    let mut sheet = ArtifactWriter {
         file: BufWriter::new(new_private_file(&output_dir.join("sheet.png"))?),
         hash: Sha256::new(),
         bytes: 0,
+        limit: 270 * 1024 * 1024,
     };
     png_image::write_sheet(&baseline, &candidate, &mut sheet)?;
     sheet.flush()?;
@@ -303,6 +308,22 @@ fn compare_images(
         sha256: format!("{:x}", sheet.hash.finalize()),
         bytes: sheet.bytes,
         role: "raw_sample_ab_sheet".into(),
+    });
+
+    let mut markdown = ArtifactWriter {
+        file: BufWriter::new(new_private_file(&output_dir.join("report.md"))?),
+        hash: Sha256::new(),
+        bytes: 0,
+        limit: 1024 * 1024,
+    };
+    png_report::write(&mut markdown, &comparison)?;
+    markdown.flush()?;
+    markdown.file.get_ref().sync_all()?;
+    artifacts.push(Artifact {
+        path: "report.md".into(),
+        sha256: format!("{:x}", markdown.hash.finalize()),
+        bytes: markdown.bytes,
+        role: "readable_comparison_report".into(),
     });
 
     #[derive(Serialize)]
