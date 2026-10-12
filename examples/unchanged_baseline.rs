@@ -9,7 +9,7 @@ mod media;
 mod report;
 
 #[derive(Parser)]
-#[command(about = "Bounded offline analysis of the fixed unchanged eight-slot baseline protocol")]
+#[command(about = "Bounded offline analysis of the fixed four-slot H3-only unchanged baseline protocol")]
 struct Cli {
     #[command(subcommand)]
     command: Command,

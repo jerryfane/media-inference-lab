@@ -6,7 +6,7 @@ mod media_io;
 mod media_process;
 
 use anyhow::{Context, Result, bail, ensure};
-use media_inference_lab::{frame_sequence::{self, FrameInput, SequenceInput, SequenceSource}, image_comparison, png_image::{self, DecodedPng, SampleColor}};
+use media_inference_lab::{frame_sequence::{self, FrameInput, SequenceInput, SequenceSource}, png_image::{self, DecodedPng, SampleColor}};
 use media_io::{self as io, Budget, MIB, METADATA_LIMIT};
 use media_process::Helpers;
 use serde_json::{Value, json};
@@ -424,19 +424,6 @@ fn compare_pcm(left: &[u8], right: &[u8], samples: u64, deadline: Instant) -> Re
 /// before a validation/comparison, and subtract the cumulative counter delta afterward.
 pub fn set_metadata_budget(remaining: u64) { io::set_metadata_budget(remaining); }
 pub fn metadata_bytes_read() -> u64 { io::metadata_bytes_read() }
-
-pub fn compare_images(left: &Path, right: &Path, deadline: Instant) -> Result<Value> {
-    io::check(deadline)?;
-    let left = png_image::decode(left)?;
-    io::check(deadline)?;
-    let right = png_image::decode(right)?;
-    io::check(deadline)?;
-    let compared = image_comparison::compare(&left, &right, None, None, None)?;
-    io::check(deadline)?;
-    Ok(json!({"kind":"unchanged_image_sample_metrics","left":compared.baseline,"right":compared.candidate,
-        "metrics":compared.metrics,"method":compared.method,"units":compared.units,
-        "alignment":compared.alignment,"denominator":compared.denominator}))
-}
 
 struct Bundle {
     root: PathBuf,

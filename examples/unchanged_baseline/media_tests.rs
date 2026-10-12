@@ -26,15 +26,6 @@ fn synthetic_probe() -> Value {
         {"index":1,"codec_type":"audio","channels":2,"sample_rate":"32000","duration":"2.325000"}],"frames":frames})
 }
 fn pcm(values: &[f32]) -> Vec<u8> { values.iter().flat_map(|v| v.to_le_bytes()).collect() }
-fn small_png(path: &Path, rgb: &[u8], width: u32) {
-    let mut encoder = png::Encoder::new(io::private(path).unwrap(), width, 1);
-    encoder.set_color(png::ColorType::Rgb);
-    encoder.set_depth(png::BitDepth::Eight);
-    let mut writer = encoder.write_header().unwrap();
-    writer.write_image_data(rgb).unwrap();
-    writer.finish().unwrap();
-}
-
 #[test]
 fn media_exact_decimal_timeline_and_late_mismatch() {
     let original = synthetic_original(74400);
@@ -135,22 +126,6 @@ fn media_late_png_hash_is_checked_after_every_frame() {
         });
     assert!(result.is_err());
     assert_eq!(visited, 56);
-}
-
-#[test]
-fn media_image_numerics_use_actual_channel_denominator() {
-    let dir = tempfile::tempdir().unwrap();
-    let left = dir.path().join("left.png");
-    let right = dir.path().join("right.png");
-    small_png(&left, &[0,0,0,0,0,0], 2);
-    small_png(&right, &[1,2,3,4,5,6], 2);
-    let compared = compare_images(&left, &right, deadline()).unwrap();
-    assert_eq!(compared["metrics"]["sample_count"], 6);
-    assert_eq!(compared["metrics"]["absolute_error_sum"], 21);
-    assert_eq!(compared["metrics"]["squared_error_sum"], 91);
-    assert_eq!(compared["metrics"]["mean_absolute_error"], 3.5);
-    assert!(compared.get("candidate").is_none());
-    assert!(compared.get("classification").is_none());
 }
 
 #[test]
