@@ -5,6 +5,8 @@ pub mod frame_sequence;
 pub mod guards;
 pub mod image_comparison;
 mod markdown;
+pub mod native;
+pub mod native_guard;
 pub mod png_image;
 pub mod png_report;
 pub mod preflight;

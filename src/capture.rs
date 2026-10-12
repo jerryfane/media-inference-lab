@@ -1,5 +1,6 @@
 use crate::{
     guards::{GuardConfig, GuardMonitor, GuardReport, Lease},
+    native_guard::{NativeGuardConfig, SANDBOX_EXECUTABLE, SANDBOX_PROFILE},
     schema::{AdapterResult, ProcessPolicy, Workload},
 };
 use anyhow::{Context, Result, bail, ensure};
@@ -9,6 +10,7 @@ use std::{
     collections::BTreeMap,
     fs::{self, File, OpenOptions},
     io::{Read, Write},
+    os::unix::fs::{DirBuilderExt, OpenOptionsExt},
     path::{Component, Path, PathBuf},
     sync::{
         Arc,
@@ -68,6 +70,17 @@ pub struct Invocation {
     pub executable_hash_unavailable: Option<String>,
     pub args: Vec<String>,
     pub environment: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native: Option<NativeInvocation>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct NativeInvocation {
+    pub invocation_sha256: String,
+    /// The selected Python stays in Invocation.executable; this is its OS wrapper.
+    pub sandbox_executable: String,
+    pub sandbox_profile: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -196,6 +209,50 @@ impl CaptureRecord {
             ensure!(
                 self.invocation.environment.contains_key(key),
                 "missing adapter environment provenance"
+            );
+        }
+        if let Some(native) = &self.invocation.native {
+            ensure!(
+                valid_hash(&native.invocation_sha256),
+                "invalid native invocation identity"
+            );
+            ensure!(
+                native.sandbox_executable == SANDBOX_EXECUTABLE
+                    && native.sandbox_profile == SANDBOX_PROFILE,
+                "native invocation does not use fixed OS sandbox"
+            );
+            ensure!(
+                self.guard_evidence.is_some(),
+                "native capture lacks required guards"
+            );
+            for key in [
+                "MIL_NATIVE_GUARDED",
+                "MIL_SUPERVISOR_PID",
+                "HOME",
+                "TMPDIR",
+                "XDG_CACHE_HOME",
+                "HF_HOME",
+                "HF_HUB_OFFLINE",
+                "TRANSFORMERS_OFFLINE",
+                "HF_HUB_DISABLE_IMPLICIT_TOKEN",
+                "HF_HUB_DISABLE_TELEMETRY",
+            ] {
+                ensure!(
+                    self.invocation.environment.contains_key(key),
+                    "native capture lacks reserved environment provenance"
+                );
+            }
+        } else {
+            ensure!(
+                !self
+                    .invocation
+                    .environment
+                    .contains_key("MIL_NATIVE_GUARDED")
+                    && !self
+                        .invocation
+                        .environment
+                        .contains_key("MIL_SUPERVISOR_PID"),
+                "CPU capture contains native launch markers"
             );
         }
         match (
@@ -475,6 +532,7 @@ fn atomic_json<T: Serialize>(directory: &Path, name: &str, value: &T, limit: u64
         let mut file = OpenOptions::new()
             .create_new(true)
             .write(true)
+            .mode(0o600)
             .open(&temporary)?;
         let mut writer = BoundedWriter {
             file: &mut file,
@@ -691,6 +749,31 @@ pub fn inspect(run_dir: &Path) -> Result<CaptureRecord> {
         let path = directory.join(&evidence.path);
         let report: GuardReport = load_json(&path, JSON_LIMIT)?;
         report.validate()?;
+        ensure!(
+            report
+                .native
+                .as_ref()
+                .map(|native| native.config.invocation_sha256.as_str())
+                == record
+                    .invocation
+                    .native
+                    .as_ref()
+                    .map(|native| native.invocation_sha256.as_str()),
+            "native guard identity disagrees with capture invocation"
+        );
+        if let Some(native) = &report.native
+            && !native.baseline.decision.allowed
+        {
+            ensure!(
+                record.exit.is_none()
+                    && record
+                        .cleanup
+                        .as_ref()
+                        .is_none_or(|cleanup| cleanup.process_group.is_none())
+                    && record.artifact_inspection_ms.is_none(),
+                "native launch denial contradicts child execution evidence"
+            );
+        }
         if record.is_success() {
             ensure!(
                 report.initial_decision.allowed
@@ -768,14 +851,42 @@ pub fn capture_guarded(
         options.timeout <= Duration::from_secs(600),
         "guarded execution is limited to 600 seconds"
     );
-    capture_inner(request, options, cancelled, Some((config, lease)))
+    capture_inner(request, options, cancelled, Some((config, lease, None)))
+}
+
+/// Dedicated native branch. Required production readiness is collected internally;
+/// neither caller observations nor a manager reference can bypass a missing source.
+pub fn capture_native_guarded(
+    request: Workload,
+    options: CaptureOptions,
+    cancelled: Arc<AtomicBool>,
+    config: GuardConfig,
+    lease: Lease,
+    native: NativeGuardConfig,
+) -> Result<PathBuf> {
+    config.validate()?;
+    native.validate()?;
+    ensure!(
+        options.timeout <= Duration::from_secs(600),
+        "native execution is limited to 600 seconds"
+    );
+    ensure!(
+        options.env.is_empty(),
+        "native environment is supervisor-owned; explicit overrides are not allowed"
+    );
+    capture_inner(
+        request,
+        options,
+        cancelled,
+        Some((config, lease, Some(native))),
+    )
 }
 
 fn capture_inner(
     request: Workload,
     options: CaptureOptions,
     cancelled: Arc<AtomicBool>,
-    guarded: Option<(GuardConfig, Lease)>,
+    guarded: Option<(GuardConfig, Lease, Option<NativeGuardConfig>)>,
 ) -> Result<PathBuf> {
     request.validate()?;
     ensure!(
@@ -1062,18 +1173,39 @@ pub(crate) mod unix {
         request: Workload,
         options: CaptureOptions,
         cancelled: Arc<AtomicBool>,
-        guarded: Option<(GuardConfig, Lease)>,
+        guarded: Option<(GuardConfig, Lease, Option<NativeGuardConfig>)>,
     ) -> Result<PathBuf> {
         let executable = absolute(&options.executable)?;
+        // Preserve the selected venv invocation, while hashing its resolved binary.
+        let native_config = guarded.as_ref().and_then(|(_, _, native)| native.as_ref());
+        let canonical_executable = native_config
+            .map(|_| fs::canonicalize(&executable))
+            .transpose()?;
         let executable_hash = hash_file(
-            &executable,
+            canonical_executable.as_deref().unwrap_or(&executable),
             512 * 1024 * 1024,
             Instant::now() + Duration::from_secs(2),
             None,
         );
         let directory = unique_run(&options.root)?;
+        let native_invocation = native_config.map(|native| NativeInvocation {
+            invocation_sha256: native.invocation_sha256.clone(),
+            sandbox_executable: SANDBOX_EXECUTABLE.into(),
+            sandbox_profile: SANDBOX_PROFILE.into(),
+        });
+        let is_native = native_invocation.is_some();
+        if is_native {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&directory, fs::Permissions::from_mode(0o700))?;
+        }
         let (mut monitor, lease) = match guarded {
-            Some((config, lease)) => (Some(GuardMonitor::start(config, &directory)?), Some(lease)),
+            Some((config, lease, native)) => (
+                Some(match native {
+                    Some(native) => GuardMonitor::start_native(config, &directory, native)?,
+                    None => GuardMonitor::start(config, &directory)?,
+                }),
+                Some(lease),
+            ),
             None => (None, None),
         };
         let mut guard_failure = monitor
@@ -1093,6 +1225,21 @@ pub(crate) mod unix {
         ] {
             environment.insert(key.into(), REDACTED.into());
         }
+        if is_native {
+            for key in [
+                "MIL_NATIVE_GUARDED",
+                "MIL_SUPERVISOR_PID",
+                "HOME",
+                "TMPDIR",
+                "XDG_CACHE_HOME",
+                "HF_HOME",
+            ] {
+                environment.insert(key.into(), REDACTED.into());
+            }
+            for (key, _) in crate::native_guard::OFFLINE_ENVIRONMENT {
+                environment.insert(key.into(), REDACTED.into());
+            }
+        }
         let (executable_sha256, executable_hash_unavailable) = match executable_hash {
             Ok((hash, _)) => (Some(hash), None),
             Err(error) => (None, Some(format!("{error:#}"))),
@@ -1101,11 +1248,11 @@ pub(crate) mod unix {
             record_version: RECORD_VERSION, sample_index: 0, state: CaptureState::Running,
             workload_identity: request.identity()?, request,
             host: host_identity()?,
-            invocation: Invocation { executable: executable.to_string_lossy().into(), executable_sha256, executable_hash_unavailable, args: options.args.iter().map(|_| REDACTED.into()).collect(), environment },
+            invocation: Invocation { executable: executable.to_string_lossy().into(), executable_sha256, executable_hash_unavailable, args: options.args.iter().map(|_| REDACTED.into()).collect(), environment, native: native_invocation },
             limits: CaptureLimits {
                 timeout_ms: millis(options.timeout), max_output_bytes: options.max_output_bytes,
                 platform_limits: vec![
-                    "macOS/Linux owned process group; trusted children must not escape via setsid/setpgid; not a sandbox".into(),
+                    if is_native { "native-only sandbox-exec: deny network and writes outside canonical owned run; owned process group supervision".into() } else { "macOS/Linux owned process group; trusted children must not escape via setsid/setpgid; not a sandbox".into() },
                     "no external SIGCHLD auto-reaping or competing child reaper is supported".into(),
                     "nonblocking bounded logs; output sizes polled, not a filesystem quota; no OS bound on stalled filesystem I/O".into(),
                     "TERM grace 100 ms, KILL observation 1 s; process-group signal delivery does not prove every descendant exited".into(),
@@ -1133,13 +1280,26 @@ pub(crate) mod unix {
         let mut stdout_log = OpenOptions::new()
             .create_new(true)
             .write(true)
+            .mode(0o600)
             .open(directory.join("stdout.log"))?;
         let mut stderr_log = OpenOptions::new()
             .create_new(true)
             .write(true)
+            .mode(0o600)
             .open(directory.join("stderr.log"))?;
         let execution_start = Instant::now();
-        let mut command = Command::new(&executable);
+        let mut command = if is_native {
+            let mut command = Command::new(SANDBOX_EXECUTABLE);
+            command
+                .arg("-D")
+                .arg(format!("MIL_RUN={}", directory.display()))
+                .arg("-p")
+                .arg(SANDBOX_PROFILE)
+                .arg(&executable);
+            command
+        } else {
+            Command::new(&executable)
+        };
         command
             .args(&options.args)
             .env_clear()
@@ -1152,9 +1312,30 @@ pub(crate) mod unix {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        // Constructing the command never grants readiness. The marker is added
+        // only after guards pass, immediately before an otherwise permitted spawn.
+        if is_native && guard_failure.is_none() && !cancelled.load(Ordering::Relaxed) {
+            for (key, subdirectory) in [
+                ("HOME", "home"),
+                ("TMPDIR", "tmp"),
+                ("XDG_CACHE_HOME", "cache"),
+                ("HF_HOME", "huggingface"),
+            ] {
+                let path = directory.join(subdirectory);
+                fs::DirBuilder::new().mode(0o700).create(&path)?;
+                command.env(key, path);
+            }
+            command
+                .env("MIL_NATIVE_GUARDED", "1")
+                .env("MIL_SUPERVISOR_PID", std::process::id().to_string())
+                .envs(crate::native_guard::OFFLINE_ENVIRONMENT);
+        }
         let lease_fd = lease.as_ref().map(Lease::raw_fd);
         unsafe {
             command.pre_exec(move || {
+                if is_native {
+                    libc::umask(0o077);
+                }
                 if libc::setpgid(0, 0) != 0 {
                     return Err(std::io::Error::last_os_error());
                 }

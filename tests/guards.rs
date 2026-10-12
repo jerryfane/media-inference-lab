@@ -55,6 +55,7 @@ fn report() -> GuardReport {
         initial_decision: evaluate_launch(&config(), &baseline),
         baseline,
         samples: vec![],
+        native: None,
     }
 }
 #[test]

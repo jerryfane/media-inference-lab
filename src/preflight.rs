@@ -101,67 +101,12 @@ fn execute(options: &PreflightOptions, script: &Path, diagnostics: &mut Vec<u8>)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    unsafe {
-        command.pre_exec(|| {
-            if libc::setpgid(0, 0) != 0 {
-                return Err(std::io::Error::last_os_error());
-            }
-            Ok(())
-        });
-    }
-    let mut child = OwnedChild::new(command.spawn().context("launching selected Python")?);
-    let mut stdout = child
-        .child
-        .stdout
-        .take()
-        .context("missing adapter stdout")?;
-    let mut stderr = child
-        .child
-        .stderr
-        .take()
-        .context("missing adapter stderr")?;
-    nonblocking(&stdout)?;
-    nonblocking(&stderr)?;
-    let deadline = Instant::now() + options.timeout;
-    let mut bytes = Vec::new();
-    let mut exit_status = None;
-    let status = loop {
-        ensure!(Instant::now() < deadline, "CPU preflight exceeded timeout");
-        let out_done = drain(&mut stdout, &mut bytes, OUTPUT_LIMIT)?;
-        let err_done = drain(&mut stderr, diagnostics, DIAGNOSTIC_LIMIT)?;
-        if exit_status.is_none() && child.exited()? {
-            exit_status = Some(child.cleanup()?);
-        }
-        if let Some(status) = exit_status
-            && out_done
-            && err_done
-        {
-            break status;
-        }
-        std::thread::sleep(Duration::from_millis(10));
-    };
-    let report: Value = serde_json::from_slice(&bytes).context("adapter emitted malformed JSON")?;
-    ensure!(
-        report.is_object()
-            && report["schema_version"] == 1
-            && report["mode"] == "cpu_static_preflight",
-        "adapter returned an unsupported report schema"
-    );
-    let ok = report["ok"]
-        .as_bool()
-        .context("adapter omitted boolean static-check outcome")?;
-    ensure!(
-        report["errors"].is_array() && report["limitations"].is_array(),
-        "adapter omitted report evidence fields"
-    );
-    ensure!(
-        (ok && status.success()) || (!ok && status.code() == Some(2)),
-        "adapter status disagrees with report: {status}"
-    );
-    if ok && !report["errors"].as_array().unwrap().is_empty() {
-        bail!("adapter reported success alongside errors");
-    }
-    Ok(report)
+    execute_check(
+        command,
+        options.timeout,
+        diagnostics,
+        "cpu_static_preflight",
+    )
 }
 
 /// Persist a non-overwriting report, including request/dependency/model/launcher failures.
@@ -209,4 +154,76 @@ pub fn run(options: PreflightOptions) -> Result<bool> {
     output.write_all(b"\n")?;
     output.sync_all()?;
     Ok(ok)
+}
+
+/// Bounded stdlib-only check runner shared by static and native-adapter preparation.
+pub(crate) fn execute_check(
+    mut command: Command,
+    timeout: Duration,
+    diagnostics: &mut Vec<u8>,
+    mode: &str,
+) -> Result<Value> {
+    ensure!(
+        timeout >= Duration::from_secs(1) && timeout <= Duration::from_secs(120),
+        "CPU check timeout must be between 1 and 120 seconds"
+    );
+    unsafe {
+        command.pre_exec(|| {
+            if libc::setpgid(0, 0) != 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(())
+        });
+    }
+    let mut child = OwnedChild::new(command.spawn().context("launching selected Python")?);
+    let mut stdout = child
+        .child
+        .stdout
+        .take()
+        .context("missing adapter stdout")?;
+    let mut stderr = child
+        .child
+        .stderr
+        .take()
+        .context("missing adapter stderr")?;
+    nonblocking(&stdout)?;
+    nonblocking(&stderr)?;
+    let deadline = Instant::now() + timeout;
+    let mut bytes = Vec::new();
+    let mut exit_status = None;
+    let status = loop {
+        ensure!(Instant::now() < deadline, "CPU preflight exceeded timeout");
+        let out_done = drain(&mut stdout, &mut bytes, OUTPUT_LIMIT)?;
+        let err_done = drain(&mut stderr, diagnostics, DIAGNOSTIC_LIMIT)?;
+        if exit_status.is_none() && child.exited()? {
+            exit_status = Some(child.cleanup()?);
+        }
+        if let Some(status) = exit_status
+            && out_done
+            && err_done
+        {
+            break status;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    let report: Value = serde_json::from_slice(&bytes).context("adapter emitted malformed JSON")?;
+    ensure!(
+        report.is_object() && report["schema_version"] == 1 && report["mode"] == mode,
+        "adapter returned an unsupported report schema"
+    );
+    let ok = report["ok"]
+        .as_bool()
+        .context("adapter omitted boolean static-check outcome")?;
+    ensure!(
+        report["errors"].is_array() && report["limitations"].is_array(),
+        "adapter omitted report evidence fields"
+    );
+    ensure!(
+        (ok && status.success()) || (!ok && status.code() == Some(2)),
+        "adapter status disagrees with report: {status}"
+    );
+    if ok && !report["errors"].as_array().unwrap().is_empty() {
+        bail!("adapter reported success alongside errors");
+    }
+    Ok(report)
 }

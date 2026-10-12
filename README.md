@@ -58,7 +58,7 @@ Begin with the evidence schema and capture lifecycle, then resource guards and a
 
 ## Implementation status
 
-The Rust CLI implements versioned image/video evidence contracts, CPU-only subprocess supervision, offline inspection and repeated-study comparison, bounded static-PNG sample comparison and inspection bundles, macOS resource observations and a cooperating-process lease, plus read-only MFLUX metadata preflight. **There is no authorized model-capture command yet.** `supervise-guarded` still requires `--cpu-only`; passing guards, static preflight or comparison never grants GPU access. Native inference adapters (#12/#15), capture-integrated image checks (#13) and full video/audio validation (#16) remain prerequisites for the real workflow. No image/video generation or inference-performance claim is established by these CPU examples.
+The Rust CLI implements versioned image/video evidence contracts, CPU-only subprocess supervision, offline comparisons/reports, macOS resource observations and a cooperating-process lease, read-only MFLUX metadata preflight, and a thin native Qwen Image 2.1 adapter with explicit `mflux-run` preparation/launch handling. **Native execution is blocked, not ready for a scheduling slot:** authoritative aggregate live-queue and unrelated-GPU readiness integrations are absent. Native imports, allocation, generation and result acceptance have not been exercised. `supervise` and `supervise-guarded` remain CPU-only; neither is an inference entry point. Real-runtime acceptance for #11/#12, video integration (#15), capture-integrated image checks (#13) and full video/audio validation (#16) remain open. No inference-performance claim is established by CPU examples.
 
 ### Build and CPU verification
 
@@ -102,7 +102,7 @@ For a missing-result example, run `target/debug/mil supervise --cpu-only --workl
 
 ### Subprocess protocol and safety limits
 
-`supervise` requires the explicit `--cpu-only` acknowledgment. It is **not** a sandbox or a GPU-idleness check; do not use it for model/GPU work before the guarded native capture path exists.
+`supervise` requires the explicit `--cpu-only` acknowledgment. It is **not** a sandbox or a GPU-idleness check. Never route inference through either CPU supervision command; the separate native path below is currently fail-closed.
 
 The supervisor launches an explicit executable and literal argument vector in a new per-run directory. It clears the inherited environment, retains only explicit `--env KEY=VALUE` entries, and supplies:
 
@@ -149,7 +149,7 @@ Fixed memory policy: launch requires at least 30% from `/usr/bin/memory_pressure
 
 The persistent owner-private lease is `$HOME/.local/share/media-inference-lab/gpu.lock`. Kernel `flock` contention never triggers retries or killing another owner. Never unlink/replace the inode to “clear” a lease. Close-only release permits an owned child retaining the inherited descriptor to hold the lock after supervisor death; ownership recovers when all such descriptors close. Descendants that escape their process group or close that descriptor are outside these guarantees. The lease covers cooperating project processes only.
 
-Before any later heavy run: deliver the exact isolated environment/model identities, no-download evidence, full-shape command/settings and execution/disk bounds; obtain a fresh explicit `mac-studio` scheduling grant; immediately recheck live-job/unrelated-GPU state, lease contention, memory and swap. Existing reports are historical evidence, not a reusable grant.
+Before any later native import or heavy run, the missing authoritative readiness/coordination integrations must be separately scoped and authorized. Health, per-known-job lookup, worker absence, files/logs, memory/process observations and the cooperating lease cannot establish global readiness or prevent new admissions. Do not add a manual-ready file, callback, fabricated producer or manager-reference override. After genuine integration exists, deliver exact environment/source/model/workload/command identities and execution/disk bounds, obtain a fresh explicit `mac-studio` grant, and check authoritative readiness plus resource/lease guards. Historical reports and grants are not reusable readiness. `guard-check` acquires the shared lease and writes output; it is not a read-only readiness inquiry.
 
 ### Read-only native MFLUX preflight
 
@@ -176,6 +176,44 @@ CPU verification for this slice: `cargo test --test guards --test guard_capture 
 
 PR28 review correction: the earlier `14d31bb` reader was buffered. Its reported 37,509,546 bytes were logical accounting, not verified physical read volume; the earlier “no tensor payload reads” claim is withdrawn for those historical reports. They are preserved unchanged. Corrected verification used only generated toy metadata: `cargo test --test preflight review_` passed two new regressions (the original ten were filtered out), followed by Clippy/build. A 76-byte toy checkpoint left descriptor offsets/accounting at 8 then 72, before its four payload bytes. Actual `mil validate`/`mflux-preflight` accepted eleven explicit-null/omitted-option forms with identical identities and resolved arguments; three missing-required-field controls still failed. No real weight files were reread for this correction.
 
+
+### Native Qwen runner: preparation and blocked launch
+
+`adapters/mflux_native.py` calls the actual `QwenImage21` constructor and `generate_image`, synchronizes MLX, and serializes the returned PIL image. It does not emulate inference or shell out to the MFLUX CLI. Use an existing isolated venv, explicit editable-package root, expected Python-source-tree hash, and existing local snapshot:
+
+```sh
+target/debug/mil mflux-run --check-only \
+  --python /absolute/isolated-venv/bin/python \
+  --source-dir /absolute/source/src/mflux \
+  --source-sha256 "$EXPECTED_PYTHON_TREE_SHA256" \
+  --model-dir /absolute/existing/local-snapshot \
+  --workload /absolute/native-workload.json \
+  --guard-config /absolute/guard-config.json \
+  --root /absolute/owned-native-runs \
+  --output /absolute/new-native-preparation.json \
+  --timeout-seconds 600 --check-timeout-seconds 60 \
+  --max-output-bytes 67108864
+```
+
+The two modes are mutually exclusive and mandatory. `--check-only` returns `0` for static validation, **not authorization or native success**; its report explicitly says `checked_not_executed`. `--execute` currently returns `1` with both missing readiness reasons **before Python, native imports, shared-lease acquisition or capture-directory creation**. `--manager-grant-reference TEXT` records external provenance only; it is not authenticated authorization and cannot change readiness. Replacing the mode is not a valid scheduling request until the missing integrations exist. No producer/override input is offered.
+
+The preparation report records a deterministic SHA-256 identity over the typed workload, selected venv invocation and resolved executable hash, expected source hash, adapter/helper hashes, local model selection, arguments/environment, output root, bounds, and selected resource-guard config. The canonical base executable is **never substituted for the venv invocation**. Dynamic run paths, report destination, timestamps and external grant reference are excluded from that identity. A selected guard config or model-directory name is not a fresh process observation or an attested model revision.
+
+Native support is batch-one text-to-image, Qwen Image 2.1, linear scheduler, unquantized BF16 model precision (`auto` may resolve to BF16), null or explicit float16 compute override, dimensions divisible by 16, fresh process and unspecified cache state. References/strength, other quantization, KV-cache and cache-threshold settings are rejected. Native step-cache ratio must be **null (disabled) or strictly `0 < ratio < 1`**; Python rejects endpoints before model traversal and Rust rejects them before launching the check subprocess. No ratio is added implicitly. JSON parsing uses exact float round trips so interior binary64 values do not round onto a forbidden endpoint; the shared schema is unchanged. The approved baseline retains **1536×864, 40 steps, guidance 4, seed 17, null negative prompt, BF16, null compute override, no quantization and all optimization fields null**. In the selected native implementation, null/empty negative prompt disables true CFG even when guidance exceeds 1; the runner records this without changing the request.
+
+Rust uses `-I -S -B`, clears inherited environment, and applies the macOS sandbox: no network, and no writes during CPU checks; a future authorized native child may write only inside its private run. Site hooks and executable `.pth` lines are never executed. A new empty private bytecode prefix prevents loading old source-tree `.pyc` files. Native cache/home/temp directories are run-owned. Python audit restrictions are defense in depth, not native-extension isolation. Nothing installs packages, changes source/model stores or live services, downloads weights, retries inference or uploads evidence.
+
+The native supervisor retains fixed launch ≥30%, abort <15% and swap-growth >512 MiB system guards, the close-only cooperating lease, continuous observations and owned-process-group cleanup. Native guard reports use schema 2 with independently recomputed resource and required-readiness decisions; existing CPU guard reports remain schema 1. Workload 1, adapter-result 2 and capture-record 2 are retained. Capture invocations add optional native command/sandbox provenance. Bounds: native 1–600 seconds, CPU check 1–120 seconds, output/log budget 1 byte–1 GiB; the example selects 64 MiB. Polling/individual-file limits are not an atomic filesystem quota, and blocked filesystem syscalls have no forced deadline.
+
+Handled validation/launch failures retain a new mode-0600 attempt report and return `1`; existing reports are never overwritten. Infrastructure/parser errors return `2`. A spawned native child journals `native-status.json`; failed/cancelled runs retain partial outcomes, not fabricated successful results. Successful native code writes `artifacts/image.png`, hashed `artifacts/native-provenance.json`, and adapter-result v2. A child exit alone does not establish native execution: the attempt field is null for unsuccessful spawned captures where execution cannot be established.
+
+Each JSON publication uses a fresh random-named, exclusively created mode-0600 temporary file. Interrupted/write-failed temporaries remain evidence and count toward the byte bound; they cannot obstruct later cancellation/error journaling. Final adapter-result publication remains exclusive/non-overwriting. If a file vanishes between watchdog enumeration and `lstat`, the watcher discards the incomplete count and rescans the whole tree, at most three scans per observation. An exhausted rescan, directory traversal error or other observation error still fails closed, as does an actual byte-limit breach. Normal atomic replacement is not silently ignored or treated as a complete zero-byte observation.
+
+Provenance separates installed distribution metadata from actual imported module paths/hashes and source-tree identity. It records returned settings, host import/constructor/synchronized-generation timing boundaries, process RSS and available MLX allocator readings; native tqdm duration is not substituted for complete generation time. Lazy constructor timing does not assert completed weight evaluation. Device identity, actual cache warmth, unattested revisions and full weight-payload fingerprint remain explicitly unavailable; metadata/header hashes and stat stability are **not** payload integrity. Native ABI/parameter compatibility and resource APIs require a real authorized run. These unknowns cannot establish strict same-work identity or a controlled speedup. Generated PNG evidence remains unassessed until separately compared; numerical differences are not quality verdicts.
+
+Observed CPU verification: five adapter safety/validation cases, two new CLI denial/retention cases and four native-guard cases passed; Clippy all-targets and `cargo build --bin mil` passed. The new CLI's check-only path passed against the selected existing venv/source/snapshot and unchanged full-shape workload, with native import identity unavailable and readiness denied. No native import, model allocation, inference, benchmark, shared-lease acquisition or readiness-source re-probe occurred in that CLI smoke. #11/#12 remain open.
+
+PR34 review corrections: four new deterministic CPU regressions passed across focused runs, covering endpoint/interior/null ratios through Python and the real CLI, atomic rename during a byte scan, real over-limit and unavailable/unstable scans, and cancellation/fsync failure recovery with retained partials and non-overwriting final publication. New-test failures exposed Python 3.9 temporary-wrapper/audit incompatibility and non-roundtrip JSON parsing; exclusive path-based creation and Serde's `float_roundtrip` feature corrected those without weakening audit policy or changing schemas. Clippy all-targets/build passed offline. A sandboxed stdlib-only smoke retained a cancelled journal and interrupted publication; an enumeration/rename interleaving measured 752 bytes under a 1 MiB bound without requesting a signal. Refreshed full-shape check-only preparation passed; actual endpoint commands returned `1` before the Python check. Prior accepted checks/repros were not rerun. Updated identities/proposals are CPU preparation evidence only, not native acceptance or authorization.
 
 ### Bounded offline baseline/candidate/control studies
 

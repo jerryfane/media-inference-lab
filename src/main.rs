@@ -7,6 +7,7 @@ use media_inference_lab::{
     frame_sequence::{self, SequenceAssessment, SequenceInput, SequenceSource},
     guards::{GuardConfig, GuardMonitor, Lease},
     image_comparison::{self, ImageAssessment, Tolerance},
+    native::{self, NativeOptions},
     png_image::{self, DecodedPng},
     png_report,
     preflight::{self, PreflightOptions},
@@ -136,6 +137,43 @@ enum Command {
         output: PathBuf,
         #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
         timeout_seconds: u64,
+    },
+    /// Prepare or explicitly attempt a native Qwen run; missing native readiness always denies launch.
+    MfluxRun {
+        #[arg(long)]
+        python: PathBuf,
+        #[arg(long)]
+        source_dir: PathBuf,
+        #[arg(long)]
+        model_dir: PathBuf,
+        #[arg(long)]
+        source_sha256: String,
+        #[arg(long)]
+        workload: PathBuf,
+        #[arg(long, default_value = "runs")]
+        root: PathBuf,
+        /// New private preparation/attempt report; never a native-success claim by itself.
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(long, default_value_t = 600, value_parser = clap::value_parser!(u64).range(1..=600))]
+        timeout_seconds: u64,
+        #[arg(long, default_value_t = 60, value_parser = clap::value_parser!(u64).range(1..=120))]
+        check_timeout_seconds: u64,
+        #[arg(long, default_value_t = 64 * 1024 * 1024, value_parser = clap::value_parser!(u64).range(1..=1_073_741_824))]
+        max_output_bytes: u64,
+        #[arg(long)]
+        guard_config: Option<PathBuf>,
+        /// External grant reference is provenance only, never a readiness override.
+        #[arg(long)]
+        manager_grant_reference: Option<String>,
+        #[arg(long, conflicts_with = "execute", required_unless_present = "execute")]
+        check_only: bool,
+        #[arg(
+            long,
+            conflicts_with = "check_only",
+            required_unless_present = "check_only"
+        )]
+        execute: bool,
     },
 }
 
@@ -746,6 +784,40 @@ fn run(cli: Cli) -> Result<bool> {
                 workload,
                 output: output.clone(),
                 timeout: Duration::from_secs(timeout_seconds),
+            })?;
+            println!("{}", output.display());
+            Ok(passed)
+        }
+        Command::MfluxRun {
+            python,
+            source_dir,
+            model_dir,
+            source_sha256,
+            workload,
+            root,
+            output,
+            timeout_seconds,
+            check_timeout_seconds,
+            max_output_bytes,
+            guard_config,
+            manager_grant_reference,
+            check_only: _,
+            execute,
+        } => {
+            let passed = native::run(NativeOptions {
+                python,
+                source_dir,
+                model_dir,
+                source_sha256,
+                workload,
+                root,
+                output: output.clone(),
+                timeout: Duration::from_secs(timeout_seconds),
+                check_timeout: Duration::from_secs(check_timeout_seconds),
+                max_output_bytes,
+                guard_config,
+                manager_grant_reference,
+                execute,
             })?;
             println!("{}", output.display());
             Ok(passed)

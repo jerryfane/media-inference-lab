@@ -1,4 +1,5 @@
 //! Conservative workstation guards. These observations never authorize GPU use.
+use crate::native_guard::{NativeGuardConfig, NativeGuardReading, NativeGuardReport, combine};
 use anyhow::{Context, Result, bail, ensure};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -212,10 +213,22 @@ pub struct GuardReport {
     pub baseline: GuardSnapshot,
     pub initial_decision: GuardDecision,
     pub samples: Vec<GuardSample>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub native: Option<NativeGuardReport>,
 }
 impl GuardReport {
     pub fn validate(&self) -> Result<()> {
-        ensure!(self.schema_version == 1, "unsupported guard report version");
+        ensure!(
+            self.schema_version == if self.native.is_some() { 2 } else { 1 },
+            "unsupported guard report version or missing native evidence"
+        );
+        if let Some(native) = &self.native {
+            native.validate()?;
+            ensure!(
+                native.samples.len() == self.samples.len(),
+                "native/resource sample history differs"
+            );
+        }
         self.config.validate()?;
         ensure!(
             self.policy == GuardPolicy::default(),
@@ -225,8 +238,12 @@ impl GuardReport {
             self.samples.len() <= MAX_SAMPLES,
             "guard history exceeds bound"
         );
+        let mut initial = evaluate_launch(&self.config, &self.baseline);
+        if let Some(native) = &self.native {
+            combine(&mut initial, &native.baseline.decision);
+        }
         ensure!(
-            self.initial_decision == evaluate_launch(&self.config, &self.baseline),
+            self.initial_decision == initial,
             "initial guard decision contradicts observations"
         );
         ensure!(
@@ -253,6 +270,9 @@ impl GuardReport {
             );
             let mut expected = evaluate_running(&self.config, &self.baseline, &sample.snapshot);
             apply_stop(&mut expected, sample.stop_reason.as_ref());
+            if let Some(native) = &self.native {
+                combine(&mut expected, &native.samples[index].decision);
+            }
             ensure!(
                 sample.decision == expected,
                 "guard decision contradicts observations"
@@ -392,11 +412,30 @@ impl GuardMonitor {
                 baseline,
                 initial_decision,
                 samples: Vec::new(),
+                native: None,
             },
             output_dir: output_dir.to_owned(),
             started,
             last_observation: Instant::now(),
         })
+    }
+    pub fn start_native(
+        config: GuardConfig,
+        output_dir: &Path,
+        native: NativeGuardConfig,
+    ) -> Result<Self> {
+        native.validate()?;
+        let mut monitor = Self::start(config, output_dir)?;
+        // Collect required native readiness ourselves, never from caller-supplied readings.
+        let baseline = NativeGuardReading::collect(&native);
+        combine(&mut monitor.report.initial_decision, &baseline.decision);
+        monitor.report.schema_version = 2;
+        monitor.report.native = Some(NativeGuardReport {
+            config: native,
+            baseline,
+            samples: Vec::new(),
+        });
+        Ok(monitor)
     }
     pub fn report(&self) -> &GuardReport {
         &self.report
@@ -429,6 +468,11 @@ impl GuardMonitor {
         };
         let mut decision = evaluate_running(&self.report.config, &self.report.baseline, &snapshot);
         apply_stop(&mut decision, stop_reason.as_ref());
+        if let Some(native) = &mut self.report.native {
+            let reading = NativeGuardReading::collect(&native.config);
+            combine(&mut decision, &reading.decision);
+            native.samples.push(reading);
+        }
         self.report.samples.push(GuardSample {
             elapsed_ms,
             snapshot,
