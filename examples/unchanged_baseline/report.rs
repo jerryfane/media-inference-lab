@@ -464,10 +464,15 @@ fn retained_intervals(row: &Row) -> Vec<Value> {
     let readiness = &row.value["evidence"]["readiness_path"]["raw"];
     let wall = manifest["started_unix_ms"].as_u64().zip(manifest["ended_unix_ms"].as_u64())
         .and_then(|(start,end)|end.checked_sub(start)).map(Value::from).unwrap_or(Value::Null);
+    let inspection_boundary = if row.value["workload"] == "h3_draft" {
+        "whole guarded acceptance: ffprobe/ffmpeg full RGB/PCM inspection and helper settlement, profile processing/publication, artifact collection/hashing, result validation and final authority check"
+    } else {
+        "adapter-result read, contract/artifact inspection and hashing"
+    };
     [
         ("capture_host","manifest.host_elapsed_ms","milliseconds","monotonic Instant elapsed","capture execution_start through leader exit or stop decision; excludes subsequent cleanup and inspection",manifest["host_elapsed_ms"].clone()),
         ("capture_wall","manifest.ended_unix_ms - manifest.started_unix_ms","milliseconds","Unix wall clock difference; clock adjustments possible","initial running capture record through terminal record before publication",wall),
-        ("artifact_inspection","manifest.artifact_inspection_ms","milliseconds","monotonic Instant elapsed","adapter-result read, contract/artifact inspection and hashing",manifest["artifact_inspection_ms"].clone()),
+        ("artifact_inspection","manifest.artifact_inspection_ms","milliseconds","monotonic Instant elapsed",inspection_boundary,manifest["artifact_inspection_ms"].clone()),
         ("capture_cleanup","manifest.cleanup_elapsed_ms","milliseconds","monotonic Instant elapsed","owned child process-group cleanup and leader reaping",manifest["cleanup_elapsed_ms"].clone()),
         ("transaction","receipt.elapsed_ms","milliseconds","guardian monotonic clock elapsed","guardian clock initialization after arming through receipt construction after service restoration/accounting; excludes final receipt write",receipt["elapsed_ms"].clone()),
         ("readiness_observer","readiness.elapsed_us","microseconds","observer monotonic Instant elapsed","observer active start through identity/listener/health and helper settlement, before observation_unix_ms sampling and publication",readiness["elapsed_us"].clone()),

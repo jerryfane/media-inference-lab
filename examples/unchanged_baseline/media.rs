@@ -502,11 +502,10 @@ fn load_bundle(root: &Path, deadline: Instant) -> Result<Bundle> {
         ensure!(n <= 16 * MIB, "frame exceeds byte bound");
         png_bytes += n;
     }
-    if !report["contact_sheet"].is_null() {
-        let sheet_path = io::relative(&root, io::text(&report["contact_sheet"], "path")?)?;
-        io::verify(&sheet_path, &report["contact_sheet"], 96 * MIB, deadline)?;
-        png_bytes += io::integer(&report["contact_sheet"]["bytes"])?;
-    }
+    ensure!(report["contact_sheet"].is_object(), "missing predeclared all56-frame contact-sheet record");
+    let sheet_path = io::relative(&root, io::text(&report["contact_sheet"], "path")?)?;
+    io::verify(&sheet_path, &report["contact_sheet"], 96 * MIB, deadline)?;
+    png_bytes += io::integer(&report["contact_sheet"]["bytes"])?;
     ensure!(png_bytes <= 96 * MIB, "derived PNG aggregate exceeds 96 MiB");
     let helpers = report["helpers"].as_array().context("missing owned decode helpers")?;
     ensure!(helpers.len() == 2, "derived bundle must retain two owned helpers");
@@ -541,10 +540,9 @@ fn load_bundle(root: &Path, deadline: Instant) -> Result<Bundle> {
 pub fn validate_bundle(root: &Path, deadline: Instant) -> Result<Value> {
     let bundle = load_bundle(root, deadline)?;
     let frames = bundle.report["frames"].as_array().context("missing frame records")?;
-    let has_sheet = !bundle.report["contact_sheet"].is_null();
     let mut reconstructed = Sha256::new();
     let mut sheet_hash = Sha256::new();
-    let mut tiles = Vec::with_capacity(if has_sheet { 8 } else { 0 });
+    let mut tiles = Vec::with_capacity(8);
     // At most one tile row is retained; every actual frame is decoded once.
     for row in 0..7 {
         for col in 0..8 {
@@ -553,53 +551,49 @@ pub fn validate_bundle(root: &Path, deadline: Instant) -> Result<Value> {
             let decoded = png_image::decode(&io::relative(&bundle.root, io::text(&frames[index], "path")?)?)?;
             check_frame(&decoded, &frames[index], index)?;
             reconstructed.update(decoded.samples());
-            if has_sheet { tiles.push(decoded); }
+            tiles.push(decoded);
         }
-        if has_sheet {
-            let stride = WIDTH as usize * 3;
-            for y in 0..HEIGHT as usize {
-                io::check(deadline)?;
-                for tile in &tiles { sheet_hash.update(&tile.samples()[y * stride..(y + 1) * stride]); }
-            }
+        let stride = WIDTH as usize * 3;
+        for y in 0..HEIGHT as usize {
+            io::check(deadline)?;
+            for tile in &tiles { sheet_hash.update(&tile.samples()[y * stride..(y + 1) * stride]); }
         }
         tiles.clear();
     }
     let reconstructed = format!("{:x}", reconstructed.finalize());
     ensure!(bundle.original["video"]["decoded_rgb_sha256"] == reconstructed,
         "re-concatenated PNG RGB hash mismatch");
-    if has_sheet {
-        let record = &bundle.report["contact_sheet"];
-        ensure!(record["columns"] == 8 && record["rows"] == 7, "contact sheet layout mismatch");
-        let path = io::relative(&bundle.root, io::text(record, "path")?)?;
-        let mut decoder = png::Decoder::new(std::io::BufReader::new(io::open(&path, 96 * MIB)?));
-        decoder.set_transformations(png::Transformations::IDENTITY);
-        let mut reader = decoder.read_info()?;
-        let info = reader.info();
-        ensure!(info.width == WIDTH * 8 && info.height == HEIGHT * 7
-            && info.color_type == png::ColorType::Rgb && info.bit_depth == png::BitDepth::Eight
-            && !info.interlaced && info.animation_control.is_none(), "contact sheet RGB layout mismatch");
-        let mut actual = Sha256::new();
-        let mut rows = 0u32;
-        while let Some(row) = reader.next_row()? {
-            io::check(deadline)?;
-            ensure!(rows < HEIGHT * 7 && row.data().len() == WIDTH as usize * 8 * 3,
-                "contact sheet row count/width mismatch");
-            actual.update(row.data());
-            rows += 1;
-        }
-        // Row exhaustion is not terminal-chunk validation (notably IEND).
+    let record = &bundle.report["contact_sheet"];
+    ensure!(record["columns"] == 8 && record["rows"] == 7, "contact sheet layout mismatch");
+    let path = io::relative(&bundle.root, io::text(record, "path")?)?;
+    let mut decoder = png::Decoder::new(std::io::BufReader::new(io::open(&path, 96 * MIB)?));
+    decoder.set_transformations(png::Transformations::IDENTITY);
+    let mut reader = decoder.read_info()?;
+    let info = reader.info();
+    ensure!(info.width == WIDTH * 8 && info.height == HEIGHT * 7
+        && info.color_type == png::ColorType::Rgb && info.bit_depth == png::BitDepth::Eight
+        && !info.interlaced && info.animation_control.is_none(), "contact sheet RGB layout mismatch");
+    let mut actual = Sha256::new();
+    let mut rows = 0u32;
+    while let Some(row) = reader.next_row()? {
         io::check(deadline)?;
-        reader.finish().context("finishing contact sheet PNG chunks")?;
-        ensure!(rows == HEIGHT * 7 && actual.finalize() == sheet_hash.finalize(),
-            "contact sheet differs from complete frame samples");
+        ensure!(rows < HEIGHT * 7 && row.data().len() == WIDTH as usize * 8 * 3,
+            "contact sheet row count/width mismatch");
+        actual.update(row.data());
+        rows += 1;
     }
+    // Row exhaustion is not terminal-chunk validation (notably IEND).
+    io::check(deadline)?;
+    reader.finish().context("finishing contact sheet PNG chunks")?;
+    ensure!(rows == HEIGHT * 7 && actual.finalize() == sheet_hash.finalize(),
+        "contact sheet differs from complete frame samples");
     io::check(deadline)?;
     Ok(json!({"kind":"unchanged_h3_bundle_validation","bundle":bundle.report_identity,
         "source":bundle.report["source"],"inspection":bundle.report["inspection"],
         "video":{"frame_count":FRAMES,"decoded_rgb_bytes":RGB_BYTES,"reconstructed_rgb_sha256":reconstructed},
         "audio":{"sha256":bundle.report["audio"]["sha256"],"bytes":bundle.pcm.len(),
             "sample_frames":bundle.alignment.samples,"sample_rate_hz":32000,"channels":2},
-        "contact_sheet_validated":has_sheet,
+        "contact_sheet_validated":true,
         "method":"Complete original-bound PNG RGB reconstruction, finite PCM hash/count, source/inspection/probe timeline, tool and settled-helper artifact validation; no decoder invocation or native acceptance verdict."}))
 }
 

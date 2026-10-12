@@ -339,7 +339,7 @@ fn review_bundle_validates_all_actual_pngs_and_reconstructed_hash() {
 
 #[test]
 fn review_bundle_rejects_actual_pcm_and_declared_hash_count_corruption() {
-    let (_dir, root, report) = review_bundle_fixture(false);
+    let (_dir, root, report) = review_bundle_fixture(true);
     assert!(validate_bundle(&root, deadline()).is_ok());
     let pcm_path = root.join("audio.f32le");
     let original_pcm = std::fs::read(&pcm_path).unwrap();
@@ -398,6 +398,16 @@ fn review_bundle_rejects_truncated_contact_sheet_terminal_chunks() {
     std::fs::write(&path, truncated).unwrap();
     report["contact_sheet"]["sha256"] = json!(io::digest(truncated));
     report["contact_sheet"]["bytes"] = json!(truncated.len());
+    review_save_report(&root, &report);
+    assert!(validate_bundle(&root, deadline()).is_err());
+}
+
+#[test]
+fn final_review_missing_contact_sheet_makes_bundle_unavailable() {
+    let (_dir, root, mut report) = review_bundle_fixture(false);
+    assert!(load_bundle(&root, deadline()).is_err());
+    assert!(validate_bundle(&root, deadline()).is_err());
+    report.as_object_mut().unwrap().remove("contact_sheet");
     review_save_report(&root, &report);
     assert!(validate_bundle(&root, deadline()).is_err());
 }
