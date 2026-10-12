@@ -182,6 +182,103 @@ fn readiness(readiness: &Value, services: &Value) -> Result<()> {
     Ok(())
 }
 
+// Absolute brackets are retained by the command collector, not synthesized from
+// guardian elapsed_ms or process birth times. These records are evidence, not authentication.
+fn bracket(value: &Value) -> Result<(u64, u64)> {
+    ensure!(value["collection_complete"] == true && value["errors"].as_array().is_some_and(Vec::is_empty), "command observation collection incomplete");
+    ensure!(value["clock"] == "unix_ms" && value["elapsed_clock"] == "monotonic", "missing explicit wall/monotonic clock labels");
+    let start = value["started_unix_ms"].as_u64().context("missing original command wall start")?;
+    let end = value["ended_unix_ms"].as_u64().context("missing original command wall end")?;
+    ensure!(end >= start && value["elapsed_us"].as_u64().is_some(), "invalid original command bracket");
+    ensure!(value["exit_code"] == 0, "command did not settle successfully");
+    let mono_start = value["monotonic_started_ns"].as_u64().context("missing command monotonic start")?;
+    let mono_end = value["monotonic_ended_ns"].as_u64().context("missing command monotonic end")?;
+    ensure!(mono_end >= mono_start && value["elapsed_us"].as_u64() == Some((mono_end-mono_start)/1000), "inconsistent monotonic command bracket");
+    text(value,"monotonic_clock_id")?;
+    Ok((start,end))
+}
+
+fn temporal(value: &Value) -> Result<Value> {
+    let evidence = &value["evidence"];
+    let manifest = &evidence["manifest"]["raw"];
+    let start = manifest["started_unix_ms"].as_u64().context("capture wall start unavailable")?;
+    let end = manifest["ended_unix_ms"].as_u64().context("capture wall end unavailable")?;
+    ensure!(end >= start, "capture wall clock reversed");
+    let execution = &evidence["execution_observation_path"]["raw"];
+    let observer = &evidence["readiness_observation_path"]["raw"];
+    let (command_start,command_end) = bracket(execution)?;
+    let (observer_start,observer_end) = bracket(observer)?;
+    ensure!(execution["monotonic_clock_id"] == observer["monotonic_clock_id"], "command and observer monotonic clock domains differ");
+    ensure!(observer["monotonic_started_ns"].as_u64() > execution["monotonic_ended_ns"].as_u64(), "observer monotonic bracket overlaps command settlement");
+    let argv = observer["literal_cli_argv"].as_array().context("original observer argv missing")?;
+    ensure!(!argv.is_empty() && argv.iter().all(|a|a.as_str().is_some_and(|s|!s.is_empty()))
+        && argv[0].as_str().is_some_and(|s|Path::new(s).is_absolute()), "invalid original observer argv");
+    ensure!(execution["boundary"] == "before_command_spawn_through_command_settlement_and_receipt_read"
+        && observer["boundary"] == "before_observer_spawn_through_observer_settlement_and_report_read", "command observation boundary differs");
+    ensure!(execution["receipt_identity"] == evidence["receipt_path"]["identity"]
+        && execution["attempt_identity"] == evidence["attempt_report_path"]["identity"]
+        && execution["literal_cli_argv"] == evidence["admission_binding_path"]["raw"]["literal_cli_argv"], "execution observation detached from receipt/attempt/argv");
+    ensure!(observer["receipt_identity"] == evidence["receipt_path"]["identity"]
+        && observer["readiness_identity"] == evidence["readiness_path"]["identity"], "observer observation detached from receipt/readiness");
+    ensure!(command_start <= start && end <= command_end, "capture outside retained command bracket");
+    let transaction_ms = evidence["receipt_path"]["raw"]["elapsed_ms"].as_u64().context("original transaction elapsed unavailable")?;
+    ensure!(transaction_ms <= execution["elapsed_us"].as_u64().context("command elapsed unavailable")? / 1000,
+        "original transaction duration exceeds its external command bracket");
+    ensure!(observer_start > command_end, "readiness observer not freshly started after receipt-bound command settlement");
+    let observed = evidence["readiness_path"]["raw"]["observation_unix_ms"].as_u64().context("readiness completion wall observation unavailable")?;
+    ensure!(observer_start <= observed && observed <= observer_end, "stale readiness completion outside fresh observer bracket");
+    let readiness_us = evidence["readiness_path"]["raw"]["elapsed_us"].as_u64().context("readiness monotonic elapsed unavailable")?;
+    ensure!(readiness_us <= observer["elapsed_us"].as_u64().context("observer command elapsed unavailable")?,
+        "original readiness duration exceeds its external observer bracket");
+    Ok(json!({"status":"available","command_started_unix_ms":command_start,"command_ended_unix_ms":command_end,
+        "capture_started_unix_ms":start,"capture_ended_unix_ms":end,"observer_started_unix_ms":observer_start,
+        "observer_ended_unix_ms":observer_end,"readiness_observation_unix_ms":observed,
+        "command_monotonic_started_ns":execution["monotonic_started_ns"],"observer_monotonic_ended_ns":observer["monotonic_ended_ns"],"monotonic_clock_id":execution["monotonic_clock_id"],
+        "boundary":"command spawn through receipt settlement, then fresh receipt-bound observer settlement",
+        "clock_limitation":"Separate Unix millisecond wall observations; clock adjustments and sub-ms order cannot be excluded. Monotonic durations are not absolute clock anchors."}))
+}
+
+fn chronology(rows: &mut [Row]) -> Value {
+    let mut previous_end: Option<Value> = None;
+    let mut seen = BTreeSet::new();
+    let mut complete = true;
+    for row in rows {
+        let local = temporal(&row.value);
+        row.value["readiness_temporal_validation"] = match &local {
+            Ok(details) => details.clone(),
+            Err(error) => unavailable(format!("receipt-bound observation freshness: {error:#}")),
+        };
+        let result = local.and_then(|details| {
+            let observer = &row.value["evidence"]["readiness_path"]["identity"];
+            let key = observer["sha256"].as_str().context("readiness byte identity unavailable")?;
+            if !seen.insert(key.to_owned()) {
+                row.value["readiness_temporal_validation"] = unavailable("readiness observer evidence reused across slots");
+                anyhow::bail!("readiness observer evidence reused across slots");
+            }
+            if let Some(previous) = &previous_end {
+                ensure!(details["command_started_unix_ms"].as_u64() > previous["observer_ended_unix_ms"].as_u64(), "fixed execution order violated or attempt/readiness intervals overlap");
+                ensure!(details["monotonic_clock_id"] == previous["monotonic_clock_id"]
+                    && details["command_monotonic_started_ns"].as_u64() > previous["observer_monotonic_ended_ns"].as_u64(), "fixed monotonic execution order unavailable or overlapping");
+            }
+            Ok(details)
+        });
+        // Do not bridge a missing interval as though its position had been proved.
+        previous_end = result.as_ref().ok().cloned();
+        match result {
+            Ok(details) => row.value["temporal_validation"] = details,
+            Err(error) => {
+                complete = false;
+                let reason = format!("chronology/freshness: {error:#}");
+                row.value["temporal_validation"] = unavailable(&reason);
+                row.value["eligible"] = json!(false);
+                row.value["exclusion_reasons"].as_array_mut().expect("row reasons").push(json!(reason));
+            }
+        }
+    }
+    json!({"status":if complete {"available"} else {"unavailable"},"complete":complete,"fixed_order":IDS,
+        "limitations":"Original receipt elapsed_ms has no absolute anchor. Observer observation_unix_ms is completion, not start. Missing retained command brackets remain unavailable; no absolute times inferred from durations."})
+}
+
 struct Row { value: Value, image: Option<PathBuf>, bundle: Option<PathBuf> }
 fn row(index: usize, slot: Option<&Value>, frozen_slot: Option<&Value>, frozen: &Value, frozen_id: &Value, protocol: &Value, global_errors: &[String], reads: &mut Reads) -> Row {
     let mut out = Row { value: json!({"slot_id":IDS[index],"planned_index":index,"workload":workload_key(index),"warmup":warmup(index),"measured":!warmup(index),"process_policy":"fresh_process","cache_policy":"unspecified","ledger":slot,"state":slot.map(|s|s["state"].clone()).unwrap_or(json!("not_run")),"original_sample_index":null,"primary":unavailable("capture metric unavailable"),"primary_selector":protocol["workloads"][workload_key(index)]["primary_metric"],"eligible":false,"exclusion_reasons":[],"evidence":{},"media_binding":unavailable("validated capture media unavailable")}), image:None, bundle:None };
@@ -189,7 +286,7 @@ fn row(index: usize, slot: Option<&Value>, frozen_slot: Option<&Value>, frozen: 
     let mut evidence = serde_json::Map::new();
     let mut loaded = BTreeMap::new();
     if let Some(slot) = slot {
-        for key in ["admission_binding_path","receipt_path","attempt_report_path","readiness_path","service_outcomes_path","saved_inspect_path","inspection_path"] {
+        for key in ["admission_binding_path","receipt_path","attempt_report_path","readiness_path","service_outcomes_path","saved_inspect_path","inspection_path","execution_observation_path","readiness_observation_path"] {
             if let Some(p) = slot[key].as_str() {
                 match reads.json(Path::new(p)) {
                     Ok((raw, identity)) => {
@@ -198,7 +295,10 @@ fn row(index: usize, slot: Option<&Value>, frozen_slot: Option<&Value>, frozen: 
                         evidence.insert(key.into(), json!({"identity":identity,"raw":raw}));
                         loaded.insert(key, raw);
                     },
-                    Err(error) => { errors.push(format!("{key}: {error:#}")); evidence.insert(key.into(), json!({"path":p,"unavailable":format!("{error:#}")})); }
+                    Err(error) => {
+                        if !["execution_observation_path","readiness_observation_path"].contains(&key) { errors.push(format!("{key}: {error:#}")); }
+                        evidence.insert(key.into(), json!({"path":p,"unavailable":format!("{error:#}")}));
+                    }
                 }
             }
         }
@@ -221,7 +321,7 @@ fn row(index: usize, slot: Option<&Value>, frozen_slot: Option<&Value>, frozen: 
             evidence.insert(name.into(),json!({"identity":id,"raw":raw}));
         }
         if let Some(relative) = manifest["guard_evidence"]["path"].as_str() {
-            media_inference_lab::schema::validate_artifact_path(relative)?;
+            ensure!(relative == "guards.json", "guard evidence must name the capture-owned guards.json");
             let (raw,id) = reads.json(&capture_dir.join(relative))?;
             evidence.insert("guard".into(),json!({"identity":id,"raw":raw}));
         }
@@ -299,18 +399,33 @@ fn row(index: usize, slot: Option<&Value>, frozen_slot: Option<&Value>, frozen: 
             ensure!(inspection_path == canonical(&capture_dir.join(&ia.path))?, "inspection report detached from capture");
             let iid = &evidence["inspection_path"]["identity"];
             ensure!(iid["sha256"] == ia.sha256 && iid["bytes"] == ia.bytes, "original inspection artifact identity changed");
-            let bundle_dir = canonical(&path(slot,"media_bundle")?)?;
-            let (bundle, bundle_id) = reads.json(&bundle_dir.join("report.json"))?;
-            bind_bundle(&bundle,&serde_json::to_value(artifact)?,&source,iid)?;
-            evidence.insert("derived_bundle".into(),json!({"identity":bundle_id,"raw":bundle}));
-            out.bundle = Some(bundle_dir);
+            // The original inspection binding belongs to native validation; offline
+            // derivation failure below must not rewrite that original acceptance.
         }
-        out.value["media_binding"] = json!({"status":"available"});
+        out.value["media_binding"] = if index < 4 { json!({"status":"available"}) } else { unavailable("derived bundle not yet validated") };
         Ok(())
     })();
     if let Err(error) = outcome { errors.push(format!("{error:#}")); }
     out.value["validation_eligible"] = json!(errors.is_empty());
     out.value["validation_exclusion_reasons"] = json!(errors);
+    if errors.is_empty() && index >= 4 {
+        let derived = (|| -> Result<PathBuf> {
+            let bundle_dir = canonical(&path(slot.context("missing slot")?,"media_bundle")?)?;
+            super::media::set_metadata_budget(reads.remaining);
+            let before = super::media::metadata_bytes_read();
+            let validated = super::media::validate_bundle(&bundle_dir,reads.deadline);
+            reads.remaining = reads.remaining.saturating_sub(super::media::metadata_bytes_read().saturating_sub(before));
+            let validation = validated?;
+            let (bundle,bundle_id) = reads.json(&bundle_dir.join("report.json"))?;
+            bind_bundle(&bundle,&out.value["selected_artifact"],&path(&out.value["selected_artifact"],"path")?,&evidence["inspection_path"]["identity"])?;
+            evidence.insert("derived_bundle".into(),json!({"identity":bundle_id,"raw":bundle,"validation":validation}));
+            Ok(bundle_dir)
+        })();
+        match derived {
+            Ok(bundle) => { out.bundle = Some(bundle); out.value["media_binding"] = json!({"status":"available"}); }
+            Err(error) => out.value["media_binding"] = unavailable(format!("{error:#}")),
+        }
+    }
     if out.value["primary"]["status"] != "available" { errors.push(format!("primary metric: {}",out.value["primary"]["reason"].as_str().unwrap_or("unavailable"))); }
     out.value["eligible"] = json!(errors.is_empty());
     out.value["exclusion_reasons"] = json!(errors);
@@ -343,13 +458,34 @@ fn summary(rows: &[Row], base: usize) -> Value {
     json!({"workload":workload_key(base),"selector":rows[base].value["primary_selector"],"complete":values.len()==3,"counts":{"planned":4,"measured":3,"warmup":1,"failed":failed,"missing":missing,"unavailable":selected.iter().filter(|r|r.value["primary"]["status"]!="available").count(),"eligible_measured":values.len(),"excluded_measured":3-values.len(),"excluded_including_warmup":4-values.len()},"ordered_individuals":ordered,"exclusions":exclusions,"descriptive":stats})
 }
 
+fn retained_intervals(row: &Row) -> Vec<Value> {
+    let manifest = &row.value["evidence"]["manifest"]["raw"];
+    let receipt = &row.value["evidence"]["receipt_path"]["raw"];
+    let readiness = &row.value["evidence"]["readiness_path"]["raw"];
+    let wall = manifest["started_unix_ms"].as_u64().zip(manifest["ended_unix_ms"].as_u64())
+        .and_then(|(start,end)|end.checked_sub(start)).map(Value::from).unwrap_or(Value::Null);
+    [
+        ("capture_host","manifest.host_elapsed_ms","milliseconds","monotonic Instant elapsed","capture execution_start through leader exit or stop decision; excludes subsequent cleanup and inspection",manifest["host_elapsed_ms"].clone()),
+        ("capture_wall","manifest.ended_unix_ms - manifest.started_unix_ms","milliseconds","Unix wall clock difference; clock adjustments possible","initial running capture record through terminal record before publication",wall),
+        ("artifact_inspection","manifest.artifact_inspection_ms","milliseconds","monotonic Instant elapsed","adapter-result read, contract/artifact inspection and hashing",manifest["artifact_inspection_ms"].clone()),
+        ("capture_cleanup","manifest.cleanup_elapsed_ms","milliseconds","monotonic Instant elapsed","owned child process-group cleanup and leader reaping",manifest["cleanup_elapsed_ms"].clone()),
+        ("transaction","receipt.elapsed_ms","milliseconds","guardian monotonic clock elapsed","guardian clock initialization after arming through receipt construction after service restoration/accounting; excludes final receipt write",receipt["elapsed_ms"].clone()),
+        ("readiness_observer","readiness.elapsed_us","microseconds","observer monotonic Instant elapsed","observer active start through identity/listener/health and helper settlement, before observation_unix_ms sampling and publication",readiness["elapsed_us"].clone()),
+    ].into_iter().map(|(phase,source,unit,method,boundary,value)| {
+        json!({"phase":phase,"scope":"host","unit":unit,"method":method,"boundary":boundary,"source":source,
+            "measurement":if value.as_u64().is_some(){json!({"status":"available","value":value})}else{unavailable(format!("{source}: missing or invalid original interval"))}})
+    }).collect()
+}
+
 fn secondary_summaries(rows: &[Row], base: usize, deadline: Instant) -> Result<Vec<Value>> {
     let mut selectors = BTreeMap::new();
     for row in &rows[base..base + 4] {
-        if let Some(timings) = row.value["evidence"]["manifest"]["raw"]["adapter_result"]["timings"].as_array() {
-            for timing in timings {
+        let mut timings = row.value["evidence"]["manifest"]["raw"]["adapter_result"]["timings"].as_array().cloned().unwrap_or_default();
+        timings.extend(retained_intervals(row));
+        {
+            for timing in &timings {
                 ensure!(Instant::now() < deadline, "secondary summary cooperative deadline exceeded");
-                let selector: Value = Value::Object(SELECTOR.iter().map(|key|((*key).to_owned(),timing[*key].clone())).collect());
+                let selector: Value = Value::Object(SELECTOR.iter().copied().chain(timing.get("source").map(|_|"source")).map(|key|(key.to_owned(),timing[key].clone())).collect());
                 if selector != rows[base].value["primary_selector"] {
                     selectors.entry(selector.to_string()).or_insert(selector);
                 }
@@ -359,17 +495,20 @@ fn secondary_summaries(rows: &[Row], base: usize, deadline: Instant) -> Result<V
     selectors.into_values().map(|selector| {
         ensure!(Instant::now() < deadline, "secondary summary cooperative deadline exceeded");
         let projected: Vec<_> = rows.iter().map(|row| {
-            let timings = &row.value["evidence"]["manifest"]["raw"]["adapter_result"]["timings"];
-            let metric = primary(timings,&selector);
+            let timings = if selector.get("source").is_some() { json!(retained_intervals(row)) } else { row.value["evidence"]["manifest"]["raw"]["adapter_result"]["timings"].clone() };
+            let metric = primary(&timings,&selector);
             let mut reasons = row.value["validation_exclusion_reasons"].as_array().cloned().unwrap_or_default();
             if metric["status"] != "available" { reasons.push(metric["reason"].clone()); }
-            Row {value:json!({"state":row.value["state"],"eligible":row.value["validation_eligible"] == true && metric["status"] == "available","primary":metric,"primary_selector":selector,"exclusion_reasons":reasons}),image:None,bundle:None}
+            let fresh = selector["source"] != "readiness.elapsed_us"
+                || row.value["readiness_temporal_validation"]["status"] == "available";
+            if !fresh { reasons.push(json!(row.value["readiness_temporal_validation"]["reason"].as_str().unwrap_or("receipt-bound readiness freshness unavailable"))); }
+            Row {value:json!({"state":row.value["state"],"eligible":row.value["validation_eligible"] == true && metric["status"] == "available" && fresh,"primary":metric,"primary_selector":selector,"exclusion_reasons":reasons}),image:None,bundle:None}
         }).collect();
         let mut group = summary(&projected,base);
-        group["metric_kind"] = json!("secondary_adapter_observation");
+        group["metric_kind"] = json!(if selector.get("source").is_some() {"secondary_retained_interval"} else {"secondary_adapter_observation"});
         for (offset,row) in rows[base..base + 4].iter().enumerate() {
-            let raw = row.value["evidence"]["manifest"]["raw"]["adapter_result"]["timings"].as_array()
-                .map(|ts|ts.iter().filter(|t|SELECTOR.iter().all(|key|t[*key] == selector[*key])).cloned().collect::<Vec<_>>()).unwrap_or_default();
+            let timings = if selector.get("source").is_some() { json!(retained_intervals(row)) } else { row.value["evidence"]["manifest"]["raw"]["adapter_result"]["timings"].clone() };
+            let raw = timings.as_array().map(|ts|ts.iter().filter(|t|SELECTOR.iter().all(|key|t[*key] == selector[*key])).cloned().collect::<Vec<_>>()).unwrap_or_default();
             group["ordered_individuals"][offset]["raw_observations"] = json!(raw);
             let individual = group["ordered_individuals"][offset].as_object_mut().expect("summary individual object");
             if let Some(observation) = individual.remove("primary") { individual.insert("observation".into(),observation); }
@@ -385,7 +524,9 @@ fn pair_rows(rows: &[Row], reads: &mut Reads) -> Vec<Value> {
         let before = super::media::metadata_bytes_read();
         let result = (|| -> Result<Value> {
             ensure!(Instant::now() < deadline, "cooperative analysis deadline exceeded");
-            ensure!(rows[l].value["eligible"] == true && rows[r].value["eligible"] == true, "one or both slots lack complete validated evidence; see slot exclusion reasons");
+            ensure!(rows[l].value["validation_eligible"] == true && rows[r].value["validation_eligible"] == true
+                && rows[l].value["media_binding"]["status"] == "available" && rows[r].value["media_binding"]["status"] == "available",
+                "one or both slots lack independently validated original/media evidence; see validation and media_binding reasons");
             if l < 4 { super::media::compare_images(rows[l].image.as_deref().context("left image unavailable")?, rows[r].image.as_deref().context("right image unavailable")?,deadline) }
             else { super::media::compare_videos(rows[l].bundle.as_deref().context("left video bundle unavailable")?,rows[r].bundle.as_deref().context("right video bundle unavailable")?,deadline) }
         })();
@@ -423,13 +564,13 @@ fn safe_markdown(value: &Value) -> String {
 }
 fn markdown(report: &Value, output: &Path) -> Result<()> {
     let mut f = private_file(&output.join("report.md"),1024*1024)?;
-    writeln!(f,"# Unchanged baseline descriptive precursor\n\nNot baseline/candidate/control acceptance or same-work eligibility. No speedup, tolerance or quality verdict. Warmups remain separate; unknown evidence remains unknown. Original sample indices are not study slot indices.\n\n| Slot | Original state | Original sample index | Primary observation | Eligible | Exclusions |\n|---|---|---|---|---|---|")?;
+    writeln!(f,"# Unchanged baseline descriptive precursor\n\nNot baseline/candidate/control acceptance or same-work eligibility. No speedup, tolerance or quality verdict. Warmups remain separate; unknown evidence remains unknown. Original sample indices are not study slot indices.\n\n| Slot | Original state | Original sample index | Exact primary selector (phase/scope/unit/method/boundary) | Primary observation | Eligible | Exclusions |\n|---|---|---|---|---|---|---|")?;
     for row in report["slots"].as_array().context("report rows missing")? {
-        writeln!(f,"| {} | {} | {} | {} | {} | {} |",safe_markdown(&row["slot_id"]),safe_markdown(&row["state"]),safe_markdown(&row["original_sample_index"]),safe_markdown(&row["primary"]),safe_markdown(&row["eligible"]),safe_markdown(&row["exclusion_reasons"]))?;
+        writeln!(f,"| {} | {} | {} | {} | {} | {} | {} |",safe_markdown(&row["slot_id"]),safe_markdown(&row["state"]),safe_markdown(&row["original_sample_index"]),safe_markdown(&row["primary_selector"]),safe_markdown(&row["primary"]),safe_markdown(&row["eligible"]),safe_markdown(&row["exclusion_reasons"]))?;
     }
     writeln!(f,"\n## Measured-only summaries\n")?;
-    for s in report["summaries"].as_array().context("summaries missing")? { writeln!(f,"- {}: complete {}; counts {}; descriptive {}",safe_markdown(&s["workload"]),safe_markdown(&s["complete"]),safe_markdown(&s["counts"]),safe_markdown(&s["descriptive"]))?; }
-    writeln!(f,"\n## Secondary adapter metrics\n\nEach full phase/scope/unit/method/boundary selector is separate; overlapping spans are never summed.")?;
+    for s in report["summaries"].as_array().context("summaries missing")? { writeln!(f,"- {} exact selector {}: complete {}; counts {}; descriptive {}",safe_markdown(&s["workload"]),safe_markdown(&s["selector"]),safe_markdown(&s["complete"]),safe_markdown(&s["counts"]),safe_markdown(&s["descriptive"]))?; }
+    writeln!(f,"\n## Secondary observations\n\nEach full phase/scope/unit/method/boundary selector and source field is separate; overlapping spans are never summed. Missing clocks are not inferred from another metric.")?;
     for s in report["secondary_summaries"].as_array().context("secondary summaries missing")? {
         writeln!(f,"- {} selector {}: complete {}; counts {}; descriptive {}",safe_markdown(&s["workload"]),safe_markdown(&s["selector"]),safe_markdown(&s["complete"]),safe_markdown(&s["counts"]),safe_markdown(&s["descriptive"]))?;
     }
@@ -465,7 +606,8 @@ pub fn run(protocol_path: &Path, ledger_path: &Path, output: &Path, deadline: In
             }
         }
     }
-    let rows: Vec<_> = IDS.iter().enumerate().map(|(i,id)| row(i,slots.get(*id),frozen_slots.get(*id),&frozen,&frozen_id,&protocol,&errors,&mut reads)).collect();
+    let mut rows: Vec<_> = IDS.iter().enumerate().map(|(i,id)| row(i,slots.get(*id),frozen_slots.get(*id),&frozen,&frozen_id,&protocol,&errors,&mut reads)).collect();
+    let chronology = chronology(&mut rows);
     let summaries = vec![summary(&rows,0),summary(&rows,4)];
     let mut secondary = Vec::new();
     for base in [0,4] {
@@ -475,8 +617,10 @@ pub fn run(protocol_path: &Path, ledger_path: &Path, output: &Path, deadline: In
         }
     }
     let pair_records = pair_rows(&rows,&mut reads);
-    let complete = errors.is_empty() && summaries.iter().all(|s|s["complete"]==true) && rows.iter().all(|r|r.value["eligible"]==true) && pair_records.iter().all(|p|p["metrics"]["status"]=="available");
+    let complete = errors.is_empty() && chronology["complete"] == true && summaries.iter().all(|s|s["complete"]==true) && rows.iter().all(|r|r.value["eligible"]==true) && pair_records.iter().all(|p|p["metrics"]["status"]=="available");
     let report = json!({"schema_version":1,"kind":"unchanged_baseline_descriptive_precursor","protocol_sha256":PROTOCOL_SHA256,"complete":complete,"same_work_eligibility":"not established","errors":errors,"inputs":inputs,"slots":rows.into_iter().map(|r|r.value).collect::<Vec<_>>(),"summaries":summaries,"secondary_summaries":secondary,"pairs":pair_records,"metadata_bytes_charged":METADATA_LIMIT-reads.remaining,"limitations":["Baseline-only precursor, not full baseline/candidate/control acceptance.","No native invocation, model import, lease, service operation or implicit decoder execution.","Original observations are retained, including unknown model/device/runtime/cache evidence; equal unknowns are not comparability proof.","Numeric output variation is not a quality verdict; warmup-containing pairs are separate.","Filesystem and total analysis deadlines are cooperative, not hard operating-system quotas."]});
+    let mut report = report;
+    report["chronology"] = chronology;
     let mut f = private_file(&output.join("report.json"),JSON_LIMIT)?;
     serde_json::to_writer_pretty(&mut f,&report)?;
     f.write_all(b"\n")?;
@@ -626,7 +770,7 @@ mod tests {
             row.value["evidence"]=json!({"manifest":{"raw":{"adapter_result":{"timings":if i==3{vec![t.clone(),t]}else{vec![t]}}}}});
         }
         let groups=secondary_summaries(&rows,0,Instant::now()+std::time::Duration::from_secs(1)).unwrap();
-        assert_eq!(groups.len(),2);
+        assert_eq!(groups.iter().filter(|g|g["metric_kind"]=="secondary_adapter_observation").count(),2);
         let original=groups.iter().find(|g|g["selector"]["boundary"]=="synchronized").unwrap();
         assert_eq!(original["counts"]["eligible_measured"],1);
         assert_eq!(original["ordered_individuals"][3]["raw_observations"].as_array().unwrap().len(),2);
@@ -638,3 +782,7 @@ mod tests {
         assert_eq!(changed["descriptive"]["median"],2.0);
     }
 }
+
+#[cfg(test)]
+#[path = "report_review_tests.rs"]
+mod review_tests;

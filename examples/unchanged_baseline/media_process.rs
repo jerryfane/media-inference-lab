@@ -28,7 +28,7 @@ fn drain(pipe: &mut File, consume: &mut impl FnMut(&[u8]) -> Result<()>) -> Resu
 
 // Decoder interpretation is identical to video_inspection::decoder and its two
 // output argument lists. Only owned creation/settlement and byte retention differ.
-fn command(ffmpeg: &Path, source: &Path, output: &Path, audio: bool) -> Result<CommandSpec> {
+pub(super) fn command(ffmpeg: &Path, source: &Path, output: &Path, audio: bool) -> Result<CommandSpec> {
     let mut args: Vec<String> = ["-nostdin", "-hide_banner", "-v", "error", "-xerror", "-err_detect", "explode",
         "-threads", "1", "-filter_threads", "1", "-filter_complex_threads", "1", "-hwaccel", "none", "-noautorotate",
         "-protocol_whitelist", "file", "-f", "mov", "-enable_drefs", "0", "-use_absolute_path", "0", "-i"]

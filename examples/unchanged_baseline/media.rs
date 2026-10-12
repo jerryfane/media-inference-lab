@@ -217,13 +217,35 @@ fn sheet(output: &Path, frames: &[Value], budget: &mut Budget, deadline: Instant
     Ok(result)
 }
 
+// Resolve the existing parent before creating even a failed-derivation report.
+// Missing input files may still produce a report in a separate output directory.
+fn separate_output(source: &Path, inspection: &Path, output: &Path) -> Result<PathBuf> {
+    fn parent(path: &Path) -> Result<PathBuf> {
+        let parent = path.parent().context("media path has no parent")?;
+        Ok(if parent.as_os_str().is_empty() { Path::new(".") } else { parent }.canonicalize()?)
+    }
+    let output_parent = parent(output)?;
+    let name = output.file_name().context("output must name a new directory")?;
+    let output = output_parent.join(name);
+    for input in [source, inspection] {
+        let input_parent = parent(input)?;
+        ensure!(!output.starts_with(&input_parent), "derived output must be outside immutable input directories");
+        // Also protect the target directory if the selected input is an alias.
+        if let Ok(resolved) = input.canonicalize() {
+            ensure!(!output.starts_with(resolved.parent().context("input has no parent")?),
+                "derived output must be outside immutable input directories");
+        }
+    }
+    Ok(output)
+}
+
 /// A new private bundle is retained even when decode/validation fails. True means
 /// the complete stream, all PNGs, PCM, provenance and owned settlements validated.
 pub fn derive(source: &Path, inspection: &Path, output: &Path, ffmpeg: &Path, deadline: Instant) -> Result<bool> {
     let started = Instant::now();
     let deadline = deadline.min(started + Duration::from_secs(250));
-    DirBuilder::new().mode(0o700).create(output).context("creating new private derived bundle")?;
-    let output = output.canonicalize()?;
+    let output = separate_output(source, inspection, output)?;
+    DirBuilder::new().mode(0o700).create(&output).context("creating new private derived bundle")?;
     let mut report = json!({"schema_version":1,"kind":"unchanged_h3_offline_derived_media","valid":false,"errors":[],
         "source":null,"inspection":null,"frames":[],"helpers":[],"limits":{"helper_seconds":120,"shared_cleanup_seconds":10,"total_seconds":250,
         "rgb_bytes":RGB_BYTES,"pcm_bytes":MIB,"png_bytes":96*MIB,"bundle_bytes":128*MIB},
@@ -399,7 +421,7 @@ fn compare_pcm(left: &[u8], right: &[u8], samples: u64, deadline: Instant) -> Re
 }
 
 /// Serial reporter accounting: set its remaining combined metadata allowance
-/// before a comparison, and subtract the cumulative counter delta afterward.
+/// before a validation/comparison, and subtract the cumulative counter delta afterward.
 pub fn set_metadata_budget(remaining: u64) { io::set_metadata_budget(remaining); }
 pub fn metadata_bytes_read() -> u64 { io::metadata_bytes_read() }
 
@@ -431,6 +453,7 @@ fn load_bundle(root: &Path, deadline: Instant) -> Result<Bundle> {
     let report: Value = serde_json::from_slice(&bytes)?;
     ensure!(report["kind"] == "unchanged_h3_offline_derived_media" && report["schema_version"] == 1 && report["valid"] == true,
         "derived bundle is incomplete/invalid");
+    ensure!(report["errors"].as_array().is_some_and(Vec::is_empty), "derived bundle retains errors");
     let original_path = io::relative(&root, io::text(&report, "original_inspection_path")?)?;
     let original_bytes = io::read(&original_path, METADATA_LIMIT, deadline)?;
     ensure!(report["inspection"]["sha256"] == io::digest(&original_bytes) && report["inspection"]["bytes"] == original_bytes.len(),
@@ -445,7 +468,9 @@ fn load_bundle(root: &Path, deadline: Instant) -> Result<Bundle> {
     let inspection = Path::new(io::text(&report["inspection"], "path")?);
     ensure!(inspection.is_absolute(), "inspection binding is not absolute");
     io::verify_metadata(inspection, &report["inspection"], deadline)?;
-    ensure!(report["decoder"]["sha256"] == original_tool(&original)?["sha256"]
+    let tool = original_tool(&original)?;
+    ensure!(report["decoder"]["sha256"] == tool["sha256"]
+        && report["decoder"]["path"] == tool["path"]
         && report["original_tools"] == original["tools"], "detached original decoder fingerprint");
     let probe_path = io::relative(&root, io::text(&report["probe"], "path")?)?;
     let probe_bytes = io::read(&probe_path, METADATA_LIMIT, deadline)?;
@@ -453,11 +478,15 @@ fn load_bundle(root: &Path, deadline: Instant) -> Result<Bundle> {
     ensure!(expected_probe["sha256"] == io::digest(&probe_bytes) && expected_probe["bytes"] == probe_bytes.len()
         && report["probe"]["sha256"] == expected_probe["sha256"] && report["probe"]["bytes"] == expected_probe["bytes"],
         "retained original probe hash/count mismatch");
+    let original_probe_path = io::relative(inspection.parent().context("inspection has no parent")?, io::text(expected_probe, "path")?)?;
+    ensure!(report["probe"]["original_path"] == json!(original_probe_path), "detached original probe path");
+    io::verify_metadata(&original_probe_path, expected_probe, deadline)?;
     let probe: Value = serde_json::from_slice(&probe_bytes)?;
     let aligned = alignment(&probe, &original, deadline)?;
     ensure!(report["sequence"] == serde_json::to_value(&aligned.sequence)? && report["video_timeline"] == json!(aligned.video_timeline)
         && report["audio_timeline"] == json!(aligned.audio_timeline) && report["video_stream"] == aligned.video_stream
-        && report["audio_stream"] == aligned.audio_stream, "derived timeline/count differs from original probe");
+        && report["audio_stream"] == aligned.audio_stream && report["timing_method"] == TIMELINE_METHOD,
+        "derived timeline/count differs from original probe");
     ensure!(report["video"]["decoded_rgb_bytes"] == RGB_BYTES && report["video"]["completed_frames"] == FRAMES
         && report["video"]["decoded_rgb_sha256"] == original["video"]["decoded_rgb_sha256"]
         && report["video"]["reconstructed_rgb_sha256"] == original["video"]["decoded_rgb_sha256"], "derived RGB stream binding mismatch");
@@ -473,9 +502,11 @@ fn load_bundle(root: &Path, deadline: Instant) -> Result<Bundle> {
         ensure!(n <= 16 * MIB, "frame exceeds byte bound");
         png_bytes += n;
     }
-    let sheet_path = io::relative(&root, io::text(&report["contact_sheet"], "path")?)?;
-    io::verify(&sheet_path, &report["contact_sheet"], 96 * MIB, deadline)?;
-    png_bytes += io::integer(&report["contact_sheet"]["bytes"])?;
+    if !report["contact_sheet"].is_null() {
+        let sheet_path = io::relative(&root, io::text(&report["contact_sheet"], "path")?)?;
+        io::verify(&sheet_path, &report["contact_sheet"], 96 * MIB, deadline)?;
+        png_bytes += io::integer(&report["contact_sheet"]["bytes"])?;
+    }
     ensure!(png_bytes <= 96 * MIB, "derived PNG aggregate exceeds 96 MiB");
     let helpers = report["helpers"].as_array().context("missing owned decode helpers")?;
     ensure!(helpers.len() == 2, "derived bundle must retain two owned helpers");
@@ -486,6 +517,11 @@ fn load_bundle(root: &Path, deadline: Instant) -> Result<Bundle> {
             && helper["settlement"]["complete"] == true && helper["settlement"]["leader_reaped"] == true
             && helper["settlement"]["group_absent"] == true && helper["settlement"]["exit_code"] == 0,
             "derived helper did not completely settle");
+        let expected_command = media_process::command(Path::new(io::text(&report["decoder"], "path")?), source, &root, i == 1)?;
+        ensure!(helper["command"] == serde_json::to_value(expected_command)?
+            && helper["stdout_bytes"] == if i == 0 { RGB_BYTES } else { aligned.samples * 8 }
+            && helper["stderr_bytes"] == 0 && helper["diagnostics_truncated"] == false,
+            "derived helper command/stream binding mismatch");
         let stderr = io::relative(&root, io::text(&helper["stderr"], "path")?)?;
         io::verify(&stderr, &helper["stderr"], 65536, deadline)?;
         ensure!(helper["stderr"]["bytes"] == 0, "derived helper emitted diagnostics");
@@ -500,6 +536,73 @@ fn load_bundle(root: &Path, deadline: Instant) -> Result<Bundle> {
     let report_identity = json!({"path":path,"sha256":io::digest(&bytes),"bytes":bytes.len()});
     Ok(Bundle { root, report, original, alignment: aligned, pcm, report_identity })
 }
+/// Validate actual samples once, independently of numerical pair eligibility.
+/// This is offline derived-media availability, never native acceptance.
+pub fn validate_bundle(root: &Path, deadline: Instant) -> Result<Value> {
+    let bundle = load_bundle(root, deadline)?;
+    let frames = bundle.report["frames"].as_array().context("missing frame records")?;
+    let has_sheet = !bundle.report["contact_sheet"].is_null();
+    let mut reconstructed = Sha256::new();
+    let mut sheet_hash = Sha256::new();
+    let mut tiles = Vec::with_capacity(if has_sheet { 8 } else { 0 });
+    // At most one tile row is retained; every actual frame is decoded once.
+    for row in 0..7 {
+        for col in 0..8 {
+            io::check(deadline)?;
+            let index = row * 8 + col;
+            let decoded = png_image::decode(&io::relative(&bundle.root, io::text(&frames[index], "path")?)?)?;
+            check_frame(&decoded, &frames[index], index)?;
+            reconstructed.update(decoded.samples());
+            if has_sheet { tiles.push(decoded); }
+        }
+        if has_sheet {
+            let stride = WIDTH as usize * 3;
+            for y in 0..HEIGHT as usize {
+                io::check(deadline)?;
+                for tile in &tiles { sheet_hash.update(&tile.samples()[y * stride..(y + 1) * stride]); }
+            }
+        }
+        tiles.clear();
+    }
+    let reconstructed = format!("{:x}", reconstructed.finalize());
+    ensure!(bundle.original["video"]["decoded_rgb_sha256"] == reconstructed,
+        "re-concatenated PNG RGB hash mismatch");
+    if has_sheet {
+        let record = &bundle.report["contact_sheet"];
+        ensure!(record["columns"] == 8 && record["rows"] == 7, "contact sheet layout mismatch");
+        let path = io::relative(&bundle.root, io::text(record, "path")?)?;
+        let mut decoder = png::Decoder::new(std::io::BufReader::new(io::open(&path, 96 * MIB)?));
+        decoder.set_transformations(png::Transformations::IDENTITY);
+        let mut reader = decoder.read_info()?;
+        let info = reader.info();
+        ensure!(info.width == WIDTH * 8 && info.height == HEIGHT * 7
+            && info.color_type == png::ColorType::Rgb && info.bit_depth == png::BitDepth::Eight
+            && !info.interlaced && info.animation_control.is_none(), "contact sheet RGB layout mismatch");
+        let mut actual = Sha256::new();
+        let mut rows = 0u32;
+        while let Some(row) = reader.next_row()? {
+            io::check(deadline)?;
+            ensure!(rows < HEIGHT * 7 && row.data().len() == WIDTH as usize * 8 * 3,
+                "contact sheet row count/width mismatch");
+            actual.update(row.data());
+            rows += 1;
+        }
+        // Row exhaustion is not terminal-chunk validation (notably IEND).
+        io::check(deadline)?;
+        reader.finish().context("finishing contact sheet PNG chunks")?;
+        ensure!(rows == HEIGHT * 7 && actual.finalize() == sheet_hash.finalize(),
+            "contact sheet differs from complete frame samples");
+    }
+    io::check(deadline)?;
+    Ok(json!({"kind":"unchanged_h3_bundle_validation","bundle":bundle.report_identity,
+        "source":bundle.report["source"],"inspection":bundle.report["inspection"],
+        "video":{"frame_count":FRAMES,"decoded_rgb_bytes":RGB_BYTES,"reconstructed_rgb_sha256":reconstructed},
+        "audio":{"sha256":bundle.report["audio"]["sha256"],"bytes":bundle.pcm.len(),
+            "sample_frames":bundle.alignment.samples,"sample_rate_hz":32000,"channels":2},
+        "contact_sheet_validated":has_sheet,
+        "method":"Complete original-bound PNG RGB reconstruction, finite PCM hash/count, source/inspection/probe timeline, tool and settled-helper artifact validation; no decoder invocation or native acceptance verdict."}))
+}
+
 fn pair_alignment(left: &Alignment, right: &Alignment) -> Result<()> {
     ensure!(left.video_timeline == right.video_timeline && left.video_stream == right.video_stream,
         "original video PTS/duration/rate/dimension alignment differs");
