@@ -58,6 +58,73 @@ Begin with the evidence schema and capture lifecycle, then resource guards and a
 
 ## Implementation status
 
-This repository contains the agreed project charter and implementation roadmap. There is no released benchmark CLI yet; executable commands and installation claims will be documented only after they are implemented and exercised. Parent issues and their native GitHub sub-issues define acceptance criteria and implementation order.
+The first Rust slice implements versioned image/video evidence contracts and a CPU-only subprocess supervisor (`mil`), with offline inspection. **There is no guarded model-capture command yet.** GPU serialization, live-job/memory/swap guards (#11), native adapters (#12/#15), and actual media decoding (#13/#16) remain prerequisites for inference. No image/video generation or performance claim is established by the CPU examples.
+
+### Build and CPU verification
+
+Use a Rust toolchain supporting edition 2024. The observed checks used Rust/Cargo 1.98.0 on Darwin arm64. The supervisor implements macOS/Linux process ownership; Linux has not been exercised yet. Default checks require no models, Python environment, GPU, or model downloads.
+
+```sh
+cargo build --locked
+cargo test --all-targets
+cargo clippy --all-targets -- -D warnings
+target/debug/mil validate examples/image-workload.json
+target/debug/mil validate examples/video-workload.json
+target/debug/mil validate-result \
+  --workload examples/image-workload.json tests/fixtures/image-result.json
+```
+
+The examples and result fixtures are **schema-only**, not inference workloads verified against a runtime. Their artifact is a text file explicitly stating that no inference occurred. A successful CPU protocol example:
+
+```sh
+target/debug/mil supervise --cpu-only \
+  --workload examples/image-workload.json \
+  --root runs/cpu-example \
+  --executable /bin/sh \
+  --env "RESULT_FIXTURE=$PWD/tests/fixtures/image-result.json" \
+  -- -eu -c '/bin/mkdir artifacts; printf "CPU schema fixture only; no inference was performed.\n" > artifacts/schema-output.txt; /bin/cp "$RESULT_FIXTURE" "$MIL_RESULT_PATH"'
+```
+
+The command prints its unique run directory. Pass that path to `target/debug/mil inspect PATH` to validate and print saved evidence offline. Inspect rechecks successful artifacts' hashes/sizes, the separate result document, and log sizes; it does not generate media. Exit codes: `0` for valid/completed evidence, `1` for a retained non-success or unresolved running capture, `2` for invalid input/evidence or an infrastructure error.
+
+For a missing-result example, run `target/debug/mil supervise --cpu-only --workload examples/image-workload.json --root runs/cpu-example --executable /usr/bin/true`. It deliberately exits `1` and records `incomplete`: a zero child exit without adapter evidence is not a completed capture.
+
+### Versioned evidence contract
+
+- `src/schema.rs` defines **workload version 1** and **adapter-result version 2**; `src/capture.rs` defines **capture-record version 1**. Unknown fields and unsupported versions are rejected. Adapter-result v1 is no longer accepted: v2 makes model-level fingerprint evidence explicit instead of treating a partial file inventory as an exhaustive model fingerprint. Workload identities are unchanged by this result-only cutover.
+- Workload identity is SHA-256 of Rust's typed JSON serialization of **all** declared fields, including prompts, reference hashes, precision/quantization, optimizations, batching, process/cache policy, video layers, reuse intervals, playback FPS, and audio. Whitespace in strings is significant; JSON formatting/key order is not. Adapters copy the supervisor-supplied identity rather than reimplement its serialization.
+- Declared and resolved settings remain separate. Explicit settings cannot change. Only requested `precision: "auto"` and `compute_precision: null` can resolve to concrete choices; results must record those choices. Observed model/source/module/executable identity and actual cache state are separate from requests. Native adapters must reject unsupported settings; the shared schema alone does not prove a runtime supports them.
+- An available observed model requires `fingerprint`, either `{"status":"unavailable","reason":"Model fingerprint was not measured"}` or an available value containing `sha256` and its derivation `method`. A requested `model.sha256` is compared only with that available model-level observation. Independent `model.files` hashes remain partial provenance: an unrelated config hash cannot contradict an unmeasured weights fingerprint. A concrete model-level mismatch still fails validation.
+- Compatibility preserves signed-zero identity in nested reference strengths, video reuse ratios, and audio-reference strengths as well as the top-level floating-point settings. A `0.0` → `-0.0` change cannot pass compatibility while changing workload identity.
+- Unavailable observations carry a reason. Timings retain units, method, scope, and boundaries; RSS, tensor bytes, driver allocation, system pressure, and swap cannot substitute for each other. Host execution, cleanup, and artifact-inspection durations are separate. A null lifecycle stage duration means that stage never began; zero is a measured, millisecond-rounded duration.
+- Artifact references are safe relative paths with SHA-256, byte count, and role. Traversal, reserved control-file names, symlinks, and duplicate path aliases are rejected. Duplicate and ancestor checks share Unicode canonical-normalization and lowercase keys, without changing the stored spelling. Unix capture also rejects repeated device/inode identities, including differently named hardlinks; distinct files with equal contents remain valid. Exact output evidence means artifact-hash agreement; numerical/approximate/unassessed evidence is distinct and makes no visual-quality claim.
+- A run is one ordered sample (`sample_index: 0`) in a fresh process, without retries. In-process policy is representable but rejected by this supervisor. Declaring a cold/warm policy does not prove that cache state was achieved.
+
+### Subprocess protocol and safety limits
+
+`supervise` requires the explicit `--cpu-only` acknowledgment. It is **not** a sandbox or a GPU-idleness check; do not use it for model/GPU work before the guarded native capture path exists.
+
+The supervisor launches an explicit executable and literal argument vector in a new per-run directory. It clears the inherited environment, retains only explicit `--env KEY=VALUE` entries, and supplies:
+
+| Variable | Meaning |
+| --- | --- |
+| `MIL_REQUEST_PATH` | Absolute path to the persisted workload JSON |
+| `MIL_RESULT_PATH` | Absolute destination for the adapter's versioned result JSON |
+| `MIL_RUN_DIR` | Absolute run directory, also the child working directory |
+| `MIL_WORKLOAD_IDENTITY` | Identity of the requested workload |
+
+Progress belongs on stdout/stderr, retained in separate logs. The adapter writes `result.json` and its relative artifacts; success requires exit zero, valid matching structured evidence, and artifact size/hash verification. This layer verifies files, **not decoded image/video/audio correctness**. Invocation argument/environment values are redacted in the manifest, but workload documents, paths, artifacts, and raw logs are private evidence and may still contain sensitive content. Nothing is automatically uploaded.
+
+Requested/running/final manifests use atomic replacement and file/directory synchronization. Existing runs are never reused. Supply canonical real-directory roots: symlink ancestors (including macOS `/tmp` and `/var` aliases) are rejected. SIGINT/SIGTERM finalize cancellation and clean up only the owned process group. SIGKILL or power loss may leave a durable `running` record: it means unresolved owner liveness, not success or proof that the child stopped. Offline inspection never signals a process or rewrites that record.
+
+Each requested/result JSON document and terminal manifest is bounded at 16 MiB. The initial running manifest reserves 64 KiB for terminal metadata before any child starts; retained failure text is capped at 8 KiB with an explicit truncation marker. If valid requested and result documents together exceed the terminal manifest bound, capture records `failed`, prints the run directory, and preserves actual exit/cleanup/timing evidence. Only the embedded result copy is omitted; the original `result.json`, artifacts, and logs remain intact. Ordinary filesystem errors are not reclassified as size failures.
+
+Process ownership pins the unreaped leader until group cleanup completes. On Darwin, zombie-only groups can return `EPERM`; cleanup accepts that case only after confirming the exited owned leader is the sole listed member. Actual signal delivery and observed group quiescence are recorded separately. Trusted children must not escape with `setsid`/`setpgid`; embedding applications must not install competing child reapers. Group signaling does not prove that every descendant has exited.
+
+Execution has an explicit deadline, bounded stdout/stderr, and polled output-size limits. Disk polling is **not a filesystem quota** and can overshoot between observations. Cleanup uses a 100 ms TERM grace and a 1 s KILL observation bound; artifact hashing has a separate 30 s cooperative deadline. Stalled filesystem I/O is not bounded by an OS-enforced timeout. These CPU supervisor bounds do not replace #11's memory, swap, disk, live-job, and exclusive-GPU guards.
+
+Established baseline verification at `0346b2d`: 28 CPU regression tests passed (12 schema, 16 lifecycle), with the original CLI lifecycle smoke. Review corrections were verified separately with `cargo test --test review_capture --test review_schema`: **11 new regressions passed**, and Clippy passed with warnings denied. The original suites were not rerun merely to confirm the review observations.
+
+Actual before/after CLI proof reproduced and corrected the 9 MiB combined-manifest failure (64 MiB output budget), composed/decomposed APFS alias acceptance, partial model-file evidence rejection, and nested signed-zero compatibility. After correction, the combined-size case retains an inspectable terminal failure; aliases are rejected; unrelated config evidence leaves an unavailable model fingerprint unknown; concrete fingerprint mismatches and nested signed-zero changes fail validation. No real runtime/model capture was run.
 
 The repository is private initially. Public release, licensing, and sharing local artifacts require an explicit owner decision; this repository does not grant rights to third-party runtimes, model weights, or unpublished patches.

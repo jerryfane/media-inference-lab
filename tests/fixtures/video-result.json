@@ -1,0 +1,119 @@
+{
+  "schema_version": 2,
+  "workload_identity": "249d5b2ec93e017f1cbe92debf8b56abb632b9a3ca4b9c9a5a04cb5e9c9aa31d",
+  "resolved": {
+    "schema_version": 1,
+    "id": "schema-example-video",
+    "model": {
+      "name": "schema-only-no-model",
+      "revision": null,
+      "sha256": null
+    },
+    "settings": {
+      "modality": "video",
+      "generation": {
+        "prompt": "A geometric paper sculpture slowly rotates.",
+        "negative_prompt": null,
+        "seed": 17,
+        "resolution": {
+          "width": 640,
+          "height": 360
+        },
+        "steps": 4,
+        "scheduler": "linear",
+        "guidance": 1.0,
+        "precision": "float32",
+        "compute_precision": "float32",
+        "quantization": {
+          "kind": "none"
+        },
+        "batch_size": 1,
+        "references": [],
+        "strength": null,
+        "optimizations": {
+          "use_kv_cache": null,
+          "step_cache_ratio": null,
+          "step_cache_threshold": null
+        }
+      },
+      "frames": 22,
+      "layers": 50,
+      "playback_fps": 24.0,
+      "render_resolution": null,
+      "reuse": {
+        "kind": "disabled"
+      },
+      "audio": {
+        "kind": "disabled"
+      }
+    },
+    "process_policy": "fresh_process",
+    "cache_policy": "unspecified"
+  },
+  "runtime": {
+    "name": "cpu-schema-fixture-not-inference",
+    "version": {
+      "status": "unavailable",
+      "reason": "Static schema fixture, not a runtime execution."
+    },
+    "source": {
+      "status": "unavailable",
+      "reason": "No inference runtime was executed."
+    },
+    "executable": {
+      "status": "unavailable",
+      "reason": "No inference executable was launched."
+    },
+    "modules": [],
+    "model": {
+      "status": "unavailable",
+      "reason": "No model was loaded."
+    },
+    "device": {
+      "status": "unavailable",
+      "reason": "No inference device was used."
+    },
+    "cache_state": {
+      "status": "unavailable",
+      "reason": "No runtime cache was observed."
+    }
+  },
+  "timings": [
+    {
+      "phase": "generation",
+      "scope": "native",
+      "unit": "seconds",
+      "method": "not measured",
+      "boundary": "native generation start to completion",
+      "measurement": {
+        "status": "unavailable",
+        "reason": "Static schema fixture; generation was not run."
+      }
+    }
+  ],
+  "resources": [
+    {
+      "kind": "process_rss",
+      "scope": "process",
+      "unit": "bytes",
+      "method": "not sampled",
+      "boundary": "adapter process lifetime",
+      "measurement": {
+        "status": "unavailable",
+        "reason": "Static schema fixture; no adapter process was sampled."
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/schema-output.txt",
+      "sha256": "65622db4f71cee4b46aa7c5d31d0a772e696e1c5946326b2c638728228d59d71",
+      "bytes": 53,
+      "role": "cpu-schema-example-text-not-generated-media"
+    }
+  ],
+  "output_evidence": {
+    "kind": "unassessed",
+    "reason": "Schema example only. No inference, media comparison, or quality assessment was performed."
+  }
+}
