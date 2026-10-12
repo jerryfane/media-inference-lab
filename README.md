@@ -512,6 +512,36 @@ Original failures, full command output, source/binary/link identities and the tw
 
 Final narrow pre-Q0 proof (`analysis-revision-3/`): one new missing-sheet regression passed with all31 previous tests filtered out, linked against the existing frozen-main library. One new populated **SYNTHETIC** missing-sheet CLI case exited `1`: all eight rows retained original/native and primary timing eligibility, both measured primary counts stayed three, and all fourteen secondary groups retained three measured observations. Only H2's derived bundle and its three pairs became unavailable; all twelve pairs remained visible (nine available), including separate warmup-containing pairs. The same JSON/Markdown output showed the corrected H3 acceptance selector and unchanged host/inspection values. No wording test, accepted qualification/control/mixed replay, decoder execution, service observation or native execution was performed. Earlier freezes and the accepted point-in-time admission remain preserved.
 
+#### Actual stopped cohort and CPU-only partial report
+
+The real cohort stopped after Q0–Q3 completed once each. After their original command/readiness brackets and H0 static preparation, the runtime reported that the original collector was unavailable in this execution context. This is **not an observation that its OS process disappeared**. The owner accepted the stop; no clock reconstruction, replacement sample or H0 grant followed. H0–H3 remain explicitly `not_run_due_to_safety_or_authority`, not fabricated failed captures or historical substitutes. The full eight-slot cohort and its chronology remain incomplete.
+
+Under the separately confirmed CPU-only window `unchanged-baseline-partial-report-2026-10-12T10-27-45-801Z`, the existing frozen revision3 binary was invoked **once** with `report`. Original PID75801 exited `1` in 4.142082250 seconds, was reaped, and its owned group was absent; no timeout, cleanup signals or retry. This is a distinct CPU command receipt, not a reconstructed original-study clock bracket. No external video/audio decoder, model, lease, service or observer ran; only saved-evidence reads and in-process PNG numerical calculators.
+
+Private evidence root is `~/.local/share/media-inference-lab/unchanged-native-baselines-20261012T065619797039Z`. The original literal argv/cwd and settlement are in `partial-report-execution/command-outcome.json`: frozen `analysis-revision-3/unchanged-baseline-frozen-main report --protocol` the original proposal's `predeclaration.json`, `--ledger ledger.stopped-cohort.final.json`, and `--output partial-report-execution/report` (all paths absolute in the receipt). The binary remains SHA256 `37361f3476dcf75f0d896bd6bc6e66dcadbaea0432c813977fd99d7bc4bbbd99`, analysis source `92a6a16fb1459c52e213a1d53a30773b8a45ed2a`; no rebuild or requalification.
+
+Observed JSON/Markdown retain **all8 rows/all12 pairs**, zero global validation errors, `complete: false`, and `same_work_eligibility: "not established"`. All four Qwen rows retain available original temporal/readiness validation; the full-cohort chronology is unavailable because the H3 slots never ran. Q0 is a retained warmup, excluded from measured timing:
+
+| Qwen slot | Treatment | Original generation seconds |
+|---|---|---:|
+| Q0 | Retained warmup | 41.027587624999796 |
+| Q1 | Measured | 39.47125312499884 |
+| Q2 | Measured | 39.532245750000584 |
+| Q3 | Measured | 39.49962400000004 |
+
+The exact primary selector is phase `generation`, scope `host`, unit `seconds`, method `time.monotonic (host wall clock, not GPU events)`, boundary `generate_image through mx.synchronize; prompt, denoise, VAE and native PIL materialization included; serialization and provenance hashing excluded`. The measured-only Qwen subset has three eligible values, median39.49962400000004 seconds and range0.06099262500174518 seconds. H3 has zero eligible measured values and unavailable primary statistics. All14 secondary groups remain visible: eight Qwen groups have three eligible measured observations each; six H3 retained-interval groups have none. Their selectors/boundaries are not combined or substituted for generation.
+
+All six Qwen pairs are available: three warmup-containing and three measured-only. For these four saved 1536×864 RGB8 outputs, every pair has equal encoded bytes and equal decoded samples, with exactly3,981,312 channel samples, zero exact absolute/squared error totals, zero maximum/MAE/RMSE and explicit positive-infinity PSNR. This is observed equality of these saved outputs, not a general determinism, same-work or quality claim. All six H3 pairs remain present and unavailable, including their three warmup-containing pairs; no H3 media, timeline, PCM or numerical result was invented.
+
+The report charged7,491,471 metadata bytes against256MiB; per-file metadata cap16MiB, JSON cap16MiB, Markdown cap1MiB, external ceiling1800s plus10s finite owned cleanup. The private output directory is0700 and both files0600. Admission observed439,489,347,584 free bytes against the20GiB floor; before/after owned storage accounting stayed within the4/3/1GiB build/evidence/analysis split. Full receipts are retained with the report, not an atomic-quota or whole-host claim.
+
+| Actual output | Bytes | SHA256 |
+|---|---:|---|
+| `partial-report-execution/report/report.json` | 4621172 | `7c1ae7c2f1d027f2b8d83b688a3eab65423c7ab5f7e82d60624aab5e7df833da` |
+| `partial-report-execution/report/report.md` | 16613 | `a8844e568fb4e709b3801647e1b9d570c9fe6c89850cd57973719a02f25e93e6` |
+
+`ledger.stopped-cohort.final.json` SHA256 `32b1bb2bca490761d5364bd108a6b8d5bec1ff03c94d792c067bf9f765ec9df3` retains all original clocks and Q0's incorrect raw observer-activity flag **plus its explicit correction**, never a no-observer claim. Old ledgers, frozen artifacts, original outcomes and stop records are preserved. This is a descriptive Qwen subset of a stopped/incomplete unchanged-baseline cohort, not baseline/candidate/control acceptance, H3 repetition evidence, speedup, performance/quality judgment or exclusivity proof. oMLX remains unmanaged/unverified. Issues #17/#18 remain open; no replacement study is authorized.
+
 ### Offline PNG comparison and inspection bundles
 
 `compare-images` reads existing files only; it does not execute an adapter or load a model. Static PNG is the supported format: unchanged 8/16-bit grayscale, grayscale-alpha, RGB or RGBA samples, including Adam7. Indexed/sub-byte PNG, APNG, other formats, mismatched dimensions/channel layout/bit depth, malformed/truncated chunks, CRC failures, incomplete or extra zlib data and trailing bytes are rejected rather than resized, converted, truncated or assigned similarity.
