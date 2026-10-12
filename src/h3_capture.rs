@@ -6,7 +6,7 @@ use crate::{
     h3, h3_native::PreparedPlan,
     h3_owned::{self, CodecOperation, NativeBrokerInput, PinnedExecutable, RealCodecPlan},
     native_guard::{SANDBOX_EXECUTABLE, SANDBOX_PROFILE},
-    schema::{AdapterResult, Artifact, FileIdentity, MediaSettings, Observation, ObservedModel,
+    schema::{AdapterResult, Artifact, FileIdentity, MediaSettings, Observation,
         OutputEvidence, ReferenceRole, ResourceKind, ResourceMeasurement, ResourceScope, ResourceUnit,
         RuntimeIdentity, Timing, TimingScope, TimingUnit, RESULT_SCHEMA_VERSION},
     video_inspection::{self, VideoInspectionOptions},
@@ -78,14 +78,26 @@ fn artifact(directory: &Path, relative: &str, role: &str, limit: u64, deadline: 
     Ok(Artifact { path: relative.into(), sha256, bytes, role: role.into() })
 }
 
-fn result(plan: &h3::Plan, profile: &h3::ParsedProfile, record: &CaptureRecord,
+// The clock is injected so acceptance boundaries can be exercised without wall sleeps.
+fn artifact_acceptance<T>(
+    elapsed_ms: &mut Option<u64>,
+    now: impl Fn() -> Instant,
+    stage: impl FnOnce() -> Result<T>,
+) -> Result<T> {
+    let start = now();
+    let accepted = stage();
+    *elapsed_ms = Some(capture::millis(now().duration_since(start)));
+    accepted
+}
+
+fn result(plan: &h3::Plan, profile: &h3::ParsedProfile, host_elapsed_ms: Option<u64>,
     artifacts: Vec<Artifact>) -> AdapterResult {
     let mut timings = profile.timings.clone();
     // Parser spans overlap. Preserve the parser's conservative provenance verbatim.
     timings.push(Timing { phase: "owned_native_host".into(), scope: TimingScope::Host,
         unit: TimingUnit::Milliseconds, method: "guardian monotonic broker observation".into(),
         boundary: "root creation through root exit/stop decision; includes native codecs and their in-loop settlement, excludes terminal root cleanup and subsequent media inspection; not pure model inference".into(),
-        measurement: record.host_elapsed_ms.map_or_else(|| unavailable("root host interval was not observed"),
+        measurement: host_elapsed_ms.map_or_else(|| unavailable("root host interval was not observed"),
             |elapsed| Observation::Available { value: elapsed as f64 }) });
     for phase in ["text_encoding", "model_load", "denoising", "audio_vae", "video_vae", "mux_encode"] {
         timings.push(Timing { phase: phase.into(), scope: TimingScope::Native, unit: TimingUnit::Seconds,
@@ -107,10 +119,7 @@ fn result(plan: &h3::Plan, profile: &h3::ParsedProfile, record: &CaptureRecord,
             source: unavailable("selected source content/build identities are in native-execution.json; no VCS revision independently observed"),
             executable: Observation::Available { value: identity(&plan.binary) },
             modules: plan.selected_source.iter().chain(std::iter::once(&plan.shader)).map(identity).collect(),
-            model: Observation::Available { value: ObservedModel { name: plan.workload.model.name.clone(),
-                revision: unavailable("requested revision is a declaration, not an observed checkpoint revision"),
-                fingerprint: unavailable("weight payload identity unavailable; model metadata is not a full weight fingerprint"),
-                files: plan.model_metadata.iter().map(identity).collect() } },
+            model: unavailable("requested model identity is a declaration; selected metadata hashes are retained in native-execution.json, not an independently observed model identity"),
             device: unavailable("no parsed native device identity"), cache_state: unavailable("fresh process does not establish cold model, filesystem or GPU caches"),
         }, timings, resources, artifacts,
         output_evidence: OutputEvidence::Unassessed { reason: "Full video/audio decode validates structure, raster/frame/FPS/audio coherence only; no reference numerical or visual-quality comparison".into() } }
@@ -236,14 +245,12 @@ pub(crate) fn run(plan: &PreparedPlan, lease: &Lease, control: &mut NativeCaptur
             ensure!(successful, "{failure}");
             ensure!(!record.logs.truncated, "H3 raw logs were truncated");
             (scoped.tick)()?;
-            let inspection_start = Instant::now();
+            artifact_acceptance(&mut record.artifact_inspection_ms, Instant::now, || {
             let inspected = video_inspection::inspect_guarded(VideoInspectionOptions {
                 workload: selected.workload.clone(), input: output.clone(), ffmpeg: selected.ffmpeg.path.clone(),
                 ffprobe: selected.ffprobe.path.clone(), output_dir: directory.join("inspection"),
                 timeout: execution_deadline.saturating_duration_since(Instant::now()).min(Duration::from_secs(120)),
-            }, &codec_plan.ffmpeg, &codec_plan.ffprobe, execution_deadline, cleanup_deadline, &mut scoped, lease);
-            record.artifact_inspection_ms = Some(capture::millis(inspection_start.elapsed()));
-            let inspected = inspected?;
+            }, &codec_plan.ffmpeg, &codec_plan.ffprobe, execution_deadline, cleanup_deadline, &mut scoped, lease)?;
             scoped.creation_attempted |= inspected.creation_attempted;
             scoped.helper_accounting_complete &= inspected.complete;
             let retained = capture::atomic_json(&directory, "native-inspection.json", &inspected, JSON_LIMIT);
@@ -272,10 +279,11 @@ pub(crate) fn run(plan: &PreparedPlan, lease: &Lease, control: &mut NativeCaptur
                 crate::schema::validate_artifact_path(&item.path)?;
                 artifacts.push(item);
             }
-            let result = result(selected, &profile, &record, artifacts);
+            let result = result(selected, &profile, record.host_elapsed_ms, artifacts);
             result.validate(&record.request)?;
             (scoped.tick)()?;
             Ok(result)
+            })
         })();
         control.creation_attempted |= scoped.creation_attempted;
         control.settlement = scoped.settlement.take(); // ORIGINAL root only; never aggregate helpers into it.
@@ -337,4 +345,93 @@ pub(crate) fn run(plan: &PreparedPlan, lease: &Lease, control: &mut NativeCaptur
     validation?;
     ensure!(publication_errors.is_empty(), "{}", publication_errors.join("; "));
     Ok(directory)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::Cell;
+
+    // Schema/report fixtures only: no preparation, authorization, model loading or launch.
+    fn report_plan() -> h3::Plan {
+        let fixture: serde_json::Value =
+            serde_json::from_str(include_str!("../tests/fixtures/video-result.json")).unwrap();
+        let mut workload: crate::schema::Workload =
+            serde_json::from_value(fixture["resolved"].clone()).unwrap();
+        workload.model.name = "arbitrary caller declaration, not an observed checkpoint".into();
+        workload.model.revision = Some("caller-only-revision".into());
+        let selected = h3::Fingerprint {
+            path: "/cpu-report-fixture/never-executed".into(),
+            sha256: "a".repeat(64),
+            bytes: 1,
+        };
+        h3::Plan {
+            schema_version: 1,
+            kind: "h3_preparation_plan".into(),
+            workload_identity: workload.identity().unwrap(),
+            workload,
+            profile: h3::Profile::Draft,
+            preparation_dir: "/cpu-report-fixture".into(),
+            binary: selected.clone(),
+            model_dir: "/cpu-report-fixture/no-model".into(),
+            shader_cwd: "/cpu-report-fixture".into(),
+            source_dir: "/cpu-report-fixture".into(),
+            input_dir: "/cpu-report-fixture".into(),
+            shader: selected.clone(),
+            selected_source: vec![],
+            model_metadata: vec![selected.clone()],
+            ffmpeg: selected.clone(),
+            ffprobe: selected,
+            conditioning: vec![],
+            argv: vec![],
+            clear_environment: true,
+            environment: Default::default(),
+            declarations: json!({}),
+        }
+    }
+
+    #[test]
+    fn requested_model_is_not_observed_in_cpu_report() {
+        let plan = report_plan();
+        let directory = tempfile::tempdir().unwrap();
+        let profile = h3::parse_profile(b"");
+        capture::atomic_json(directory.path(), "native-profile.json", &profile, JSON_LIMIT).unwrap();
+        let evidence = artifact(directory.path(), "native-profile.json", "cpu-report-fixture",
+            JSON_LIMIT, Instant::now() + Duration::from_secs(5)).unwrap();
+        let report = result(&plan, &profile, Some(7), vec![evidence]);
+        report.validate(&plan.workload).unwrap();
+        assert!(matches!(report.runtime.model, Observation::Unavailable { .. }));
+        assert_eq!(report.resolved, plan.workload);
+        assert_eq!(report.workload_identity, plan.workload_identity);
+    }
+
+    #[test]
+    fn acceptance_timer_includes_post_decode_work_and_failures() {
+        let origin = Instant::now();
+        let clock = Cell::new(origin);
+        let mut elapsed = None;
+
+        let directory = tempfile::tempdir().unwrap();
+        for fail_after_decode in [false, true] {
+            clock.set(origin);
+            let accepted = artifact_acceptance(&mut elapsed, || clock.get(), || {
+                clock.set(origin + Duration::from_millis(2)); // Decode has returned.
+                let profile = h3::parse_profile(b"");
+                capture::atomic_json(directory.path(), "native-profile.json", &profile, JSON_LIMIT)?;
+                clock.set(origin + Duration::from_millis(11)); // Post-decode publication.
+                let relative = if fail_after_decode { "missing.json" } else { "native-profile.json" };
+                let evidence = artifact(directory.path(), relative, "native-profile-parser-report",
+                    JSON_LIMIT, Instant::now() + Duration::from_secs(5))?;
+                let plan = report_plan();
+                let report = result(&plan, &profile, None, vec![evidence]);
+                report.validate(&plan.workload)?;
+                clock.set(origin + Duration::from_millis(19)); // Result validation has returned.
+                Ok(report)
+            });
+            assert_eq!(accepted.is_err(), fail_after_decode);
+            // Virtual time, not a wall-duration assertion. Publication, validation
+            // and failure are inside the interval, not just the decode boundary.
+            assert_eq!(elapsed, Some(if fail_after_decode { 11 } else { 19 }));
+        }
+    }
 }

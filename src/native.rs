@@ -505,6 +505,73 @@ impl Write for ReportWriter {
     }
 }
 
+#[derive(Clone, Copy)]
+enum AttemptStage {
+    Preparation,
+    Controller,
+    Evidence,
+}
+
+fn report_outcome(report: &mut Value, stage: AttemptStage, outcome: Result<bool>) -> bool {
+    match outcome {
+        Ok(passed) => passed,
+        Err(error) => {
+            let (status, stage) = match stage {
+                AttemptStage::Preparation => ("preparation_failed", "preparation"),
+                AttemptStage::Controller => ("execution_failed", "controller"),
+                AttemptStage::Evidence => ("evidence_failed", "receipt_or_capture"),
+            };
+            report["status"] = json!(status);
+            report["errors"] = json!([{"stage":stage, "message":format!("{error:#}")}]);
+            // Errors cannot revoke already validated evidence, nor establish
+            // non-execution after entering the controller.
+            false
+        }
+    }
+}
+
+fn controller_report(
+    report: &mut Value,
+    stage: &mut AttemptStage,
+    expected_receipt: &Path,
+    controller: impl FnOnce() -> Result<PathBuf>,
+) -> Result<bool> {
+    *stage = AttemptStage::Controller;
+    report["native_execution"] = Value::Null;
+    report["maintenance_receipt"] = json!(expected_receipt);
+    report["authorization_decision"] = json!({"allowed":true,"reasons":[]});
+    let receipt_path = controller()?;
+    *stage = AttemptStage::Evidence;
+    report["maintenance_receipt"] = json!(receipt_path);
+    let receipt: Value = maintenance::read_private(&receipt_path)?;
+    report["capture_directory"] = receipt["capture_directory"].clone();
+    if let Some(directory) = receipt["capture_directory"].as_str() {
+        let record = capture::inspect(Path::new(directory))?;
+        report["process_exit_observed"] = json!(record.exit.is_some());
+        if record.is_success() {
+            report["native_execution"] = json!(true);
+        }
+        report["status"] = json!(record.state);
+    } else {
+        ensure!(
+            receipt["capture_directory"].is_null(),
+            "receipt capture_directory must be a path or null"
+        );
+        // Missing, malformed, or true creation evidence cannot prove that
+        // nothing ran. Only the retained receipt's exact boolean false can.
+        let not_attempted = receipt["creation_attempted"].as_bool() == Some(false);
+        if not_attempted {
+            report["native_execution"] = json!(false);
+        }
+        report["status"] = json!(if not_attempted {
+            "maintenance_failed_before_capture"
+        } else {
+            "maintenance_execution_unknown"
+        });
+    }
+    Ok(receipt["success"] == true && report["native_execution"] == true)
+}
+
 /// A preparation check is not execution. Unapproved transactions deny before
 /// Python, service observation/control, lease acquisition or capture creation.
 pub fn run(options: NativeOptions) -> Result<bool> {
@@ -528,6 +595,7 @@ pub fn run(options: NativeOptions) -> Result<bool> {
             "No automatic retries, installs, network/model downloads, weight copies, live changes or uploads. Partial failures are retained. Filesystem syscalls have no forced deadline."
         ]
     });
+    let mut stage = AttemptStage::Preparation;
     let outcome = (|| -> Result<bool> {
         // This validation is deliberately before preparation: even Python file
         // identity/guard-config reads cannot accidentally trigger the denied path.
@@ -560,29 +628,10 @@ pub fn run(options: NativeOptions) -> Result<bool> {
                 ),
                 _ => anyhow::bail!("CPU authorization cannot execute a native workload"),
             }
-            let receipt_path = maintenance::run_controller(transaction, authorization)?;
-            let receipt: Value = maintenance::read_private(&receipt_path)?;
-            report["maintenance_receipt"] = json!(receipt_path);
-            report["authorization_decision"] = json!({"allowed":true,"reasons":[]});
-            report["capture_directory"] = receipt["capture_directory"].clone();
-            if let Some(directory) = receipt["capture_directory"].as_str() {
-                let record = capture::inspect(Path::new(directory))?;
-                report["process_exit_observed"] = json!(record.exit.is_some());
-                report["native_execution"] = if record.is_success() {
-                    json!(true)
-                } else {
-                    Value::Null
-                };
-                report["status"] = json!(record.state);
-            } else {
-                report["native_execution"] = if receipt["creation_attempted"] == true {
-                    Value::Null
-                } else {
-                    json!(false)
-                };
-                report["status"] = json!("maintenance_failed_before_capture");
-            }
-            Ok(receipt["success"] == true)
+            let expected_receipt = transaction.evidence_root.join("receipt.json");
+            controller_report(&mut report, &mut stage, &expected_receipt, || {
+                maintenance::run_controller(transaction, authorization)
+            })
         } else {
             let checked = check(&options, &plan, &mut diagnostics)?;
             let passed = checked["ok"] == true;
@@ -595,15 +644,7 @@ pub fn run(options: NativeOptions) -> Result<bool> {
             Ok(passed)
         }
     })();
-    let passed = match outcome {
-        Ok(passed) => passed,
-        Err(error) => {
-            report["status"] = json!("preparation_failed");
-            report["errors"] =
-                json!([{"stage":"preparation_or_launch", "message":format!("{error:#}")}]);
-            false
-        }
-    };
+    let passed = report_outcome(&mut report, stage, outcome);
     report["ok"] = json!(passed);
     report["diagnostics"] = json!(String::from_utf8_lossy(&diagnostics));
     report["elapsed_ms"] = json!(started.elapsed().as_millis().min(u64::MAX as u128) as u64);
@@ -616,4 +657,181 @@ pub fn run(options: NativeOptions) -> Result<bool> {
     writer.flush()?;
     writer.file.sync_all()?;
     Ok(passed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Reuse persisted CPU evidence solely to exercise report classification.
+    // These fixtures are neither native inference nor authorization proof.
+    mod capture_fixture {
+        use crate as media_inference_lab;
+        include!("../tests/support/capture_fixture.rs");
+    }
+
+    fn reported(path: &Path, controller: impl FnOnce() -> Result<PathBuf>) -> Value {
+        let mut report = json!({"native_execution":false, "errors":[]});
+        let mut stage = AttemptStage::Preparation;
+        let outcome = controller_report(&mut report, &mut stage, path, controller);
+        let passed = report_outcome(&mut report, stage, outcome);
+        report["ok"] = json!(passed);
+        report
+    }
+
+    fn receipt(path: &Path, value: &Value) {
+        let file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(path)
+            .unwrap();
+        serde_json::to_writer(file, value).unwrap();
+    }
+
+    fn capture_record() -> Value {
+        let workload: Workload =
+            serde_json::from_str(include_str!("../examples/image-workload.json")).unwrap();
+        capture_fixture::record(&workload, 0, 1.0)
+    }
+
+    #[test]
+    fn controller_error_keeps_execution_unknown_and_receipt_path() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("receipt.json");
+        let report = reported(&path, || anyhow::bail!("controller failed after entry"));
+        assert_eq!(report["native_execution"], Value::Null);
+        assert_eq!(report["status"], "execution_failed");
+        assert_eq!(report["errors"][0]["stage"], "controller");
+        assert_eq!(report["maintenance_receipt"], json!(path));
+        assert_eq!(report["ok"], false);
+    }
+
+    #[test]
+    fn unreadable_and_malformed_receipts_keep_execution_unknown() {
+        let directory = tempfile::tempdir().unwrap();
+        let missing = directory.path().join("missing.json");
+        let malformed = directory.path().join("malformed.json");
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&malformed)
+            .unwrap();
+        file.write_all(b"{").unwrap();
+        for path in [missing, malformed] {
+            let report = reported(&path, || Ok(path.clone()));
+            assert_eq!(report["native_execution"], Value::Null);
+            assert_eq!(report["status"], "evidence_failed");
+            assert_eq!(report["errors"][0]["stage"], "receipt_or_capture");
+            assert_eq!(report["maintenance_receipt"], json!(path));
+            assert_eq!(report["ok"], false);
+        }
+    }
+
+    #[test]
+    fn no_capture_requires_exact_false_creation_evidence() {
+        for creation in [
+            None,
+            Some(Value::Null),
+            Some(json!("false")),
+            Some(json!(0)),
+            Some(json!(true)),
+            Some(json!(false)),
+        ] {
+            let directory = tempfile::tempdir().unwrap();
+            let path = directory.path().join("receipt.json");
+            // Even a claimed success cannot replace validated capture evidence.
+            let mut value = json!({"capture_directory":null, "success":true});
+            if let Some(creation) = &creation {
+                value["creation_attempted"] = creation.clone();
+            }
+            receipt(&path, &value);
+            let report = reported(&path, || Ok(path.clone()));
+            let not_attempted = creation == Some(json!(false));
+            assert_eq!(
+                report["native_execution"],
+                if not_attempted { json!(false) } else { Value::Null },
+                "{value}"
+            );
+            assert_eq!(
+                report["status"],
+                if not_attempted {
+                    "maintenance_failed_before_capture"
+                } else {
+                    "maintenance_execution_unknown"
+                }
+            );
+            assert_eq!(report["ok"], false);
+        }
+    }
+
+    #[test]
+    fn capture_read_errors_do_not_turn_false_creation_into_nonexecution() {
+        let directory = tempfile::tempdir().unwrap();
+        for (index, capture) in [json!(directory.path().join("missing-capture")), json!(42)]
+            .into_iter()
+            .enumerate()
+        {
+            let path = directory.path().join(format!("receipt-{index}.json"));
+            receipt(&path, &json!({
+                "creation_attempted":false, "capture_directory":capture, "success":false
+            }));
+            let report = reported(&path, || Ok(path.clone()));
+            assert_eq!(report["native_execution"], Value::Null);
+            assert_eq!(report["status"], "evidence_failed");
+            assert_eq!(report["capture_directory"], capture);
+            assert_eq!(report["ok"], false);
+        }
+    }
+
+    #[test]
+    fn retained_failed_capture_keeps_execution_unknown() {
+        let directory = tempfile::tempdir().unwrap();
+        let capture = fs::canonicalize(directory.path()).unwrap().join("cpu-report-fixture");
+        let mut record = capture_record();
+        record["state"] = json!("failed");
+        record["failure"] = json!("CPU report fixture failure");
+        record["adapter_result"] = Value::Null;
+        capture_fixture::persist(&capture, &record);
+        let path = directory.path().join("receipt.json");
+        receipt(&path, &json!({
+            "creation_attempted":true, "capture_directory":capture, "success":false
+        }));
+        let report = reported(&path, || Ok(path.clone()));
+        assert_eq!(report["native_execution"], Value::Null);
+        assert_eq!(report["status"], "failed");
+        assert_eq!(report["process_exit_observed"], true);
+        assert_eq!(report["ok"], false);
+    }
+
+    #[test]
+    fn completed_capture_requires_validation_and_survives_later_report_error() {
+        let directory = tempfile::tempdir().unwrap();
+        let capture = fs::canonicalize(directory.path()).unwrap().join("cpu-report-fixture");
+        capture_fixture::persist(&capture, &capture_record());
+        let path = directory.path().join("receipt.json");
+        receipt(&path, &json!({
+            "creation_attempted":true, "capture_directory":capture, "success":true
+        }));
+        let mut report = reported(&path, || Ok(path.clone()));
+        assert_eq!(report["native_execution"], true);
+        assert_eq!(report["status"], "completed");
+        assert_eq!(report["ok"], true);
+        assert!(!report_outcome(
+            &mut report,
+            AttemptStage::Evidence,
+            Err(anyhow::anyhow!("later unrelated report failure"))
+        ));
+        assert_eq!(report["native_execution"], true);
+        assert_eq!(report["status"], "evidence_failed");
+
+        // A completed manifest alone is not successful evidence: inspection
+        // must also validate the retained artifact against the result.
+        fs::write(capture.join("artifacts/schema-output.txt"), b"tampered").unwrap();
+        let report = reported(&path, || Ok(path.clone()));
+        assert_eq!(report["native_execution"], Value::Null);
+        assert_eq!(report["status"], "evidence_failed");
+        assert_eq!(report["ok"], false);
+    }
 }
