@@ -139,8 +139,9 @@ fn admission_launch(admission: &Value, frozen: &Value, transaction: &Value) -> R
     Ok(())
 }
 
-fn attempt_binding(attempt: &Value, admission: &Value) -> Result<()> {
+fn attempt_binding(attempt: &Value, admission: &Value, frozen: &Value) -> Result<()> {
     ensure!(attempt["argv"] == admission["literal_cli_argv"] && attempt["exit_code"] == 0, "original H3 command receipt argv/exit differs from admitted successful command");
+    ensure!(text(attempt,"cwd")? == text(&frozen["collector"],"study_root")?, "original H3 command cwd differs from frozen study-root launch cwd");
     ensure!(attempt.get("stdout").is_some() && attempt.get("stderr").is_some(), "original H3 stdout/stderr evidence missing");
     Ok(())
 }
@@ -398,7 +399,7 @@ fn row(index: usize, slot: Option<&Value>, frozen_slot: Option<&Value>, frozen: 
         ensure!(receipt["transaction_sha256"] == native.transaction_sha256 && canonical(&path(receipt,"capture_directory")?)? == capture_dir, "receipt/capture transaction binding mismatch");
         for key in ["success","restored","service_accounting_complete","native_helper_accounting_complete"] { ensure!(receipt[key] == true, "original receipt {key} is not true"); }
         ensure!(receipt["settlement"]["complete"] == true, "original root settlement incomplete");
-        attempt_binding(loaded.get("attempt_report_path").context("original attempt report missing")?,admission)?;
+        attempt_binding(loaded.get("attempt_report_path").context("original attempt report missing")?,admission,frozen)?;
         readiness(loaded.get("readiness_path").context("readiness evidence missing")?,loaded.get("service_outcomes_path").context("service outcomes missing")?)?;
         let role = "generated-video";
         let artifacts: Vec<_> = result.artifacts.iter().filter(|a|a.role == role).collect();

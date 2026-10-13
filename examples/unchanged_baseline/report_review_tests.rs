@@ -96,21 +96,32 @@ fn review_secondary_intervals_exclude_independently_of_primary() {
 #[test]
 fn h3_only_command_dispatch_requires_maintenance_and_original_command_receipt() {
     let service=json!({"role":"studio","name":"SYNTHETIC"});
-    let frozen=json!({"guardian":{"path":"/SYNTHETIC/mil"}});
+    let frozen=json!({"guardian":{"path":"/SYNTHETIC/mil"},"collector":collector()});
     let transaction=json!({"services":[service.clone()]});
     let admission=json!({"literal_cli_argv":["/SYNTHETIC/mil","maintenance-run","--transaction","/SYNTHETIC/transaction.json"],
         "transaction_path":"/SYNTHETIC/transaction.json","service_binding":service});
-    let attempt=json!({"argv":admission["literal_cli_argv"],"exit_code":0,"stdout":"SYNTHETIC","stderr":""});
+    let attempt=json!({"argv":admission["literal_cli_argv"],"cwd":"/SYNTHETIC","exit_code":0,"stdout":"SYNTHETIC","stderr":""});
     assert!(admission_launch(&admission,&frozen,&transaction).is_ok());
-    assert!(attempt_binding(&attempt,&admission).is_ok());
+    assert!(attempt_binding(&attempt,&admission,&frozen).is_ok());
     let mut qwen=admission.clone();
     qwen["literal_cli_argv"]=json!(["/SYNTHETIC/mil","mflux-run","--execute","--maintenance-transaction","/SYNTHETIC/transaction.json"]);
     assert!(admission_launch(&qwen,&frozen,&transaction).is_err());
-    assert!(attempt_binding(&json!({"kind":"native_mflux_attempt","mode":"execute","native_execution":true,"ok":true}),&admission).is_err());
+    assert!(attempt_binding(&json!({"kind":"native_mflux_attempt","mode":"execute","native_execution":true,"ok":true}),&admission,&frozen).is_err());
     let mut failed=attempt.clone();failed["exit_code"]=json!(1);
-    assert!(attempt_binding(&failed,&admission).is_err());
+    assert!(attempt_binding(&failed,&admission,&frozen).is_err());
     let mut detached=attempt;detached["argv"][3]=json!("/SYNTHETIC/other.json");
-    assert!(attempt_binding(&detached,&admission).is_err());
+    assert!(attempt_binding(&detached,&admission,&frozen).is_err());
+}
+#[test]
+fn original_command_cwd_must_match_frozen_study_root_not_evidence_directory() {
+    let frozen=json!({"collector":collector()});
+    let admission=json!({"literal_cli_argv":["/SYNTHETIC/mil","maintenance-run"]});
+    let mut attempt=json!({"argv":admission["literal_cli_argv"],"cwd":"/SYNTHETIC","exit_code":0,"stdout":"retained","stderr":""});
+    assert!(attempt_binding(&attempt,&admission,&frozen).is_ok());
+    attempt["cwd"]=json!("/SYNTHETIC/slots/H0");
+    assert!(attempt_binding(&attempt,&admission,&frozen).is_err());
+    attempt.as_object_mut().unwrap().remove("cwd");
+    assert!(attempt_binding(&attempt,&admission,&frozen).is_err());
 }
 #[test]
 fn review_markdown_labels_primary_units_methods_and_boundaries() {

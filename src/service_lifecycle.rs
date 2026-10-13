@@ -16,6 +16,11 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[cfg(not(all(test, target_os = "macos")))]
+use crate::process_scope as studio_process;
+#[cfg(all(test, target_os = "macos"))]
+use tests::studio_process;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ServiceRole {
@@ -441,6 +446,8 @@ pub struct ServiceHandle {
     permissions: Option<AuthorizedPermissions>,
     stop_attempted: bool,
     restore_attempted: bool,
+    // Set only after the complete stop proof. For Studio this retires the original
+    // numeric identity from polling; spec.expected/root retain historical evidence.
     stopped: bool,
     restored: bool,
     failure: Option<String>,
@@ -713,7 +720,7 @@ impl ServiceHandle {
                 plist,
                 expected,
             } => {
-                let root = process_scope::verify_identity(expected)?;
+                let root = studio_process::verify_identity(expected)?;
                 ensure!(root.state == ProcessState::Running, "Studio is not running");
                 launchctl_registration(target, plist, Some(root.pid), deadline, tick, recovery)?;
                 (root, None)
@@ -881,7 +888,7 @@ impl ServiceHandle {
                         tick,
                         recovery,
                     )?;
-                    process_scope::verify_identity(root)?;
+                    studio_process::verify_identity(root)?;
                     launchctl(
                         &["bootout".into(), target.clone()],
                         deadline,
@@ -891,7 +898,7 @@ impl ServiceHandle {
                     wait_absent(root, deadline, Duration::ZERO, tick)?;
                     launchctl_absent(target, deadline, tick, recovery)?;
                     self.evidence.push(
-                        "exact launchd target booted out; original process/group absent".into(),
+                        "exact launchd target booted out; original process/group absent at initial stop proof; exact registration absent".into(),
                     );
                 }
                 ServiceSpec::Omlx { .. } => {
@@ -930,10 +937,15 @@ impl ServiceHandle {
                 self.failure.is_none(),
                 "inhibition observation failure is sticky"
             );
-            ensure!(
-                bound_absent(self.root.as_ref().context("missing service root")?)?,
-                "backend identity/group reappeared"
-            );
+            // A settled Studio lifetime cannot return through numeric PID/PGID
+            // reuse. Only a fresh exact registration observation now establishes
+            // inhibition. Other modes retain their original identity checks.
+            if !matches!(self.spec, ServiceSpec::StudioLaunchd { .. }) {
+                ensure!(
+                    bound_absent(self.root.as_ref().context("missing service root")?)?,
+                    "backend identity/group reappeared"
+                );
+            }
             if let Some(gui) = &self.gui {
                 ensure!(
                     process_scope::verify_identity(gui)?.state == ProcessState::Stopped,
@@ -968,7 +980,7 @@ impl ServiceHandle {
         let mut observation = self.observation(true);
         match &self.spec {
             ServiceSpec::OwnedCpu { .. } => {}
-            ServiceSpec::StudioLaunchd { .. } => observation.evidence.push("fresh exact launchd registration absence plus original PID/group absence; polling is non-atomic and does not prove continuous absence".into()),
+            ServiceSpec::StudioLaunchd { .. } => observation.evidence.push("fresh exact launchd registration absence; original process/group settled only at initial stop proof and retained as historical identity, not polled; polling is non-atomic and does not prove continuous absence".into()),
             ServiceSpec::Omlx { .. } => observation.evidence.push("fresh enrolled-port listener absence and exact reviewed GUI group still stopped plus original PID/group absence; polling is non-atomic and does not attest arbitrary escaped descendants".into()),
             ServiceSpec::OmlxAbsent { .. } | ServiceSpec::OmlxUnmanaged { .. } => unreachable!(),
         }
@@ -1348,7 +1360,7 @@ fn wait_studio_replacement(
     let result = (|| {
         loop {
             check(deadline, tick)?;
-            let current = process_scope::observe(pid)?.context("registered Studio PID unavailable during startup")?;
+            let current = studio_process::observe(pid)?.context("registered Studio PID unavailable during startup")?;
             observations += 1;
             let same_instance = first.as_ref().is_none_or(|anchor| {
                 current.pid == anchor.pid
@@ -1442,7 +1454,7 @@ fn wait_state(
     }
 }
 fn bound_absent(expected: &ProcessIdentity) -> Result<bool> {
-    process_scope::bound_absent(expected)
+    studio_process::bound_absent(expected)
 }
 fn wait_absent(
     expected: &ProcessIdentity,
@@ -1522,6 +1534,11 @@ fn bounded_command_status(
     tick: &mut dyn FnMut() -> Result<()>,
     recovery: &mut RecoveryControl<'_>,
 ) -> Result<(i32, String)> {
+    #[cfg(all(test, target_os = "macos"))]
+    if let Some(result) = tests::studio_process::command(executable, args) {
+        check(deadline, tick)?;
+        return result;
+    }
     let spec = CommandSpec {
         executable: PathBuf::from(executable),
         args: args.to_vec(),
@@ -2473,6 +2490,314 @@ mod tests {
         fn control<'a>(&self, tick: &'a mut dyn FnMut() -> Result<()>) -> RecoveryControl<'a> {
             RecoveryControl::new(self.0.clone(), tick)
         }
+    }
+
+    // Test-only syscall boundary, using thread-local isolation like process_scope's
+    // spawn seam. Active scripts never fall through to live PIDs or launchctl.
+    // The actual lifecycle, named-output parser and replacement predicates run.
+    pub(super) mod studio_process {
+        use super::*;
+        use std::collections::VecDeque;
+
+        pub(super) enum Step {
+            Observe(ProcessIdentity),
+            Absent(u32, Result<bool>),
+            Command(Vec<String>, i32, String),
+        }
+        struct Script {
+            steps: VecDeque<Step>,
+            reused: Option<ProcessIdentity>,
+            reused_probes: usize,
+        }
+        thread_local! {
+            static SCRIPT: RefCell<Option<Script>> = const { RefCell::new(None) };
+        }
+        pub(super) struct Fixture;
+        impl Fixture {
+            pub(super) fn new(steps: Vec<Step>) -> Self {
+                SCRIPT.with(|slot| {
+                    let mut slot = slot.borrow_mut();
+                    assert!(slot.is_none(), "nested Studio fixture");
+                    *slot = Some(Script {
+                        steps: steps.into(), reused: None, reused_probes: 0,
+                    });
+                });
+                Self
+            }
+            pub(super) fn reuse(&self, identity: ProcessIdentity) {
+                SCRIPT.with(|slot| slot.borrow_mut().as_mut().unwrap().reused = Some(identity));
+            }
+        }
+        impl Drop for Fixture {
+            fn drop(&mut self) {
+                let script = SCRIPT.with(|slot| slot.borrow_mut().take()).unwrap();
+                if !std::thread::panicking() {
+                    assert!(script.steps.is_empty(), "unconsumed Studio observations/effects");
+                    assert_eq!(script.reused_probes, 0, "retired numeric identity was probed");
+                }
+            }
+        }
+        pub(crate) fn observe(pid: u32) -> Result<Option<ProcessIdentity>> {
+            let scripted = SCRIPT.with(|slot| {
+                let mut slot = slot.borrow_mut();
+                let script = slot.as_mut()?;
+                if let Some(reused) = &script.reused
+                    && reused.pid == pid
+                {
+                    script.reused_probes += 1;
+                    return Some(Ok(Some(reused.clone())));
+                }
+                let Some(Step::Observe(identity)) = script.steps.pop_front() else {
+                    panic!("unexpected numeric Studio observation for {pid}");
+                };
+                assert_eq!(pid, identity.pid);
+                Some(Ok(Some(identity)))
+            });
+            scripted.unwrap_or_else(|| process_scope::observe(pid))
+        }
+        pub(crate) fn verify_identity(expected: &ProcessIdentity) -> Result<ProcessIdentity> {
+            if !SCRIPT.with(|slot| slot.borrow().is_some()) {
+                return process_scope::verify_identity(expected);
+            }
+            let actual = observe(expected.pid)?.context("bound process no longer exists")?;
+            ensure!(expected.same_process(&actual), "bound process identity changed");
+            Ok(actual)
+        }
+        pub(crate) fn bound_absent(expected: &ProcessIdentity) -> Result<bool> {
+            let scripted = SCRIPT.with(|slot| {
+                let mut slot = slot.borrow_mut();
+                let script = slot.as_mut()?;
+                if let Some(reused) = &script.reused
+                    && reused.pid == expected.pid
+                {
+                    script.reused_probes += 1;
+                    assert!(!expected.same_process(reused));
+                    return Some(Err(anyhow::anyhow!(
+                        "bound process birth, UID, or group changed"
+                    )));
+                }
+                let Some(Step::Absent(pid, result)) = script.steps.pop_front() else {
+                    panic!("unexpected bound absence probe for {}", expected.pid);
+                };
+                assert_eq!(pid, expected.pid);
+                Some(result)
+            });
+            scripted.unwrap_or_else(|| process_scope::bound_absent(expected))
+        }
+        pub(crate) fn command(executable: &str, args: &[String]) -> Option<Result<(i32, String)>> {
+            SCRIPT.with(|slot| {
+                let mut slot = slot.borrow_mut();
+                let script = slot.as_mut()?;
+                assert_eq!(executable, "/bin/launchctl");
+                let Some(Step::Command(expected, status, output)) = script.steps.pop_front() else {
+                    panic!("unexpected Studio command/effect: {args:?}");
+                };
+                assert_eq!(args, expected);
+                Some(Ok((status, output)))
+            })
+        }
+    }
+
+    const STUDIO_TARGET: &str = "gui/501/studio-cpu-fixture";
+    const STUDIO_PLIST: &str = "/fixture/studio.plist";
+    fn studio_identity(pid: u32) -> ProcessIdentity {
+        ProcessIdentity {
+            pid, ppid: 1, pgid: pid, sid: pid as i32, uid: 501,
+            start_seconds: 10, start_subseconds: 20,
+            executable: "/fixture/studio".into(), cwd: "/fixture".into(),
+            state: ProcessState::Running,
+        }
+    }
+    fn studio_command(args: &[&str], status: i32, output: String) -> studio_process::Step {
+        studio_process::Step::Command(
+            args.iter().map(|arg| (*arg).into()).collect(), status, output,
+        )
+    }
+    fn studio_registration(pid: u32) -> studio_process::Step {
+        studio_command(&["print", STUDIO_TARGET], 0,
+            format!("{STUDIO_TARGET} = {{\npath = {STUDIO_PLIST}\npid = {pid}\n}}\n"))
+    }
+    fn studio_absence() -> studio_process::Step {
+        studio_command(&["print", STUDIO_TARGET], 113,
+            "Could not find service \"studio-cpu-fixture\"".into())
+    }
+    fn studio_enrollment_steps(original: &ProcessIdentity) -> Vec<studio_process::Step> {
+        vec![studio_process::Step::Observe(original.clone()), studio_registration(original.pid)]
+    }
+    fn studio_stop_steps(original: &ProcessIdentity) -> Vec<studio_process::Step> {
+        vec![
+            studio_registration(original.pid),
+            studio_process::Step::Observe(original.clone()),
+            studio_command(&["bootout", STUDIO_TARGET], 0, String::new()),
+            studio_process::Step::Absent(original.pid, Ok(true)),
+            studio_absence(), // Complete initial proof.
+            studio_absence(), // First inhibited observation, already retired.
+        ]
+    }
+    fn enroll_scripted_studio(
+        original: &ProcessIdentity, deadline: Instant, recovery: &mut RecoveryControl<'_>,
+    ) -> Result<ServiceHandle> {
+        ServiceHandle::enroll(
+            &ServiceSpec::StudioLaunchd {
+                target: STUDIO_TARGET.into(), plist: STUDIO_PLIST.into(),
+                expected: original.clone(),
+            },
+            ScopePurpose::Native, None, deadline, &mut || Ok(()), recovery,
+        )
+    }
+
+    #[test]
+    fn studio_retired_identity_allows_named_observation_and_fresh_restore() -> Result<()> {
+        for changed_field in ["birth", "uid", "group"] {
+            let original = studio_identity(42);
+            let replacement = studio_identity(43);
+            let mut foreign = original.clone();
+            match changed_field {
+                "birth" => foreign.start_seconds += 1,
+                "uid" => foreign.uid += 1,
+                "group" => { foreign.pgid += 1; foreign.sid += 1; }
+                _ => unreachable!(),
+            }
+            assert!(!original.same_process(&foreign));
+            let mut steps = studio_enrollment_steps(&original);
+            steps.extend(studio_stop_steps(&original));
+            steps.extend([
+                studio_absence(), studio_absence(), // Run-time observations.
+                studio_absence(), // Restore must independently check the name.
+                studio_command(&["bootstrap", "gui/501", STUDIO_PLIST], 0, String::new()),
+                studio_registration(replacement.pid),
+                studio_process::Step::Observe(replacement.clone()),
+            ]);
+            let fixture = studio_process::Fixture::new(steps);
+            let scope = TestScope::new();
+            let mut recovery_tick = || Ok(());
+            let mut recovery = scope.control(&mut recovery_tick);
+            let deadline = Instant::now() + Duration::from_secs(5);
+            let mut service = enroll_scripted_studio(&original, deadline, &mut recovery)?;
+            let stopped = service.stop(deadline, &mut || Ok(()), &mut recovery)?;
+            assert!(stopped.inhibited && !stopped.restored && stopped.failure.is_none());
+            assert_eq!(stopped.root.as_ref(), Some(&original));
+            fixture.reuse(foreign);
+            for _ in 0..2 {
+                let observed = service.observe_inhibited(deadline, &mut || Ok(()), &mut recovery)?;
+                assert!(observed.inhibited && observed.failure.is_none());
+                assert_eq!(observed.root.as_ref(), Some(&original));
+            }
+            let restored = service.restore(deadline, &mut || Ok(()), &mut recovery)?;
+            assert!(restored.restored && !restored.inhibited && restored.failure.is_none());
+            assert_eq!(restored.root.as_ref(), Some(&replacement));
+            let ServiceSpec::StudioLaunchd { expected, .. } = &service.spec else { unreachable!() };
+            assert_eq!(expected, &original); // Historical binding survives replacement.
+            assert!(recovery.complete());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn studio_retirement_requires_complete_stop_and_identity_proof() -> Result<()> {
+        for failure in ["identity", "bootout", "group", "unavailable_group", "name", "uncertain_name"] {
+            let original = studio_identity(42);
+            let mut steps = studio_enrollment_steps(&original);
+            steps.push(studio_registration(original.pid));
+            let mut observed = original.clone();
+            if failure == "identity" { observed.start_seconds += 1; }
+            steps.push(studio_process::Step::Observe(observed));
+            if failure != "identity" {
+                steps.push(studio_command(&["bootout", STUDIO_TARGET],
+                    if failure == "bootout" { 5 } else { 0 }, String::new()));
+                if failure != "bootout" {
+                    if failure == "group" {
+                        steps.push(studio_process::Step::Absent(original.pid, Ok(false)));
+                    }
+                    steps.push(studio_process::Step::Absent(original.pid,
+                        if matches!(failure, "group" | "unavailable_group") {
+                            Err(anyhow::anyhow!("initial process/group settlement unavailable"))
+                        } else { Ok(true) }));
+                    if failure == "name" {
+                        steps.push(studio_registration(99));
+                    } else if failure == "uncertain_name" {
+                        steps.push(studio_command(&["print", STUDIO_TARGET], 113, String::new()));
+                    }
+                }
+            }
+            let _fixture = studio_process::Fixture::new(steps);
+            let scope = TestScope::new();
+            let mut recovery_tick = || Ok(());
+            let mut recovery = scope.control(&mut recovery_tick);
+            let deadline = Instant::now() + Duration::from_secs(5);
+            let mut service = enroll_scripted_studio(&original, deadline, &mut recovery)?;
+            assert!(service.stop(deadline, &mut || Ok(()), &mut recovery).is_err(), "{failure}");
+            let failed = service.last_observation();
+            assert!(!failed.inhibited && !failed.restored && failed.failure.is_some(), "{failure}");
+            assert!(service.observe_inhibited(deadline, &mut || Ok(()), &mut recovery).is_err());
+            assert!(service.restore(deadline, &mut || Ok(()), &mut recovery).is_err());
+            assert!(service.stop(deadline, &mut || Ok(()), &mut recovery).is_err());
+            assert_eq!(service.last_observation().failure, failed.failure);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn studio_retired_identity_never_bypasses_fresh_named_absence() -> Result<()> {
+        for during_restore in [false, true] {
+            for failure in ["registered", "unavailable", "ambiguous"] {
+                let original = studio_identity(42);
+                let mut steps = studio_enrollment_steps(&original);
+                steps.extend(studio_stop_steps(&original));
+                steps.push(match failure {
+                    "registered" => studio_registration(99),
+                    "unavailable" => studio_command(&["print", STUDIO_TARGET], 5, String::new()),
+                    "ambiguous" => studio_command(&["print", STUDIO_TARGET], 113,
+                        "Could not find service \"different-name\"".into()),
+                    _ => unreachable!(),
+                });
+                let fixture = studio_process::Fixture::new(steps);
+                let scope = TestScope::new();
+                let mut recovery_tick = || Ok(());
+                let mut recovery = scope.control(&mut recovery_tick);
+                let deadline = Instant::now() + Duration::from_secs(5);
+                let mut service = enroll_scripted_studio(&original, deadline, &mut recovery)?;
+                service.stop(deadline, &mut || Ok(()), &mut recovery)?;
+                let mut foreign = original.clone();
+                foreign.start_seconds += 1;
+                fixture.reuse(foreign);
+                let result = if during_restore {
+                    service.restore(deadline, &mut || Ok(()), &mut recovery)
+                } else {
+                    service.observe_inhibited(deadline, &mut || Ok(()), &mut recovery)
+                };
+                assert!(result.is_err(), "{failure}");
+                let failed = service.last_observation();
+                assert!(!failed.inhibited && !failed.restored && failed.failure.is_some());
+                assert!(service.restore(deadline, &mut || Ok(()), &mut recovery).is_err());
+                assert!(service.observe_inhibited(deadline, &mut || Ok(()), &mut recovery).is_err());
+                assert_eq!(service.last_observation().failure, failed.failure);
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn studio_retirement_cannot_be_requested_before_stop() -> Result<()> {
+        let original = studio_identity(42);
+        let mut supplied = serde_json::to_value(ServiceSpec::StudioLaunchd {
+            target: STUDIO_TARGET.into(), plist: STUDIO_PLIST.into(), expected: original.clone(),
+        })?;
+        supplied["stopped"] = serde_json::json!(true);
+        assert!(serde_json::from_value::<ServiceSpec>(supplied).is_err());
+        let _fixture = studio_process::Fixture::new(studio_enrollment_steps(&original));
+        let scope = TestScope::new();
+        let mut recovery_tick = || Ok(());
+        let mut recovery = scope.control(&mut recovery_tick);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut service = enroll_scripted_studio(&original, deadline, &mut recovery)?;
+        assert!(service.restore(deadline, &mut || Ok(()), &mut recovery).is_err());
+        assert!(service.observe_inhibited(deadline, &mut || Ok(()), &mut recovery).is_err());
+        let observed = service.last_observation();
+        assert!(!observed.inhibited && !observed.restored && observed.failure.is_some());
+        assert!(service.stop(deadline, &mut || Ok(()), &mut recovery).is_err());
+        assert_eq!(service.last_observation().failure, observed.failure);
+        Ok(())
     }
 
     fn studio_startup_case(change_cwd: bool) -> Result<serde_json::Value> {
