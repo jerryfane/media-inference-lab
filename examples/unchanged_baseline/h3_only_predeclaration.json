@@ -1,0 +1,339 @@
+{
+  "kind": "h3_only_baseline_predeclaration",
+  "protocol_version": 3,
+  "notice": "Separately authorized four-slot H3-only cohort. Not a continuation, completion or repair of the stopped eight-slot cohort; not a native grant or cooperative hold.",
+  "study_id": "h3-only-baseline-private-20261012T134549533Z",
+  "declared_at_utc": "2026-10-12T13:45:49.539Z",
+  "intent": "Descriptive unchanged baseline timing and output variation only; no candidate/control configurations, same-work performance eligibility or speedup claim.",
+  "source_policy": {
+    "required": "Reuse the previously qualified frozen guardian/native build from main f81795607bd986e1e5d63344021cf7af85c4d400, without rebuilding or changing it. Qualify and freeze new CPU-only collector/reporting source before H0.",
+    "guardian_source_commit": "f81795607bd986e1e5d63344021cf7af85c4d400",
+    "prior_frozen_root": "/Users/jerry/.local/share/media-inference-lab/unchanged-native-baselines-20261012T065619797039Z",
+    "future_bindings": "New source/binary/collector/asset/plan/transaction binding documents reference these unchanged protocol bytes. No post-outcome edits."
+  },
+  "workloads": {
+    "h3_draft": {
+      "workload": {
+        "schema_version": 1,
+        "id": "h3-draft-native-56frames",
+        "model": {
+          "name": "MiniMaxAI/MiniMax-H3",
+          "revision": null,
+          "sha256": null
+        },
+        "settings": {
+          "modality": "video",
+          "generation": {
+            "prompt": "A geometric folded-paper sculpture slowly rotates on a plain light background. Static camera, soft studio lighting.",
+            "negative_prompt": null,
+            "seed": 17,
+            "resolution": {
+              "width": 864,
+              "height": 480
+            },
+            "steps": 8,
+            "scheduler": "euler",
+            "guidance": 1,
+            "precision": "bfloat16",
+            "compute_precision": null,
+            "quantization": {
+              "kind": "none"
+            },
+            "batch_size": 1,
+            "references": [],
+            "strength": null,
+            "optimizations": {
+              "use_kv_cache": null,
+              "step_cache_ratio": null,
+              "step_cache_threshold": null
+            }
+          },
+          "frames": 56,
+          "layers": 50,
+          "playback_fps": 24,
+          "render_resolution": null,
+          "reuse": {
+            "kind": "disabled"
+          },
+          "audio": {
+            "kind": "generate",
+            "sample_rate_hz": 32000,
+            "channels": 2
+          }
+        },
+        "process_policy": "fresh_process",
+        "cache_policy": "unspecified"
+      },
+      "accepted_typed_workload_identity": "05df722e19c240d66c3fc2c73f9fcf172ad1f9035df1e250c878c3e38512b58f",
+      "historical_context_capture": "/Users/jerry/.local/share/media-inference-lab/h3-native-integration-20261011T220117461929Z/captures/run-1791757884549-87194-0",
+      "primary_metric": {
+        "phase": "owned_native_host",
+        "scope": "host",
+        "unit": "milliseconds",
+        "method": "guardian monotonic broker observation",
+        "boundary": "root creation through root exit/stop decision; includes native codecs and their in-loop settlement, excludes terminal root cleanup and subsequent media inspection; not pure model inference"
+      }
+    }
+  },
+  "slots": [
+    {
+      "index": 0,
+      "slot_id": "H0",
+      "workload": "h3_draft",
+      "configuration": "unchanged_baseline",
+      "fresh_process": true,
+      "warmup": true,
+      "measured": false,
+      "maximum_native_attempts": 1
+    },
+    {
+      "index": 1,
+      "slot_id": "H1",
+      "workload": "h3_draft",
+      "configuration": "unchanged_baseline",
+      "fresh_process": true,
+      "warmup": false,
+      "measured": true,
+      "maximum_native_attempts": 1
+    },
+    {
+      "index": 2,
+      "slot_id": "H2",
+      "workload": "h3_draft",
+      "configuration": "unchanged_baseline",
+      "fresh_process": true,
+      "warmup": false,
+      "measured": true,
+      "maximum_native_attempts": 1
+    },
+    {
+      "index": 3,
+      "slot_id": "H3",
+      "workload": "h3_draft",
+      "configuration": "unchanged_baseline",
+      "fresh_process": true,
+      "warmup": false,
+      "measured": true,
+      "maximum_native_attempts": 1
+    }
+  ],
+  "historical_captures_are_study_rows": false,
+  "ordering": "H0 retained warmup, then H1 H2 H3 measured. Sequential, one native transaction at a time. No interleaving, reordering, retries, replacements or data-dependent extensions.",
+  "warmup_policy": "Exactly one retained fresh-process H3 warmup, excluded from measured timing summaries. Administrative exclusion only; cache_policy remains unspecified for all four slots.",
+  "failure_policy": {
+    "retain": [
+      "denied",
+      "failed",
+      "cancelled",
+      "invalid_media",
+      "unavailable_metric",
+      "not_run_due_to_safety_or_authority"
+    ],
+    "retry": false,
+    "replace_failed_slot": false,
+    "minimum_successes_for_complete_descriptive_summary": 3,
+    "partial_policy": "Show every planned row and all observed outcomes/times. Label fewer than 3 valid measured primary values incomplete; no fill-in runs. Retain valid subset descriptive values with exact exclusions, never silent drop.",
+    "stop_policy": "Stop admission on incomplete original settlement/readiness, exhausted/revoked authority, resource/conflict denial, or changed frozen code/asset/settings bindings. Keep remaining fixed slots visibly not_run; no automatic restart or altered-build continuation. Metric magnitude or output differences never change sample count. Stop all future admission if the original standalone collector becomes unavailable, its process/domain changes, or its original bracket cannot be completed. Never reconstruct state/domain, restart that collector for this cohort, or replay an attempt."
+  },
+  "validation_and_ownership": {
+    "each_slot": [
+      "full requested/resolved workload fidelity",
+      "shared saved mil inspect result",
+      "H3 all56frame/fullPCM original guarded validation",
+      "original root settlement",
+      "all original codec/inspection helper settlement where applicable",
+      "original service accounting and restoration outcome",
+      "receipt-bound qualified per-PID Studio listener/health observer and original observer settlement"
+    ],
+    "service_accounting_limit": "Preserve aggregate service_accounting_complete and any dispositions verbatim. Empty per-command disposition arrays are not proof no helpers ran; do not invent detailed lifecycle helper receipts.",
+    "readiness": "After approved CPU qualification, a narrowly authorized named registration must precede initial receipt-bound per-PID readiness. After each attempt, rebind the already qualified private observer template to the authoritative restored Studio identity before invocation. Only scalar identity and slot/receipt/output-path changes and existing frozen-main rlib/qualified C recipe links are permitted; no old-PID/global/lsof/oMLX scans or lifecycle replay."
+  },
+  "timing_report": {
+    "primary": "Exact per-modality phase/scope/unit/method/boundary selectors above; missing/duplicate/changed boundary stays unavailable, never substituted.",
+    "secondary": [
+      "all original adapter timing observations with boundaries and unavailable reasons",
+      "manifest host interval, wall timestamps, artifact inspection and cleanup kept separate",
+      "transaction elapsed time",
+      "observer elapsed time",
+      "guard readings and failures retained as safety, not GPU memory metrics"
+    ],
+    "statistics": [
+      "individual values in declared order",
+      "planned/measured/warmup/failed/missing/unavailable/excluded counts",
+      "finite median/min/max/range of eligible measured values per exact metric and modality"
+    ],
+    "prohibited": [
+      "phase summation where intervals overlap",
+      "image-versus-video performance ratio",
+      "candidate/control ratio",
+      "speedup",
+      "confidence or significance claims",
+      "in-process cache-warm or true cold-start claims"
+    ]
+  },
+  "numerical_report": {
+    "pairs_per_modality": [
+      [
+        "H0",
+        "H1"
+      ],
+      [
+        "H0",
+        "H2"
+      ],
+      [
+        "H0",
+        "H3"
+      ],
+      [
+        "H1",
+        "H2"
+      ],
+      [
+        "H1",
+        "H3"
+      ],
+      [
+        "H2",
+        "H3"
+      ]
+    ],
+    "pair_policy": "All six unordered H3 pairs, with the three warmup-containing pairs separately labeled/excluded from measured-only variation summaries. Missing/invalid pairs remain present with reasons. No output-dependent pair selection.",
+    "h3_video": "All56 frames with source-probed PTS/duration and dimensions, no scale/crop/interpolation/temporal shift. Existing pinned codec software decode + existing PNG/frame numerical APIs. Bound derived extraction to each original MP4 and recheck complete concatenated RGB hash against its original guarded inspection; never infer extraction completeness from a supplied PNG list alone. Per-frame and whole-sequence errors with exact denominators. Alignment mismatch is unavailable, not coerced.",
+    "h3_audio": "Original inspection full-PCM hashes, stream rate/channels/count/duration retained. Bounded unforced f32le decode with same pinned tool/settings and cross-check against original PCM hash. Exact sample-index/channel/PTS alignment only; count/timeline mismatch remains unavailable. Finite float64-accumulated max/MAE/RMSE in decoded amplitude units, finite-value checks and denominators; no resampling, gain adjustment, trimming, lag fit, fabricated PSNR or acoustic-quality claim.",
+    "classification": "Exact decoded equality or different-unbounded only. No tolerance chosen/adapted. Error magnitude is output variation, not perceptual quality or causal attribution.",
+    "visual": "Require and inspect each new H3 first/middle/last preview plus its mandatory all56-frame contact sheet from the bounded owned analysis path. Bind exact hashes, source frames and reviewer limitations; no acoustic listening, perceptual quality or rigid-motion claim without actual independent evidence."
+  },
+  "comparability": {
+    "mode": "descriptive_baseline_only",
+    "same_work_eligibility": "not established",
+    "unknowns_preserved": [
+      "full model payload identity",
+      "device identity where unavailable",
+      "runtime/source identity where unavailable",
+      "cache state",
+      "redacted launch metadata",
+      "whole-host GPU exclusivity"
+    ],
+    "rule": "No equal-null or equal-redacted inference. Record exact available workload/build/source/tool bindings alongside unknown fields. Same seed and same declared settings do not establish deterministic output or a controlled same-work performance baseline."
+  },
+  "bounds": {
+    "native_attempts_total": 4,
+    "per_attempt_capture_timeout_seconds": 600,
+    "per_attempt_cleanup_reserve_seconds": 30,
+    "per_attempt_guardian_ceiling_seconds": 1800,
+    "per_attempt_outer_tool_timeout_seconds": 1900,
+    "per_attempt_capture_output_bytes": 67108864,
+    "launch_free_percent_min": 30,
+    "abort_free_percent_below": 15,
+    "abort_swap_growth_bytes": 536870912,
+    "guard_config": {
+      "min_disk_free_bytes": 10737418240,
+      "max_disk_growth_bytes": 268435456,
+      "sample_interval_ms": 100
+    },
+    "per_attempt_readiness_active_seconds": 10,
+    "per_attempt_readiness_total_seconds": 15,
+    "private_storage_planning_bytes": 8589934592,
+    "storage_split_bytes": {
+      "isolated_source_builds": 4294967296,
+      "native_transaction_capture_and_observer_evidence": 3221225472,
+      "offline_analysis_and_reports": 1073741824
+    },
+    "cpu_preparation_free_disk_floor_bytes": 21474836480,
+    "storage_enforcement_note": "Planning/admission budget, not an atomic filesystem quota. Existing native guards/file limits stay unchanged. Check bounded owned usage before/after CPU phases and before each new attempt; preserve partial outputs and stop rather than delete evidence or exceed plan knowingly. No disk inspection performed during proposal.",
+    "offline_decode_per_h3_slot": {
+      "rgb_stream_exact_bytes": 69672960,
+      "pcm_max_bytes": 1048576,
+      "png_encoded_total_max_bytes": 100663296,
+      "derived_bundle_max_bytes": 134217728,
+      "helper_count": 2,
+      "helper_execution_seconds_each": 120,
+      "shared_cleanup_reserve_seconds": 10,
+      "bundle_ceiling_seconds": 250
+    },
+    "offline_report_json_max_bytes": 16777216,
+    "offline_report_markdown_max_bytes": 1048576,
+    "metadata_file_max_bytes": 16777216,
+    "metadata_total_read_max_bytes": 268435456,
+    "offline_total_wall_ceiling_seconds": 1800,
+    "offline_policy": "No decode truncation accepted as completeness. Same original OwnedProcess custody/fork/network/write confinement, no GPU/native imports; all analysis helpers settle. One helper at a time, after native sampling, not alongside another model sample.",
+    "maximum_capture_time_seconds_all4": 2400,
+    "maximum_guardian_time_seconds_all4": 7200,
+    "maximum_outer_tool_time_seconds_all4": 7600
+  },
+  "authority": {
+    "build_now": true,
+    "native_now": false,
+    "old_grants_consumed": true,
+    "old_holds_released": true,
+    "per_attempt_fresh_grant_and_window_required": true,
+    "omlx": "unmanaged/unverified, no control",
+    "prohibited": [
+      "live runtime/source/binary edits",
+      "model downloads",
+      "global changes",
+      "cancelled PowerPoint work",
+      "unreviewed merges/retarget/rebase/branch deletion"
+    ],
+    "build_scope": "CPU-only standalone collector, fixed H3-only offline reporter and private scalar/path helper rebinding against the already qualified frozen-main rlib. No guardian/native rebuild, model import/call, service action or observer activation during implementation/qualification."
+  },
+  "contract_gaps": [
+    "StudyPlan expands baseline/candidate/control and is not used; this is a separately fixed H3-only offline analysis, not a generic executor.",
+    "Original full RGB/PCM acceptance is retained. Bounded later extraction and all56-frame contact sheet must bind the original hashes; no historical media may become a study row.",
+    "Existing numerical functions are calculators only; preserve neutral left_slot/right_slot records and all unknowns."
+  ],
+  "prior_stopped_cohort": {
+    "root": "/Users/jerry/.local/share/media-inference-lab/unchanged-native-baselines-20261012T065619797039Z",
+    "status": "incomplete and closed to further admission",
+    "qwen": "Valid descriptive subset retained separately, not pooled with or relabeled as rows of this study.",
+    "h3": "All four old H3 slots remain unrun. Every slot in this new study must come from a new original authorized attempt."
+  },
+  "clock_collection": {
+    "kind": "standalone finite owned collector independent of Eval-client lifetime",
+    "process_domain": "One freshly created original collector process and unique monotonic domain for all four attempts. No persisted-state replay or domain reconstruction. A replacement client may reconnect only to that same live actor.",
+    "commands": "Collector records execution/readiness brackets and source identities only. Never executes commands, observers, models, service actions or host scans.",
+    "event_order": [
+      "H0/execution",
+      "H0/readiness",
+      "H1/execution",
+      "H1/readiness",
+      "H2/execution",
+      "H2/readiness",
+      "H3/execution",
+      "H3/readiness"
+    ],
+    "maximum_lifetime_seconds": 10800,
+    "request_timeout_seconds": 5,
+    "request_max_bytes": 131072,
+    "record_max_bytes": 16777216,
+    "transport": "Private bounded local IPC with exact study root, source and domain binding; qualified before native admission.",
+    "ownership": "Retain original creation, finite lifetime and external owner settlement. No self-attested leader reaping; no restored or invented original timestamps.",
+    "admission": "Require sufficient remaining collector lifetime for the declared command/readiness ceiling before a bracket starts; domain/sequence/identity/record failures prevent subsequent native admission.",
+    "future_receipt_paths": "At begin, an input may have absent trailing ancestor directories. Validate every existing study-local ancestor as private/owned/non-symlink; reserve only the literal path without creating directories. The guardian alone creates its evidence root. At finish and later evidence validation, require the entire private owned non-symlink path and original bounded fresh file identity. No staging/removal workaround, relaxed final validation, or state reconstruction.",
+    "private_preparation": "Parent explicitly creates root/slots and every slots/H0,H1,H2,H3 directory non-recursively as owned0700 and verifies all existing study-local ancestors before collector activation. Slot directories are reused, not recreated or replaced by worker preparation. Verify those ancestors again before any execution/readiness begin. Future transaction-evidence remains absent until the guardian creates it. No post-rejection permission repair/retry or closed-domain reuse."
+  },
+  "prior_zero_attempt_h3_cohort": {
+    "root": "/Users/jerry/.local/share/media-inference-lab/h3-only-baseline-20261012T110920566Z",
+    "protocol_sha256": "13ac0a3223c9a4e262b7a86556c48de79977990ea7b46bedd20f445bca8d1a0b",
+    "state": "stopped_before_H0",
+    "native_attempts": 0,
+    "execution_readiness_brackets": 0,
+    "unused_grant_withdrawn": true,
+    "original_collector_closed_and_settled": true,
+    "reason": "Collector required receipt parent to exist but frozen guardian creates that directory non-recursively.",
+    "evidence": "/Users/jerry/.local/share/media-inference-lab/h3-only-baseline-20261012T110920566Z/prestart-stop-handoff.json"
+  },
+  "prior_preparation_denied_cohort": {
+    "root": "/Users/jerry/.local/share/media-inference-lab/h3-only-baseline-corrected-20261012T130715614Z",
+    "protocol_sha256": "34e1c4d20759bf2ebb581c1de17ea3a023cac60f723bbedf763d99b9bebdbb02",
+    "state": "stopped_before_native_spawn",
+    "native_attempts": 0,
+    "recorded_brackets": 0,
+    "original_begin_clients": 1,
+    "reason": "Preparation created intermediate slots directory as0755; original private-ancestor check correctly rejected it.",
+    "original_domain_closed": true,
+    "unused_grant_withdrawn": true,
+    "evidence": "/Users/jerry/.local/share/media-inference-lab/h3-only-baseline-corrected-20261012T130715614Z/prestart-permission-stop-handoff.json"
+  }
+}
